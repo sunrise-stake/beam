@@ -1,79 +1,162 @@
+use crate::BeamProgramError;
 use anchor_lang::prelude::*;
 
 /// The state for the main beam controller program. A single
 /// instance can have multiple [BeamApprovalState] accounts.
 #[account]
-pub struct State {
+pub struct ControllerState {
     /// Update authority for the main program.
     pub update_authority: Pubkey,
     /// The Sunrise gsol mint
     pub gsol_mint: Pubkey,
     /// The Sunrise gsol mint authority bump
     pub gsol_mint_authority_bump: u8,
-    /// The number of previously-created beams.
-    /// This is also used to generate the seeds
-    /// for a new [BeamApprovalState] account.
-    pub beams: u8,
+    /// The beam controller yield account.
+    pub yield_account: Pubkey,
+    /// Holds [Allocation] details for beams.
+    pub allocations: Vec<Allocation>,
 }
 
-impl State {
-    pub const SPACE: usize = 32 + 32 + 1 + 1;
+/// The allocation details for a beam.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
+pub struct Allocation {
+    /// Expected signer for mint and burn requests.
+    pub beam: Pubkey,
+    /// This beam's allocation expressed as a percentage.
+    pub allocation: u8,
+    /// A beam in drain accepts withdrawals but no deposits.
+    pub draining_mode: bool,
+}
 
-    pub fn register(&mut self, input: &StateInput, gsol_mint: &Pubkey) {
-        self.set_values(input, Some(gsol_mint));
-        self.beams = 0;
+impl Allocation {
+    pub const SPACE: usize = 32 + 1 + 1;
+
+    pub fn new(beam: Pubkey, allocation: u8) -> Self {
+        Allocation {
+            beam,
+            allocation,
+            draining_mode: false,
+        }
+    }
+}
+
+impl ControllerState {
+    pub fn size(initial_capacity: usize) -> usize {
+        8 + //discriminator
+        32 + 32 + 1 + 32 + (4 + (Allocation::SPACE * initial_capacity))
     }
 
-    pub fn set_values(&mut self, input: &StateInput, gsol_mint: Option<&Pubkey>) {
+    pub fn register(
+        &mut self,
+        input: RegisterStateInput,
+        gsol_mint_auth_bump: u8,
+        gsol_mint: &Pubkey,
+    ) {
         self.update_authority = input.update_authority;
-        self.gsol_mint_authority_bump = input.gsol_mint_authority_bump;
-        self.gsol_mint = *gsol_mint.unwrap_or(&self.gsol_mint);
+        self.yield_account = input.yield_account;
+        self.gsol_mint = *gsol_mint;
+        self.gsol_mint_authority_bump = gsol_mint_auth_bump;
+        self.allocations = Vec::with_capacity(input.initial_capacity);
+        self.allocations = Vec::default(); // Todo: Use Vec::with_capacity()?
+    }
+
+    pub fn update(&mut self, input: UpdateStateInput) {
+        if let Some(update_authority) = input.new_update_authority {
+            self.update_authority = update_authority;
+        }
+        if let Some(gsol_mint) = input.new_gsol_mint {
+            self.gsol_mint = gsol_mint;
+        }
+        if let Some(bump) = input.new_gsol_mint_authority_bump {
+            self.gsol_mint_authority_bump = bump;
+        }
+        if let Some(yield_account) = input.new_yield_account {
+            self.yield_account = yield_account;
+        }
+    }
+
+    /// A return value of [None] indicates no space was found.
+    pub fn push_allocation(&mut self, new_allocation: Allocation) -> Result<Option<()>> {
+        if self.contains_beam(&new_allocation.beam) {
+            return Err(BeamProgramError::DuplicateBeamEntry.into());
+        }
+
+        let maybe_found = self
+            .allocations
+            .iter_mut()
+            .find(|x| x.beam == Pubkey::default());
+
+        if let Some(allocation) = maybe_found {
+            *allocation = new_allocation;
+
+            return Ok(Some(()));
+        }
+
+        todo!("Modify allocations");
+
+        Ok(None)
+    }
+
+    /// Returns the number of active beams.
+    pub fn beam_count(&self) -> usize {
+        self.allocations
+            .iter()
+            .filter(|x| x.beam != Pubkey::default())
+            .count()
+    }
+
+    /// Returns [None] if the allocation is not present.
+    pub fn remove_beam(&mut self, beam: &Pubkey) -> Option<()> {
+        if !self.contains_beam(beam) {
+            return None;
+        }
+
+        let found = self
+            .allocations
+            .iter_mut()
+            .find(|x| x.beam == *beam)
+            .unwrap();
+
+        let _allocation = found.allocation;
+        *found = Allocation::default();
+
+        todo!("Draining mode logic and modify allocations");
+
+        Some(())
+    }
+
+    pub fn contains_beam(&self, beam: &Pubkey) -> bool {
+        self.allocations
+            .iter()
+            .any(|allocation| allocation.beam == *beam)
     }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct StateInput {
+pub struct RegisterBeamInput {
+    /// The beam state address
+    pub beam: Pubkey,
+    /// The allocation
+    pub allocation: u8,
+}
+
+impl From<RegisterBeamInput> for Allocation {
+    fn from(rbi: RegisterBeamInput) -> Self {
+        Allocation::new(rbi.beam, rbi.allocation)
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
+pub struct RegisterStateInput {
     pub update_authority: Pubkey,
-    pub gsol_mint_authority_bump: u8,
+    pub initial_capacity: usize,
+    pub yield_account: Pubkey,
 }
 
-/// Represents a contract between the Sunrise main
-/// program and a "Beam" program that's allowed to
-/// mint gsol.
-#[account]
-pub struct BeamApprovalState {
-    /// The beam program's ID, used in generating its PDA.
-    pub id: u8,
-    /// The sunrise state this beam belongs to.
-    pub state: Pubkey,
-    /// The beam's Program ID.
-    pub program_id: Pubkey,
-    /// The internal state of the beam program.
-    pub beam_state: Pubkey,
-    /// Total gsol minted by this beam.
-    pub minted_gsol: u64,
-    /// Minimum gsol allocation to the beam.
-    pub min_allocation: u64,
-    /// Maximum gsol allocation to the beam.
-    pub max_allocation: u64,
-    /// Expected signer for CPIs from the beam.
-    pub beam_authority: Pubkey,
-    /// Whether or not the beam is active.
-    pub frozen: bool,
-}
-
-impl BeamApprovalState {
-    pub const SPACE: usize = 1 + 32 + 32 + 8 + 8 + 8 + 32 + 1;
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct BeamInput {
-    /// The address of the beam program.
-    pub program_id: Pubkey,
-    /// The minimum gsol allocation for this beam.
-    pub min_allocation: u64,
-    /// The maximum gsol allocation for this beam.
-    pub max_allocation: u64,
-    /// The expected signer for CPIs from the beam.
-    pub beam_authority: Pubkey,
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
+pub struct UpdateStateInput {
+    pub new_update_authority: Option<Pubkey>,
+    pub new_yield_account: Option<Pubkey>,
+    pub new_gsol_mint: Option<Pubkey>,
+    pub new_gsol_mint_authority_bump: Option<u8>,
 }

@@ -1,5 +1,5 @@
 use crate::seeds::GSOL_MINT_AUTHORITY;
-use crate::state::State;
+use crate::state::ControllerState;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program::invoke;
 use anchor_lang::solana_program::system_instruction::create_account;
@@ -39,13 +39,14 @@ pub fn create_mint<'a>(
     token::initialize_mint(cpi_ctx, 9, mint_authority, Some(mint_authority))
 }
 
+#[allow(dead_code)]
 pub fn mint_to<'a>(
     amount: u64,
     mint: &AccountInfo<'a>,
     mint_authority: &AccountInfo<'a>,
     recipient_token_account: &AccountInfo<'a>,
     token_program: &AccountInfo<'a>,
-    state: &Account<'a, State>,
+    state: &Account<'a, ControllerState>,
 ) -> Result<()> {
     let state_address = state.key();
     let seeds = &[
@@ -65,6 +66,7 @@ pub fn mint_to<'a>(
     token::mint_to(cpi_ctx, amount)
 }
 
+#[allow(dead_code)]
 pub fn burn<'a>(
     amount: u64,
     mint: &AccountInfo<'a>,

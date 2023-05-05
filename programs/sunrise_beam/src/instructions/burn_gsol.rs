@@ -1,12 +1,7 @@
-use crate::{
-    state::{BeamApprovalState, State},
-    token,
-    SunriseError::*,
-};
+use crate::{state::ControllerState, token, utils::get_cpi_program_id, BeamProgramError};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::sysvar::{
-    instructions::{get_instruction_relative, Instructions as SysvarInstructions},
-    SysvarId,
+    instructions::Instructions as SysvarInstructions, SysvarId,
 };
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
@@ -16,21 +11,10 @@ pub struct BurnGsol<'info> {
         mut,
         has_one = gsol_mint,
     )]
-    pub state: Box<Account<'info, State>>,
-
-    #[account(
-        mut,
-        has_one = state,
-        has_one = beam_authority,
-        constraint = !beam_state.frozen @ FrozenBeam,
-    )]
-    pub beam_state: Box<Account<'info, BeamApprovalState>>,
-
-    pub beam_authority: Signer<'info>,
-
+    pub state: Box<Account<'info, ControllerState>>,
+    pub beam: Signer<'info>,
     #[account(mut)]
     pub gsol_mint: Box<Account<'info, Mint>>,
-
     pub mint_gsol_to_owner: Signer<'info>,
     #[account(
         mut,
@@ -38,44 +22,36 @@ pub struct BurnGsol<'info> {
         token::authority = mint_gsol_to_owner
     )]
     pub mint_gsol_to: Box<Account<'info, TokenAccount>>,
-
     pub token_program: Program<'info, Token>,
-
-    /// CHECK: Checked with solana_program::sysvar::SysvarId::check_id()
+    /// CHECK: We check that the address is that of the instructions sysvar.
     #[account(constraint = SysvarInstructions::check_id(sysvar.key))]
-    pub sysvar: AccountInfo<'info>,
+    pub sysvar: UncheckedAccount<'info>,
 }
 
-pub fn burn_gsol_handler(ctx: Context<BurnGsol>, amount: u64) -> Result<()> {
+pub fn handler(ctx: Context<BurnGsol>, amount: u64) -> Result<()> {
     let accounts = &ctx.accounts;
 
-    // Check the calling program.
-    let relative_ix = get_instruction_relative(0, &accounts.sysvar)?;
-    if relative_ix.program_id != accounts.beam_state.program_id {
-        return Err(ProgramError::IncorrectProgramId.into());
-    }
-
-    let _mint_supply = accounts.gsol_mint.supply;
-    let _min_allocation = accounts.beam_state.min_allocation;
-    let can_burn = {
-        // TODO: Check allocation to decide if the BAS state
-        // supports minting this gsol amount.
-        true
-    };
-
-    if !can_burn {
-        return Err(ProgramError::InvalidAccountData.into());
-    }
-
-    token::burn(
-        amount,
-        &accounts.gsol_mint.to_account_info(),
-        &accounts.mint_gsol_to_owner.to_account_info(),
-        &accounts.mint_gsol_to.to_account_info(),
-        &accounts.token_program,
+    let cpi_program = get_cpi_program_id(&accounts.sysvar.to_account_info())?;
+    crate::check_beam_parameters(
+        &accounts.state,
+        &accounts.beam.to_account_info(),
+        &cpi_program,
     )?;
 
-    // TODO: Modify allocation.
+    let can_burn = { true };
 
+    if can_burn {
+        token::burn(
+            amount,
+            &accounts.gsol_mint.to_account_info(),
+            &accounts.mint_gsol_to_owner.to_account_info(),
+            &accounts.mint_gsol_to.to_account_info(),
+            &accounts.token_program,
+        )?;
+    } else {
+        return Err(BeamProgramError::MintWindowExceeded.into());
+    }
+
+    todo!("Add checks that burning is allowed");
     Ok(())
 }
