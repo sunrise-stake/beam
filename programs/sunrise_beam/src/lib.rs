@@ -8,7 +8,12 @@ mod token;
 mod utils;
 
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::sysvar::{
+    instructions::Instructions as SysvarInstructions, SysvarId,
+};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 use instructions::*;
+use seeds::GSOL_MINT_AUTHORITY;
 use state::*;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
@@ -42,19 +47,99 @@ pub mod sunrise_beam {
     }
 }
 
-pub fn check_beam_parameters(
-    state: &ControllerState,
-    beam: &AccountInfo,
-    cpi_program_id: &Pubkey,
-) -> Result<()> {
-    if !state.contains_beam(beam.key) {
-        return Err(BeamProgramError::BeamNotPresent.into());
-    }
-    if beam.owner != cpi_program_id {
-        return Err(BeamProgramError::UnexpectedCallingProgram.into());
-    }
+#[derive(Accounts)]
+#[instruction(input: RegisterStateInput)]
+pub struct RegisterState<'info> {
+    #[account(
+        init,
+        payer = payer,
+        space = ControllerState::size(input.initial_capacity),
+    )]
+    pub state: Account<'info, ControllerState>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(mut)]
+    pub gsol_mint: Signer<'info>,
+    #[account(seeds = [state.key().as_ref(), GSOL_MINT_AUTHORITY], bump)]
+    pub gsol_mint_authority: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub rent: Sysvar<'info, Rent>,
+}
 
-    Ok(())
+#[derive(Accounts)]
+#[instruction(input: RegisterBeamInput)]
+pub struct RegisterBeam<'info> {
+    #[account(mut, has_one = update_authority)]
+    pub state: Account<'info, ControllerState>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub update_authority: Signer<'info>,
+    /// CHECK: The beam being registered .
+    #[account(constraint = beam_state.key() == input.beam)]
+    pub beam_state: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct RemoveBeam<'info> {
+    #[account(mut, has_one = update_authority)]
+    pub state: Account<'info, ControllerState>,
+    pub update_authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct BurnGsol<'info> {
+    #[account(
+        mut,
+        has_one = gsol_mint,
+    )]
+    pub state: Box<Account<'info, ControllerState>>,
+    pub beam: Signer<'info>,
+    #[account(mut)]
+    pub gsol_mint: Box<Account<'info, Mint>>,
+    pub mint_gsol_to_owner: Signer<'info>,
+    #[account(
+        mut,
+        token::mint = gsol_mint,
+        token::authority = mint_gsol_to_owner
+    )]
+    pub mint_gsol_to: Box<Account<'info, TokenAccount>>,
+    /// CHECK: We check that it's the expected ID.
+    #[account(constraint = SysvarInstructions::check_id(sysvar.key))]
+    pub sysvar: UncheckedAccount<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct MintGsol<'info> {
+    #[account(
+        mut,
+        has_one = gsol_mint,
+    )]
+    pub state: Box<Account<'info, ControllerState>>,
+    pub beam: Signer<'info>,
+
+    #[account(mut)]
+    pub gsol_mint: Box<Account<'info, Mint>>,
+    #[account(
+        seeds = [state.key().as_ref(), GSOL_MINT_AUTHORITY],
+        bump = state.gsol_mint_authority_bump
+    )]
+    pub gsol_mint_authority: SystemAccount<'info>,
+    #[account(mut, token::mint = gsol_mint)]
+    pub mint_gsol_to: Box<Account<'info, TokenAccount>>,
+    /// CHECK: We check that it's the expected ID.
+    #[account(constraint = SysvarInstructions::check_id(sysvar.key))]
+    pub sysvar: UncheckedAccount<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateState<'info> {
+    #[account(mut, has_one = update_authority)]
+    pub state: Account<'info, ControllerState>,
+    pub update_authority: Signer<'info>,
 }
 
 #[error_code]

@@ -56,8 +56,7 @@ impl ControllerState {
         self.yield_account = input.yield_account;
         self.gsol_mint = *gsol_mint;
         self.gsol_mint_authority_bump = gsol_mint_auth_bump;
-        self.allocations = Vec::with_capacity(input.initial_capacity);
-        self.allocations = Vec::default(); // Todo: Use Vec::with_capacity()?
+        self.allocations = vec![Allocation::default(); input.initial_capacity];
     }
 
     pub fn update(&mut self, input: UpdateStateInput) {
@@ -129,6 +128,17 @@ impl ControllerState {
         self.allocations
             .iter()
             .any(|allocation| allocation.beam == *beam)
+    }
+
+    pub fn check_beam_validity(&self, beam: &AccountInfo, cpi_program_id: &Pubkey) -> Result<()> {
+        if !self.contains_beam(beam.key) {
+            return Err(BeamProgramError::BeamNotPresent.into());
+        }
+        if beam.owner != cpi_program_id {
+            return Err(BeamProgramError::UnexpectedCallingProgram.into());
+        }
+
+        Ok(())
     }
 }
 
