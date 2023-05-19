@@ -1,4 +1,5 @@
-use crate::BeamProgramError;
+use crate::utils::resize_account;
+use crate::BeamError;
 use anchor_lang::prelude::*;
 
 /// The state for the main beam controller program. A single
@@ -13,12 +14,14 @@ pub struct ControllerState {
     pub gsol_mint_authority_bump: u8,
     /// The beam controller yield account.
     pub yield_account: Pubkey,
+    /// The factor to increase by during a resize.
+    pub alloc_window: u8,
     /// Holds [Allocation] details for beams.
     pub allocations: Vec<Allocation>,
 }
 
 /// The allocation details for a beam.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default, Eq, Hash, PartialEq)]
 pub struct Allocation {
     /// Expected signer for mint and burn requests.
     pub beam: Pubkey,
@@ -41,9 +44,36 @@ impl Allocation {
 }
 
 impl ControllerState {
-    pub fn size(initial_capacity: usize) -> usize {
+    pub fn size(allocations: usize) -> usize {
         8 + //discriminator
-        32 + 32 + 1 + 32 + (4 + (Allocation::SPACE * initial_capacity))
+        32 + 32 + 1 + 32 + 1 + (4 + (Allocation::SPACE * allocations))
+    }
+
+    pub fn resize<'a>(
+        &mut self,
+        state_info: &AccountInfo<'a>,
+        payer: &AccountInfo<'a>,
+        system: &AccountInfo<'a>,
+    ) -> Result<()> {
+        if self.alloc_window == 0 {
+            return Err(BeamError::WouldExceedBeamCapacity.into());
+        }
+        let new_length = self
+            .allocations
+            .len()
+            .checked_add(self.alloc_window as usize)
+            .unwrap();
+
+        let size = ControllerState::size(new_length);
+        resize_account(state_info, payer, system, size)?;
+
+        self.allocations.extend(
+            std::iter::repeat(Pubkey::default)
+                .take(self.alloc_window as usize)
+                .map(|key| Allocation::new(key(), 0)),
+        );
+
+        Ok(())
     }
 
     pub fn register(
@@ -56,6 +86,7 @@ impl ControllerState {
         self.yield_account = input.yield_account;
         self.gsol_mint = *gsol_mint;
         self.gsol_mint_authority_bump = gsol_mint_auth_bump;
+        self.alloc_window = input.alloc_window;
         self.allocations = vec![Allocation::default(); input.initial_capacity];
     }
 
@@ -69,6 +100,9 @@ impl ControllerState {
         if let Some(bump) = input.new_gsol_mint_authority_bump {
             self.gsol_mint_authority_bump = bump;
         }
+        if let Some(window) = input.new_alloc_window {
+            self.alloc_window = window;
+        }
         if let Some(yield_account) = input.new_yield_account {
             self.yield_account = yield_account;
         }
@@ -77,7 +111,7 @@ impl ControllerState {
     /// A return value of [None] indicates no space was found.
     pub fn push_allocation(&mut self, new_allocation: Allocation) -> Result<Option<()>> {
         if self.contains_beam(&new_allocation.beam) {
-            return Err(BeamProgramError::DuplicateBeamEntry.into());
+            return Err(BeamError::DuplicateBeamEntry.into());
         }
 
         let maybe_found = self
@@ -132,40 +166,28 @@ impl ControllerState {
 
     pub fn check_beam_validity(&self, beam: &AccountInfo, cpi_program_id: &Pubkey) -> Result<()> {
         if !self.contains_beam(beam.key) {
-            return Err(BeamProgramError::BeamNotPresent.into());
+            return Err(BeamError::BeamNotPresent.into());
         }
         if beam.owner != cpi_program_id {
-            return Err(BeamProgramError::UnexpectedCallingProgram.into());
+            return Err(BeamError::UnexpectedCallingProgram.into());
         }
 
         Ok(())
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct RegisterBeamInput {
-    /// The beam state address
-    pub beam: Pubkey,
-    /// The allocation
-    pub allocation: u8,
-}
-
-impl From<RegisterBeamInput> for Allocation {
-    fn from(rbi: RegisterBeamInput) -> Self {
-        Allocation::new(rbi.beam, rbi.allocation)
-    }
-}
-
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct RegisterStateInput {
     pub update_authority: Pubkey,
-    pub initial_capacity: usize,
+    pub alloc_window: u8,
     pub yield_account: Pubkey,
+    pub initial_capacity: usize,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct UpdateStateInput {
     pub new_update_authority: Option<Pubkey>,
+    pub new_alloc_window: Option<u8>,
     pub new_yield_account: Option<Pubkey>,
     pub new_gsol_mint: Option<Pubkey>,
     pub new_gsol_mint_authority_bump: Option<u8>,

@@ -1,4 +1,4 @@
-use crate::{token, utils::get_cpi_program_id, BeamProgramError, BurnGsol};
+use crate::{token, utils::get_cpi_program_id, BeamError, BurnGsol};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<BurnGsol>, amount: u64) -> Result<()> {
@@ -19,7 +19,7 @@ pub fn handler(ctx: Context<BurnGsol>, amount: u64) -> Result<()> {
             &accounts.token_program,
         )?;
     } else {
-        return Err(BeamProgramError::MintWindowExceeded.into());
+        return Err(BeamError::MintWindowExceeded.into());
     }
 
     todo!("Add checks that burning is allowed");

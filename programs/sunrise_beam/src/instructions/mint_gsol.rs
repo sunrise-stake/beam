@@ -1,4 +1,4 @@
-use crate::{token, utils::get_cpi_program_id, BeamProgramError, MintGsol};
+use crate::{token, utils::get_cpi_program_id, BeamError, MintGsol};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<MintGsol>, amount: u64) -> Result<()> {
@@ -20,7 +20,7 @@ pub fn handler(ctx: Context<MintGsol>, amount: u64) -> Result<()> {
             &accounts.state,
         )?;
     } else {
-        return Err(BeamProgramError::MintWindowExceeded.into());
+        return Err(BeamError::MintWindowExceeded.into());
     }
 
     todo!("Add checks that minting is allowed");

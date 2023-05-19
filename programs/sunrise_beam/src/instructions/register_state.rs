@@ -5,7 +5,6 @@ pub fn handler(ctx: Context<RegisterState>, input: RegisterStateInput) -> Result
     let state_account = &mut ctx.accounts.state;
 
     let auth_bump = *ctx.bumps.get("gsol_mint_authority").unwrap();
-
     state_account.register(input, auth_bump, &ctx.accounts.gsol_mint.key());
 
     create_mint(

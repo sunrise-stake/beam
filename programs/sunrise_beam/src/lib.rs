@@ -22,28 +22,54 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 pub mod sunrise_beam {
     use super::*;
 
+    /// Initialize a [ControllerState], setting its initial values and accounts.
     pub fn register_state(ctx: Context<RegisterState>, input: RegisterStateInput) -> Result<()> {
         register_state::handler(ctx, input)
     }
 
+    /// Update a [ControllerState] but doesn't modify its [Allocation] list.
     pub fn update_state(ctx: Context<UpdateState>, input: UpdateStateInput) -> Result<()> {
         update_state::handler(ctx, input)
     }
 
-    pub fn register_beam(ctx: Context<RegisterBeam>, input: RegisterBeamInput) -> Result<()> {
-        register_beam::handler(ctx, input)
+    /// Register a beam with an initial allocation of `0` and append a new [Allocation]
+    /// to the [ControllerState]. This will trigger a resize if there's no space.
+    ///
+    /// The `beam` is an account that will be expected to sign CPI requests to this program.
+    ///
+    /// Errors if a resize is needed but the `alloc_window` is zero.
+    pub fn register_beam(ctx: Context<RegisterBeam>, state: Pubkey) -> Result<()> {
+        register_beam::handler(ctx, state)
     }
 
+    pub fn update_allocations(
+        ctx: Context<UpdateBeamAllocations>,
+        allocs: Vec<Allocation>,
+    ) -> Result<()> {
+        update_allocations::handler(ctx, allocs)
+    }
+
+    /// CPI request from a beam program to mint gsol. This checks that the beam's
+    /// signature is present and that the immediate calling program owns the beam account.
     pub fn mint_gsol(ctx: Context<MintGsol>, amount: u64) -> Result<()> {
         mint_gsol::handler(ctx, amount)
     }
 
+    /// CPI request from a beam program to burn gsol. Same invariants as [sunrise_beam::mint_gsol()].
     pub fn burn_gsol(ctx: Context<BurnGsol>, amount: u64) -> Result<()> {
         burn_gsol::handler(ctx, amount)
     }
 
+    /// Remove a beam from the allocations list.
+    ///
+    /// Errors if the beam's allocation is not set to zero.
     pub fn remove_beam(ctx: Context<RemoveBeam>, beam: Pubkey) -> Result<()> {
         remove_beam::handler(ctx, beam)
+    }
+
+    /// Change gsol mint authority to a new account.
+    pub fn export_mint_authority(ctx: Context<ExportMintAuthority>) -> Result<()> {
+        export_mint_authority::handler(ctx)
     }
 }
 
@@ -68,7 +94,7 @@ pub struct RegisterState<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(input: RegisterBeamInput)]
+#[instruction(state: Pubkey)]
 pub struct RegisterBeam<'info> {
     #[account(mut, has_one = update_authority)]
     pub state: Account<'info, ControllerState>,
@@ -76,9 +102,16 @@ pub struct RegisterBeam<'info> {
     pub payer: Signer<'info>,
     pub update_authority: Signer<'info>,
     /// CHECK: The beam being registered .
-    #[account(constraint = beam_state.key() == input.beam)]
-    pub beam_state: UncheckedAccount<'info>,
+    #[account(constraint = beam_account.key() == state.key())]
+    pub beam_account: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateBeamAllocations<'info> {
+    #[account(mut, has_one = update_authority)]
+    pub state: Account<'info, ControllerState>,
+    pub update_authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -142,8 +175,25 @@ pub struct UpdateState<'info> {
     pub update_authority: Signer<'info>,
 }
 
+#[derive(Accounts)]
+pub struct ExportMintAuthority<'info> {
+    pub update_authority: Signer<'info>,
+    #[account(has_one = gsol_mint, has_one = update_authority)]
+    pub state: Account<'info, ControllerState>,
+    #[account(mut)]
+    pub gsol_mint: Account<'info, Mint>,
+    #[account(
+        seeds = [state.key().as_ref(), GSOL_MINT_AUTHORITY],
+        bump = state.gsol_mint_authority_bump
+    )]
+    pub gsol_mint_authority: SystemAccount<'info>,
+    /// CHECK: The new gsol mint authority
+    pub new_authority: UncheckedAccount<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
 #[error_code]
-pub enum BeamProgramError {
+pub enum BeamError {
     /// Thrown if an instruction parameter could cause invalid behaviour.
     #[msg("Invariant violated by parameter input")]
     InvalidParameter,
