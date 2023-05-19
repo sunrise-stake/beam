@@ -2,8 +2,8 @@
 #![allow(unreachable_code)]
 
 mod instructions;
-mod seeds;
 mod state;
+mod system;
 mod token;
 mod utils;
 
@@ -13,8 +13,9 @@ use anchor_lang::solana_program::sysvar::{
 };
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use instructions::*;
-use seeds::GSOL_MINT_AUTHORITY;
 use state::*;
+
+pub const GSOL_AUTHORITY: &[u8] = b"gsol_mint_authority";
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -76,16 +77,17 @@ pub mod sunrise_beam {
 #[derive(Accounts)]
 #[instruction(input: RegisterStateInput)]
 pub struct RegisterState<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
     #[account(
         init,
         payer = payer,
-        space = ControllerState::size(input.initial_capacity),
+        space = State::size(input.initial_capacity),
     )]
-    pub state: Account<'info, ControllerState>,
-    #[account(mut)]
-    pub payer: Signer<'info>,
+    pub state: Account<'info, State>,
     pub gsol_mint: Account<'info, Mint>,
-    #[account(seeds = [state.key().as_ref(), GSOL_MINT_AUTHORITY], bump)]
+    /// CHECK: a PDA of this Sunrise program.
+    #[account(seeds = [state.key().as_ref(), GSOL_AUTHORITY], bump)]
     pub gsol_mint_authority: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -95,12 +97,15 @@ pub struct RegisterState<'info> {
 #[derive(Accounts)]
 #[instruction(state: Pubkey)]
 pub struct RegisterBeam<'info> {
-    #[account(mut, has_one = update_authority)]
-    pub state: Account<'info, ControllerState>,
+    #[account(
+        mut,
+        has_one = update_authority
+    )]
+    pub state: Account<'info, State>,
     #[account(mut)]
     pub payer: Signer<'info>,
     pub update_authority: Signer<'info>,
-    /// CHECK: The beam being registered .
+    /// CHECK: The state account of the program to be registered.
     #[account(constraint = beam_account.key() == state.key())]
     pub beam_account: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
@@ -108,15 +113,21 @@ pub struct RegisterBeam<'info> {
 
 #[derive(Accounts)]
 pub struct UpdateBeamAllocations<'info> {
-    #[account(mut, has_one = update_authority)]
-    pub state: Account<'info, ControllerState>,
+    #[account(
+        mut,
+        has_one = update_authority
+    )]
+    pub state: Account<'info, State>,
     pub update_authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
 pub struct RemoveBeam<'info> {
-    #[account(mut, has_one = update_authority)]
-    pub state: Account<'info, ControllerState>,
+    #[account(
+        mut,
+        has_one = update_authority
+    )]
+    pub state: Account<'info, State>,
     pub update_authority: Signer<'info>,
 }
 
@@ -126,7 +137,7 @@ pub struct BurnGsol<'info> {
         mut,
         has_one = gsol_mint,
     )]
-    pub state: Box<Account<'info, ControllerState>>,
+    pub state: Box<Account<'info, State>>,
     pub beam: Signer<'info>,
     #[account(mut)]
     pub gsol_mint: Box<Account<'info, Mint>>,
@@ -149,13 +160,13 @@ pub struct MintGsol<'info> {
         mut,
         has_one = gsol_mint,
     )]
-    pub state: Box<Account<'info, ControllerState>>,
+    pub state: Box<Account<'info, State>>,
     pub beam: Signer<'info>,
 
     #[account(mut)]
     pub gsol_mint: Box<Account<'info, Mint>>,
     #[account(
-        seeds = [state.key().as_ref(), GSOL_MINT_AUTHORITY],
+        seeds = [state.key().as_ref(), GSOL_AUTHORITY],
         bump = state.gsol_mint_authority_bump
     )]
     pub gsol_mint_authority: SystemAccount<'info>,
@@ -169,20 +180,26 @@ pub struct MintGsol<'info> {
 
 #[derive(Accounts)]
 pub struct UpdateState<'info> {
-    #[account(mut, has_one = update_authority)]
-    pub state: Account<'info, ControllerState>,
+    #[account(
+        mut,
+        has_one = update_authority
+    )]
+    pub state: Account<'info, State>,
     pub update_authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
 pub struct ExportMintAuthority<'info> {
     pub update_authority: Signer<'info>,
-    #[account(has_one = gsol_mint, has_one = update_authority)]
-    pub state: Account<'info, ControllerState>,
+    #[account(
+        has_one = gsol_mint,
+        has_one = update_authority
+    )]
+    pub state: Account<'info, State>,
     #[account(mut)]
     pub gsol_mint: Account<'info, Mint>,
     #[account(
-        seeds = [state.key().as_ref(), GSOL_MINT_AUTHORITY],
+        seeds = [state.key().as_ref(), GSOL_AUTHORITY],
         bump = state.gsol_mint_authority_bump
     )]
     pub gsol_mint_authority: SystemAccount<'info>,

@@ -1,7 +1,8 @@
-use crate::{seeds::GSOL_MINT_AUTHORITY, ExportMintAuthority};
 use anchor_lang::prelude::*;
 use anchor_spl::token::spl_token::instruction::AuthorityType;
 use anchor_spl::token::{set_authority, SetAuthority};
+
+use crate::{ExportMintAuthority, GSOL_AUTHORITY};
 
 pub fn handler(ctx: Context<ExportMintAuthority>) -> Result<()> {
     let state = &ctx.accounts.state;
@@ -11,7 +12,7 @@ pub fn handler(ctx: Context<ExportMintAuthority>) -> Result<()> {
 
     let seeds = &[
         state_key.as_ref(),
-        GSOL_MINT_AUTHORITY,
+        GSOL_AUTHORITY,
         &[state.gsol_mint_authority_bump],
     ];
     let signer = &[&seeds[..]];

@@ -1,44 +1,44 @@
-use crate::{utils::resize_account, BeamError};
+use crate::BeamError;
 use anchor_lang::prelude::*;
 
-/// The state for the main beam controller program. A single
-/// instance can have multiple [BeamApprovalState] accounts.
+/// The state for the Sunrise beam controller program.
 #[account]
-pub struct ControllerState {
-    /// Update authority for the main program.
+pub struct State {
+    /// Update authority for this state.
     pub update_authority: Pubkey,
-    /// The Sunrise gsol mint
+    /// The Sunrise Gsol mint.
     pub gsol_mint: Pubkey,
-    /// The starting supply for the Gsol mint.
+    /// The starting Gsol supply.
     pub pre_supply: u64,
-    /// The Sunrise gsol mint authority bump
+    /// Bump of the gsol mint authority PDA.
     pub gsol_mint_authority_bump: u8,
-    /// The beam controller yield account.
+    /// The Sunrise yield account.
     pub yield_account: Pubkey,
-    /// The factor to increase by during a resize.
+    /// The factor to increase space by during a resize.
     pub alloc_window: u8,
-    /// Holds [Allocation] details for beams.
-    pub allocations: Vec<Allocation>,
+    /// Holds [BeamDetails] for all supported beams.
+    pub allocations: Vec<BeamDetails>,
 }
 
-/// The allocation details for a beam.
+/// Holds information about a registed beam.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default, Eq, Hash, PartialEq)]
-pub struct Allocation {
+pub struct BeamDetails {
     /// Expected signer for mint and burn requests.
     pub beam: Pubkey,
     /// This beam's allocation expressed as a percentage.
     pub allocation: u8,
-    /// The total amount of gsol minted by this beam.
+    /// The total amount of Gsol this beam has minted.
     pub minted: u64,
-    /// A beam in drain accepts withdrawals but no deposits.
+    /// A beam in drain accepts withdrawals but not deposits.
     pub draining_mode: bool,
 }
 
-impl Allocation {
+impl BeamDetails {
+    /// Space in bytes of a borsh-serialized [BeamDetails] struct.
     pub const SPACE: usize = 32 + 1 + 8 + 1;
 
     pub fn new(beam: Pubkey, allocation: u8) -> Self {
-        Allocation {
+        BeamDetails {
             beam,
             allocation,
             minted: 0,
@@ -47,35 +47,15 @@ impl Allocation {
     }
 }
 
-impl ControllerState {
-    pub fn size(allocations: usize) -> usize {
-        8 + //discriminator
-        32 + 32 + 8 + 1 + 32 + 1 + (4 + (Allocation::SPACE * allocations))
+impl State {
+    /// Calculate the space that would be allocated to hold a `beam_count`
+    /// number of beams.
+    pub fn size(beam_count: usize) -> usize {
+        8 /*discriminator*/
+        + 32 + 32 + 8 + 1 + 32 + 1 + (4 + (BeamDetails::SPACE * beam_count))
     }
 
-    pub fn resize<'a>(
-        &mut self,
-        state_info: &AccountInfo<'a>,
-        payer: &AccountInfo<'a>,
-        system: &AccountInfo<'a>,
-    ) -> Result<()> {
-        if self.alloc_window == 0 {
-            return Err(BeamError::WouldExceedBeamCapacity.into());
-        }
-        let new_length = self
-            .allocations
-            .len()
-            .checked_add(self.alloc_window as usize)
-            .unwrap();
-
-        let size = ControllerState::size(new_length);
-        resize_account(state_info, payer, system, size)?;
-
-        self.allocations
-            .extend(std::iter::repeat(Allocation::default()));
-        Ok(())
-    }
-
+    /// Register a new [State] with the given information.
     pub fn register(
         &mut self,
         input: RegisterStateInput,
@@ -89,9 +69,10 @@ impl ControllerState {
         self.pre_supply = gsol_mint_supply;
         self.gsol_mint_authority_bump = gsol_mint_auth_bump;
         self.alloc_window = input.alloc_window;
-        self.allocations = vec![Allocation::default(); input.initial_capacity];
+        self.allocations = vec![BeamDetails::default(); input.initial_capacity];
     }
 
+    /// Update the fields of a [State] object.
     pub fn update(&mut self, input: UpdateStateInput) {
         if let Some(update_authority) = input.new_update_authority {
             self.update_authority = update_authority;
@@ -111,12 +92,12 @@ impl ControllerState {
     }
 
     /// A return value of [None] indicates no space was found.
-    pub fn push_allocation(&mut self, new_allocation: Allocation) -> Result<Option<()>> {
+    pub fn push_allocation(&mut self, new_allocation: BeamDetails) -> Result<Option<()>> {
         if self.contains_beam(&new_allocation.beam) {
             return Err(BeamError::DuplicateBeamEntry.into());
         }
 
-        let found = self.get_mut_allocation(&Pubkey::default());
+        let found = self.get_mut_beam_details(&Pubkey::default());
         if let Some(allocation) = found {
             *allocation = new_allocation;
 
@@ -130,24 +111,24 @@ impl ControllerState {
     pub fn beam_count(&self) -> usize {
         self.allocations
             .iter()
-            .filter(|x| **x != Allocation::default())
+            .filter(|x| **x != BeamDetails::default())
             .count()
     }
 
-    pub fn get_allocation(&self, beam_key: &Pubkey) -> Option<&Allocation> {
+    pub fn get_beam_details(&self, beam_key: &Pubkey) -> Option<&BeamDetails> {
         self.allocations.iter().find(|x| x.beam == *beam_key)
     }
 
-    pub fn get_mut_allocation(&mut self, beam_key: &Pubkey) -> Option<&mut Allocation> {
+    pub fn get_mut_beam_details(&mut self, beam_key: &Pubkey) -> Option<&mut BeamDetails> {
         self.allocations.iter_mut().find(|x| x.beam == *beam_key)
     }
 
     /// Returns [None] if the allocation is not present.
     pub fn remove_beam(&mut self, beam: &Pubkey) -> Option<()> {
-        let found = self.get_mut_allocation(beam);
+        let found = self.get_mut_beam_details(beam);
 
         if let Some(allocation) = found {
-            *allocation = Allocation::default();
+            *allocation = BeamDetails::default();
             Some(())
         } else {
             None
@@ -155,18 +136,7 @@ impl ControllerState {
     }
 
     pub fn contains_beam(&self, beam: &Pubkey) -> bool {
-        self.get_allocation(beam).is_none()
-    }
-
-    pub fn check_beam_validity(&self, beam: &AccountInfo, cpi_program_id: &Pubkey) -> Result<()> {
-        if !self.contains_beam(beam.key) {
-            return Err(BeamError::UnidentifiedBeam.into());
-        }
-        if beam.owner != cpi_program_id {
-            return Err(BeamError::UnidentifiedCallingProgram.into());
-        }
-
-        Ok(())
+        self.get_beam_details(beam).is_none()
     }
 }
 

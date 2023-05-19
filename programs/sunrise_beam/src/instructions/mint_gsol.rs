@@ -1,21 +1,24 @@
-use crate::{token, utils::get_cpi_program_id, BeamError, MintGsol};
 use anchor_lang::prelude::*;
+
+use crate::system::check_beam_validity;
+use crate::utils::get_cpi_program_id;
+use crate::{token, BeamError, MintGsol};
 
 pub fn handler(ctx: Context<MintGsol>, amount: u64) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let gsol_mint = &ctx.accounts.gsol_mint;
 
     let cpi_program = get_cpi_program_id(&ctx.accounts.sysvar.to_account_info())?;
-    state.check_beam_validity(&ctx.accounts.beam, &cpi_program)?;
+    check_beam_validity(state, &ctx.accounts.beam, &cpi_program)?;
 
     let can_mint = {
         let pre_supply = state.pre_supply;
-        let allocation = state.get_mut_allocation(&ctx.accounts.beam.key());
-        if allocation.is_none() {
+        let details = state.get_mut_beam_details(&ctx.accounts.beam.key());
+        if details.is_none() {
             return Err(BeamError::UnidentifiedBeam.into());
         }
 
-        let allocation = allocation.unwrap();
+        let allocation = details.unwrap();
         let effective_supply = gsol_mint.supply.checked_sub(pre_supply).unwrap();
 
         let mint_window = (allocation.allocation as u64)

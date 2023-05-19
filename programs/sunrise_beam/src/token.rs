@@ -1,4 +1,4 @@
-use crate::{seeds::GSOL_MINT_AUTHORITY, state::ControllerState};
+use crate::{state::State, GSOL_AUTHORITY};
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
@@ -8,12 +8,12 @@ pub fn mint_to<'a>(
     mint_authority: &AccountInfo<'a>,
     recipient_token_account: &AccountInfo<'a>,
     token_program: &AccountInfo<'a>,
-    state: &Account<'a, ControllerState>,
+    state: &Account<'a, State>,
 ) -> Result<()> {
     let state_address = state.key();
     let seeds = &[
         state_address.as_ref(),
-        GSOL_MINT_AUTHORITY,
+        GSOL_AUTHORITY,
         &[state.gsol_mint_authority_bump],
     ];
     let pda_signer = &[&seeds[..]];

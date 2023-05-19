@@ -1,21 +1,24 @@
-use crate::{token, utils::get_cpi_program_id, BeamError, BurnGsol};
 use anchor_lang::prelude::*;
+
+use crate::system::check_beam_validity;
+use crate::utils::get_cpi_program_id;
+use crate::{token, BeamError, BurnGsol};
 
 pub fn handler(ctx: Context<BurnGsol>, amount: u64) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
     let cpi_program = get_cpi_program_id(&ctx.accounts.sysvar.to_account_info())?;
-    state.check_beam_validity(&ctx.accounts.beam, &cpi_program)?;
+    check_beam_validity(state, &ctx.accounts.beam, &cpi_program)?;
 
     let can_burn = {
-        let allocation = state.get_mut_allocation(&ctx.accounts.beam.key());
-        if allocation.is_none() {
+        let details = state.get_mut_beam_details(&ctx.accounts.beam.key());
+        if details.is_none() {
             return Err(BeamError::UnidentifiedBeam.into());
         }
-        let allocation = allocation.unwrap();
+        let details = details.unwrap();
 
-        if allocation.minted > amount {
-            allocation.minted = allocation.minted.checked_sub(amount).unwrap();
+        if details.minted > amount {
+            details.minted = details.minted.checked_sub(amount).unwrap();
             true
         } else {
             false
