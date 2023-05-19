@@ -44,9 +44,9 @@ pub mod sunrise_beam {
 
     pub fn update_allocations(
         ctx: Context<UpdateBeamAllocations>,
-        allocs: Vec<Allocation>,
+        values: Vec<AllocationUpdate>,
     ) -> Result<()> {
-        update_allocations::handler(ctx, allocs)
+        update_allocations::handler(ctx, values)
     }
 
     /// CPI request from a beam program to mint gsol. This checks that the beam's
@@ -84,8 +84,7 @@ pub struct RegisterState<'info> {
     pub state: Account<'info, ControllerState>,
     #[account(mut)]
     pub payer: Signer<'info>,
-    #[account(mut)]
-    pub gsol_mint: Signer<'info>,
+    pub gsol_mint: Account<'info, Mint>,
     #[account(seeds = [state.key().as_ref(), GSOL_MINT_AUTHORITY], bump)]
     pub gsol_mint_authority: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
@@ -195,30 +194,30 @@ pub struct ExportMintAuthority<'info> {
 #[error_code]
 pub enum BeamError {
     /// Thrown if an instruction parameter could cause invalid behaviour.
-    #[msg("Invariant violated by parameter input")]
+    #[msg("Invariant violated by parameter input.")]
     InvalidParameter,
 
     /// Thrown if a beam's allocation doesn't support minting the set amount.
-    #[msg("This beam does not support minting this amount")]
+    #[msg("This beam does not support minting this amount.")]
     MintWindowExceeded,
 
     /// Thrown if a beam's allocation doesn't support burning the set amount.
-    #[msg("This beam does not support burning this amount")]
+    #[msg("This beam does not support burning this amount.")]
     BurnWindowExceeded,
 
     /// Thrown if a state has hit the maximum number of beams it can support.
-    #[msg("Can't exceed the beam capacity of this state")]
+    #[msg("Can't exceed the beam capacity of this state.")]
     WouldExceedBeamCapacity,
 
-    /// Thrown if we try to add a beam that's already present in the allocations vec.
-    #[msg("Tried to register an already-registered beam")]
+    /// Thrown on an attempt to register a beam that's already present.
+    #[msg("Tried to register an already-registered beam.")]
     DuplicateBeamEntry,
 
     /// Thrown if an action requires a beam be present, but it isn't.
-    #[msg("Expected beam to be present in allocations but it isn't")]
-    BeamNotPresent,
+    #[msg("Not a valid beam that this program recognizes.")]
+    UnidentifiedBeam,
 
     /// Thrown the program directly making the CPI isn't the beam program.
     #[msg("Cpi isn't directly being made by beam program.")]
-    UnexpectedCallingProgram,
+    UnidentifiedCallingProgram,
 }
