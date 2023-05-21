@@ -21,11 +21,16 @@ pub fn handler(ctx: Context<MintGsol>, amount: u64) -> Result<()> {
         let allocation = details.unwrap();
         let effective_supply = gsol_mint.supply.checked_sub(pre_supply).unwrap();
 
-        let mint_window = (allocation.allocation as u64)
-            .checked_mul(effective_supply)
-            .unwrap()
-            .checked_div(100)
-            .unwrap();
+        let mint_window = if effective_supply != 0 {
+            (allocation.allocation as u64)
+                .checked_mul(effective_supply)
+                .unwrap()
+                .checked_div(100)
+                .unwrap()
+        } else {
+            // Let the first request mint without restrictions. The allocations will come into effect afterwards.
+            amount
+        };
 
         if allocation.minted < mint_window {
             allocation.minted = allocation.minted.checked_add(amount).unwrap();
