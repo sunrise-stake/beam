@@ -8,9 +8,7 @@ mod token;
 mod utils;
 
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::sysvar::{
-    instructions::Instructions as SysvarInstructions, SysvarId,
-};
+use anchor_lang::solana_program::sysvar;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use instructions::*;
 use state::*;
@@ -23,18 +21,18 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 pub mod sunrise_beam {
     use super::*;
 
-    /// Initialize a [ControllerState], setting its initial values and accounts.
+    /// Initializes a [State], setting its initial values and accounts.
     pub fn register_state(ctx: Context<RegisterState>, input: RegisterStateInput) -> Result<()> {
         register_state::handler(ctx, input)
     }
 
-    /// Update a [ControllerState] but doesn't modify its [Allocation] list.
+    /// Updates a [State] but doesn't modify its [BeamDetails] list.
     pub fn update_state(ctx: Context<UpdateState>, input: UpdateStateInput) -> Result<()> {
         update_state::handler(ctx, input)
     }
 
-    /// Register a beam with an initial allocation of `0` and append a new [Allocation]
-    /// to the [ControllerState]. This will trigger a resize if there's no space.
+    /// Registers a beam with an initial allocation of `0` and appends a new [BeamDetails]
+    /// to the [State]. This will trigger a resize if there's no space.
     ///
     /// The `beam` is an account that will be expected to sign CPI requests to this program.
     ///
@@ -43,6 +41,10 @@ pub mod sunrise_beam {
         register_beam::handler(ctx, state)
     }
 
+    /// Updates the beam allocations.
+    ///
+    /// Errors if the sum of allocations after the update doesn't equal 100, or if `values` contains
+    /// an invalid beam.
     pub fn update_allocations(
         ctx: Context<UpdateBeamAllocations>,
         values: Vec<AllocationUpdate>,
@@ -61,14 +63,14 @@ pub mod sunrise_beam {
         burn_gsol::handler(ctx, amount)
     }
 
-    /// Remove a beam from the allocations list.
+    /// Removes a beam from the state.
     ///
     /// Errors if the beam's allocation is not set to zero.
     pub fn remove_beam(ctx: Context<RemoveBeam>, beam: Pubkey) -> Result<()> {
         remove_beam::handler(ctx, beam)
     }
 
-    /// Change gsol mint authority to a new account.
+    /// Exports the gsol mint authority.
     pub fn export_mint_authority(ctx: Context<ExportMintAuthority>) -> Result<()> {
         export_mint_authority::handler(ctx)
     }
@@ -105,8 +107,11 @@ pub struct RegisterBeam<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub update_authority: Signer<'info>,
-    /// CHECK: The state account of the program to be registered.
-    #[account(constraint = beam_account.key() == state.key())]
+    /// CHECK: The state account of the program
+    /// to be registered.
+    #[account(
+        constraint = beam_account.key() == state.key()
+    )]
     pub beam_account: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -149,7 +154,7 @@ pub struct BurnGsol<'info> {
     )]
     pub mint_gsol_to: Box<Account<'info, TokenAccount>>,
     /// CHECK: We check that it's the expected ID.
-    #[account(constraint = SysvarInstructions::check_id(sysvar.key))]
+    #[account(address = sysvar::instructions::ID)]
     pub sysvar: UncheckedAccount<'info>,
     pub token_program: Program<'info, Token>,
 }
@@ -173,7 +178,7 @@ pub struct MintGsol<'info> {
     #[account(mut, token::mint = gsol_mint)]
     pub mint_gsol_to: Box<Account<'info, TokenAccount>>,
     /// CHECK: We check that it's the expected ID.
-    #[account(constraint = SysvarInstructions::check_id(sysvar.key))]
+    #[account(address = sysvar::instructions::ID)]
     pub sysvar: UncheckedAccount<'info>,
     pub token_program: Program<'info, Token>,
 }

@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::state::AllocationUpdate;
-use crate::UpdateBeamAllocations;
+use crate::{BeamError, UpdateBeamAllocations};
 
 pub fn handler(ctx: Context<UpdateBeamAllocations>, values: Vec<AllocationUpdate>) -> Result<()> {
     let state = &mut ctx.accounts.state;
@@ -10,7 +10,7 @@ pub fn handler(ctx: Context<UpdateBeamAllocations>, values: Vec<AllocationUpdate
         if let Some(details) = state.get_mut_beam_details(&value.beam) {
             details.allocation = value.new_allocation;
         } else {
-            todo!("maybe error?");
+            return Err(BeamError::UnidentifiedBeam.into());
         }
     }
 

@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::spl_token::instruction::AuthorityType;
-use anchor_spl::token::{set_authority, SetAuthority};
+use anchor_spl::token::{self, SetAuthority};
 
 use crate::{ExportMintAuthority, GSOL_AUTHORITY};
 
@@ -26,7 +26,7 @@ pub fn handler(ctx: Context<ExportMintAuthority>) -> Result<()> {
         signer,
     );
 
-    set_authority(
+    token::set_authority(
         cpi_ctx,
         AuthorityType::MintTokens,
         Some(ctx.accounts.new_authority.key()),
