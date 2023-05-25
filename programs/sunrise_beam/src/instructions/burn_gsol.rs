@@ -4,6 +4,7 @@ use anchor_lang::prelude::*;
 pub fn handler(ctx: Context<BurnGsol>, amount: u64) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
+    // Check that the requesting program is valid.
     let cpi_program = utils::get_cpi_program_id(&ctx.accounts.sysvar.to_account_info())?;
     system::check_beam_validity(state, &ctx.accounts.beam, &cpi_program)?;
 

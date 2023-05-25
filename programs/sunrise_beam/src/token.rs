@@ -2,6 +2,7 @@ use crate::{state::State, GSOL_AUTHORITY};
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
+/// Mint new tokens to a token-account with the mint-authority's signature.
 pub fn mint_to<'a>(
     amount: u64,
     mint: &AccountInfo<'a>,
@@ -28,6 +29,7 @@ pub fn mint_to<'a>(
     token::mint_to(cpi_ctx, amount)
 }
 
+/// Burn tokens from a token-account with the owner's signature.
 pub fn burn<'a>(
     amount: u64,
     mint: &AccountInfo<'a>,

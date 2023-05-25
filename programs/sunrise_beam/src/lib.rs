@@ -21,18 +21,18 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 pub mod sunrise_beam {
     use super::*;
 
-    /// Initializes a [State], setting its initial values and accounts.
+    /// Initializes a [State], setting its initial parameters.
     pub fn register_state(ctx: Context<RegisterState>, input: RegisterStateInput) -> Result<()> {
         register_state::handler(ctx, input)
     }
 
-    /// Updates a [State] but doesn't modify its [BeamDetails] list.
+    /// Updates a [State] without modifying its [BeamDetails] list.
     pub fn update_state(ctx: Context<UpdateState>, input: UpdateStateInput) -> Result<()> {
         update_state::handler(ctx, input)
     }
 
-    /// Registers a beam with an initial allocation of `0` and appends a new [BeamDetails]
-    /// to the [State]. This will trigger a resize if there's no space.
+    /// Registers a beam by appending a newly-created [BeamDetails] with an
+    /// allocation of 0 to the [State]. Currently, this triggers a resize if needed.
     ///
     /// The `beam` is an account that will be expected to sign CPI requests to this program.
     ///
@@ -41,24 +41,28 @@ pub mod sunrise_beam {
         register_beam::handler(ctx, state)
     }
 
-    /// Updates the beam allocations.
+    /// Updates allocations for beams.
     ///
-    /// Errors if the sum of allocations after the update doesn't equal 100, or if `values` contains
-    /// an invalid beam.
+    /// Errors if the sum of allocations after the update doesn't equal 100, or if
+    /// one of the keys in `new_allocations` refers to an unrecognized beam.
     pub fn update_allocations(
         ctx: Context<UpdateBeamAllocations>,
-        values: Vec<AllocationUpdate>,
+        new_allocations: Vec<AllocationUpdate>,
     ) -> Result<()> {
-        update_allocations::handler(ctx, values)
+        update_allocations::handler(ctx, new_allocations)
     }
 
-    /// CPI request from a beam program to mint gsol. This checks that the beam's
-    /// signature is present and that the immediate calling program owns the beam account.
+    /// CPI request from a beam program to mint gSol.
+    ///
+    /// This checks for the signature of the account with the registered key, and
+    /// verifies that the immediate calling program owns that account.
     pub fn mint_gsol(ctx: Context<MintGsol>, amount: u64) -> Result<()> {
         mint_gsol::handler(ctx, amount)
     }
 
-    /// CPI request from a beam program to burn gsol. Same invariants as [sunrise_beam::mint_gsol()].
+    /// CPI request from a beam program to burn gSol.
+    ///
+    /// Same invariants as for [minting][sunrise_beam::mint_gsol()].
     pub fn burn_gsol(ctx: Context<BurnGsol>, amount: u64) -> Result<()> {
         burn_gsol::handler(ctx, amount)
     }
@@ -70,7 +74,7 @@ pub mod sunrise_beam {
         remove_beam::handler(ctx, beam)
     }
 
-    /// Exports the gsol mint authority.
+    /// Exports the gsol mint authority to a new account.
     pub fn export_mint_authority(ctx: Context<ExportMintAuthority>) -> Result<()> {
         export_mint_authority::handler(ctx)
     }
@@ -81,18 +85,30 @@ pub mod sunrise_beam {
 pub struct RegisterState<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
+
     #[account(
         init,
         payer = payer,
         space = State::size(input.initial_capacity),
     )]
     pub state: Account<'info, State>,
+
     pub gsol_mint: Account<'info, Mint>,
-    /// CHECK: a PDA of this Sunrise program.
-    #[account(seeds = [state.key().as_ref(), GSOL_AUTHORITY], bump)]
+
+    /// CHECK: validate PDA seeds.
+    #[account(
+        seeds = [
+            state.key().as_ref(),
+            GSOL_AUTHORITY
+        ],
+        bump
+    )]
     pub gsol_mint_authority: UncheckedAccount<'info>,
+
     pub system_program: Program<'info, System>,
+
     pub token_program: Program<'info, Token>,
+
     pub rent: Sysvar<'info, Rent>,
 }
 
@@ -104,15 +120,18 @@ pub struct RegisterBeam<'info> {
         has_one = update_authority
     )]
     pub state: Account<'info, State>,
+    
     #[account(mut)]
     pub payer: Signer<'info>,
+
     pub update_authority: Signer<'info>,
-    /// CHECK: The state account of the program
-    /// to be registered.
+
+    /// CHECK: The beam's expected signer and identifier.
     #[account(
         constraint = beam_account.key() == state.key()
     )]
     pub beam_account: UncheckedAccount<'info>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -123,6 +142,7 @@ pub struct UpdateBeamAllocations<'info> {
         has_one = update_authority
     )]
     pub state: Account<'info, State>,
+
     pub update_authority: Signer<'info>,
 }
 
@@ -133,6 +153,7 @@ pub struct RemoveBeam<'info> {
         has_one = update_authority
     )]
     pub state: Account<'info, State>,
+
     pub update_authority: Signer<'info>,
 }
 
@@ -142,20 +163,26 @@ pub struct BurnGsol<'info> {
         mut,
         has_one = gsol_mint,
     )]
-    pub state: Box<Account<'info, State>>,
+    pub state: Account<'info, State>,
+
     pub beam: Signer<'info>,
+
     #[account(mut)]
-    pub gsol_mint: Box<Account<'info, Mint>>,
+    pub gsol_mint: Account<'info, Mint>,
+
     pub mint_gsol_to_owner: Signer<'info>,
+
     #[account(
         mut,
         token::mint = gsol_mint,
         token::authority = mint_gsol_to_owner
     )]
-    pub mint_gsol_to: Box<Account<'info, TokenAccount>>,
-    /// CHECK: We check that it's the expected ID.
+    pub mint_gsol_to: Account<'info, TokenAccount>,
+
+    /// CHECK: verified instructions sysvar.
     #[account(address = sysvar::instructions::ID)]
     pub sysvar: UncheckedAccount<'info>,
+
     pub token_program: Program<'info, Token>,
 }
 
@@ -166,20 +193,28 @@ pub struct MintGsol<'info> {
         has_one = gsol_mint,
     )]
     pub state: Box<Account<'info, State>>,
+
     pub beam: Signer<'info>,
 
     #[account(mut)]
     pub gsol_mint: Box<Account<'info, Mint>>,
+
     #[account(
-        seeds = [state.key().as_ref(), GSOL_AUTHORITY],
+        seeds = [
+            state.key().as_ref(),
+            GSOL_AUTHORITY
+        ],
         bump = state.gsol_mint_authority_bump
     )]
     pub gsol_mint_authority: SystemAccount<'info>,
+
     #[account(mut, token::mint = gsol_mint)]
     pub mint_gsol_to: Box<Account<'info, TokenAccount>>,
-    /// CHECK: We check that it's the expected ID.
+
+    /// CHECK: verified instructions sysvar
     #[account(address = sysvar::instructions::ID)]
     pub sysvar: UncheckedAccount<'info>,
+
     pub token_program: Program<'info, Token>,
 }
 
@@ -190,26 +225,35 @@ pub struct UpdateState<'info> {
         has_one = update_authority
     )]
     pub state: Account<'info, State>,
+
     pub update_authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
 pub struct ExportMintAuthority<'info> {
     pub update_authority: Signer<'info>,
+
     #[account(
         has_one = gsol_mint,
         has_one = update_authority
     )]
     pub state: Account<'info, State>,
+
     #[account(mut)]
     pub gsol_mint: Account<'info, Mint>,
+
     #[account(
-        seeds = [state.key().as_ref(), GSOL_AUTHORITY],
+        seeds = [
+            state.key().as_ref(),
+            GSOL_AUTHORITY
+        ],
         bump = state.gsol_mint_authority_bump
     )]
     pub gsol_mint_authority: SystemAccount<'info>,
+
     /// CHECK: The new gsol mint authority
     pub new_authority: UncheckedAccount<'info>,
+
     pub token_program: Program<'info, Token>,
 }
 

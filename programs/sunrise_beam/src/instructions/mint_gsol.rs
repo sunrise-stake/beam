@@ -5,6 +5,7 @@ pub fn handler(ctx: Context<MintGsol>, amount: u64) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let gsol_mint = &ctx.accounts.gsol_mint;
 
+    // Check that the executing program is valid.
     let cpi_program = utils::get_cpi_program_id(&ctx.accounts.sysvar.to_account_info())?;
     system::check_beam_validity(state, &ctx.accounts.beam, &cpi_program)?;
 
@@ -22,7 +23,7 @@ pub fn handler(ctx: Context<MintGsol>, amount: u64) -> Result<()> {
             .checked_div(100)
             .unwrap()
     } else {
-        // Let the first request mint without restrictions. The allocations will come into effect afterwards.
+        // Mint initially with no restrictions. The allocations will come into effect afterwards.
         amount
     };
 
