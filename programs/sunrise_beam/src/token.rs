@@ -1,57 +1,20 @@
-use crate::seeds::GSOL_MINT_AUTHORITY;
-use crate::state::ControllerState;
+use crate::{state::State, GSOL_AUTHORITY};
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::program::invoke;
-use anchor_lang::solana_program::system_instruction::create_account;
 use anchor_spl::token;
-use anchor_spl::token::{Mint, Token};
 
-pub fn create_mint<'a>(
-    payer: &AccountInfo<'a>,
-    mint: &AccountInfo<'a>,
-    mint_authority: &Pubkey,
-    system_program: &Program<'a, System>,
-    token_program: &Program<'a, Token>,
-    rent_sysvar: &AccountInfo<'a>,
-) -> Result<()> {
-    let rent = Rent::get()?;
-    let lamports = rent.minimum_balance(Mint::LEN);
-    invoke(
-        &create_account(
-            payer.key,
-            mint.key,
-            lamports,
-            Mint::LEN as u64,
-            token_program.key,
-        ),
-        &[
-            payer.clone(),
-            mint.clone(),
-            system_program.to_account_info().clone(),
-        ],
-    )?;
-
-    let accounts = token::InitializeMint {
-        mint: mint.clone(),
-        rent: rent_sysvar.clone(),
-    };
-    let cpi_ctx = CpiContext::new(token_program.to_account_info(), accounts);
-    token::initialize_mint(cpi_ctx, 9, mint_authority, Some(mint_authority))
-}
-
-#[allow(dead_code)]
+/// Mint new tokens to a token-account with the mint-authority's signature.
 pub fn mint_to<'a>(
     amount: u64,
     mint: &AccountInfo<'a>,
     mint_authority: &AccountInfo<'a>,
     recipient_token_account: &AccountInfo<'a>,
     token_program: &AccountInfo<'a>,
-    state: &Account<'a, ControllerState>,
+    state: &Account<'a, State>,
 ) -> Result<()> {
     let state_address = state.key();
     let seeds = &[
         state_address.as_ref(),
-        GSOL_MINT_AUTHORITY,
+        GSOL_AUTHORITY,
         &[state.gsol_mint_authority_bump],
     ];
     let pda_signer = &[&seeds[..]];
@@ -66,7 +29,7 @@ pub fn mint_to<'a>(
     token::mint_to(cpi_ctx, amount)
 }
 
-#[allow(dead_code)]
+/// Burn tokens from a token-account with the owner's signature.
 pub fn burn<'a>(
     amount: u64,
     mint: &AccountInfo<'a>,

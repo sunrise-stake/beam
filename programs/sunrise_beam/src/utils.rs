@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::sysvar::instructions::get_instruction_relative;
 use anchor_lang::solana_program::{program::invoke, system_instruction, sysvar::rent::Rent};
 
+/// Get the executing program using the `Instructions` sysvar.
 pub fn get_cpi_program_id(ix_sysvar: &AccountInfo) -> Result<Pubkey> {
     let relative_ix = get_instruction_relative(0, ix_sysvar)?;
     Ok(relative_ix.program_id)
