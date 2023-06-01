@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 
 /// The state for the Sunrise beam controller program.
 #[account]
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct State {
     /// Update authority for this state.
     pub update_authority: Pubkey,
@@ -20,9 +20,6 @@ pub struct State {
 
     /// The Sunrise yield account.
     pub yield_account: Pubkey,
-
-    /// The factor to increase space by during a resize.
-    pub alloc_window: u8,
 
     /// Holds [BeamDetails] for all supported beams.
     pub allocations: Vec<BeamDetails>,
@@ -45,8 +42,8 @@ pub struct BeamDetails {
 }
 
 impl BeamDetails {
-    /// Space in bytes of a borsh-serialized [BeamDetails] struct.
-    pub const SPACE: usize = 32 + // key
+    /// Size in bytes of a borsh-serialized [BeamDetails] struct.
+    pub const SIZE: usize = 32 + // key
         1 +  // allocation
         8 +  // minted
         1; // draining_mode
@@ -63,17 +60,23 @@ impl BeamDetails {
 }
 
 impl State {
-    /// Calculate the borsh-serialized size of a state with
-    /// `beam_count` number of beams.
+    /// The size of a state account with an empty allocations vector.
+    pub const SIZE_WITH_ZERO_BEAMS: usize = 8 + // discriminator 
+        32 + // update_authority
+        32 + // gsol_mint
+        8 +  // pre_supply
+        1 +  // gsol_mint_authority_bump
+        32 + // yield_account
+        4; // vec size
+
+    /// Calculate the borsh-serialized size of a state with `beam_count` number of beams.
     pub fn size(beam_count: usize) -> usize {
-        8 + // discriminator 
-            32 + // update_authority
-            32 + // gsol_mint
-            8 +  // pre_supply
-            1 +  // gsol_mint_authority_bump
-            32 + // yield_account
-            1 +  // alloc_window
-            4 + (BeamDetails::SPACE * beam_count) // allocations vec
+        Self::SIZE_WITH_ZERO_BEAMS + (BeamDetails::SIZE * beam_count) // allocations vec
+    }
+
+    /// Calculate the size of a state account.
+    pub fn size_inner(&self) -> usize {
+        State::size(self.allocations.len())
     }
 
     /// Register a new [State] with the given information.
@@ -92,7 +95,6 @@ impl State {
         // accuracy is maintained in tracking allocations.
         self.pre_supply = gsol_mint_supply;
         self.gsol_mint_authority_bump = gsol_mint_auth_bump;
-        self.alloc_window = input.alloc_window;
 
         // We fill up the vec because deserialization of an empty vec would result
         // in the active capacity being lost. i.e a vector with capacity 10 but length
@@ -118,9 +120,6 @@ impl State {
         if let Some(bump) = input.new_gsol_mint_authority_bump {
             self.gsol_mint_authority_bump = bump;
         }
-        if let Some(window) = input.new_alloc_window {
-            self.alloc_window = window;
-        }
         if let Some(yield_account) = input.new_yield_account {
             self.yield_account = yield_account;
         }
@@ -128,10 +127,9 @@ impl State {
 
     /// Add a new [BeamDetails] to the state.
     ///
-    /// Errors if a beam with that key is already present in the state.
-    ///
-    /// Returns [None] if the vec is filled. i.e no default to replace.
-    /// Returns [Some(())] on success.
+    /// Errors if any of the following conditions is true:
+    /// * The state already contains a [BeamDetails] of that key.
+    /// * The state no longer has any space for allocations.
     pub fn add_beam(&mut self, new_beam: BeamDetails) -> Result<()> {
         if self.contains_beam(&new_beam.key) {
             return Err(BeamError::DuplicateBeamEntry.into());
@@ -168,13 +166,19 @@ impl State {
 
     /// Remove a beam from the state via its key.
     ///
-    /// Returns [None] if the beam is not present.
+    /// Errors if:
+    /// * The beam is not present in the state's allocations vector.
+    /// * The beam is present but its allocation is not zero.
     pub fn remove_beam(&mut self, beam: &Pubkey) -> Result<()> {
         let found = self.get_mut_beam_details(beam);
 
         if let Some(allocation) = found {
-            *allocation = BeamDetails::default();
-            Ok(())
+            if allocation.allocation != 0 {
+                Err(BeamError::NonZeroAllocation.into())
+            } else {
+                *allocation = BeamDetails::default();
+                Ok(())
+            }
         } else {
             Err(BeamError::UnidentifiedBeam.into())
         }
@@ -190,7 +194,6 @@ impl State {
 /// Arguments for registering a new [State].
 pub struct RegisterStateInput {
     pub update_authority: Pubkey,
-    pub alloc_window: u8,
     pub yield_account: Pubkey,
     pub initial_capacity: usize,
 }
@@ -199,7 +202,6 @@ pub struct RegisterStateInput {
 /// Arguments for updating [State] parameters.
 pub struct UpdateStateInput {
     pub new_update_authority: Option<Pubkey>,
-    pub new_alloc_window: Option<u8>,
     pub new_yield_account: Option<Pubkey>,
     pub new_gsol_mint: Option<Pubkey>,
     pub new_gsol_mint_authority_bump: Option<u8>,
@@ -210,4 +212,170 @@ pub struct UpdateStateInput {
 pub struct AllocationUpdate {
     pub beam: Pubkey,
     pub new_allocation: u8,
+}
+
+#[cfg(test)]
+mod internal_tests {
+    use crate::*;
+
+    #[test]
+    fn test_register_beam() {
+        let mut state = State::default();
+        let mut input = RegisterStateInput::default();
+        input.initial_capacity = 10;
+
+        state.register(input, 0, &Pubkey::default(), 1000);
+        assert_eq!(state.allocations, vec![BeamDetails::default(); 10]);
+    }
+    #[test]
+    fn test_contains_beam() {
+        let mut state = State::default();
+
+        let key1 = Pubkey::new_unique();
+        let key2 = Pubkey::new_unique();
+        state.allocations = vec![key1, key2]
+            .iter()
+            .map(|key| BeamDetails::new(*key, 20))
+            .collect();
+
+        assert!(state.contains_beam(&key1));
+        assert!(state.contains_beam(&key2));
+    }
+    #[test]
+    fn test_beam_count() {
+        let mut state = State::default();
+        let key1 = Pubkey::new_unique();
+        let key2 = Pubkey::new_unique();
+
+        state.allocations = vec![
+            BeamDetails::new(key1, 20),
+            BeamDetails::default(),
+            BeamDetails::new(key2, 10),
+            BeamDetails::default(),
+        ];
+
+        assert!(state.beam_count() == 2);
+    }
+    #[test]
+    fn test_add_beam() {
+        let mut state = State::default();
+        let mut input = RegisterStateInput::default();
+
+        input.initial_capacity = 2;
+        state.register(input, 0, &Pubkey::new_unique(), 1000);
+
+        let beam_key = Pubkey::new_unique();
+        let new_beam = BeamDetails::new(beam_key, 10);
+
+        assert!(state.add_beam(new_beam.clone()).is_ok());
+        // Should fail because duplicate entry
+        let expect_to_fail = state.add_beam(new_beam.clone());
+        assert_eq!(
+            format!("{:?}", expect_to_fail),
+            format!(
+                "{:?}",
+                Err::<(), anchor_lang::error::Error>(BeamError::DuplicateBeamEntry.into())
+            )
+        );
+
+        assert!(state.contains_beam(&beam_key) == true);
+        assert!(state.beam_count() == 1);
+
+        assert!(state
+            .add_beam(BeamDetails::new(Pubkey::new_unique(), 20))
+            .is_ok());
+        assert!(state.beam_count() == 2);
+
+        // Should fail because no space
+        let expect_to_fail2 = state.add_beam(BeamDetails::new(Pubkey::new_unique(), 20));
+        assert_eq!(
+            format!("{:?}", expect_to_fail2),
+            format!(
+                "{:?}",
+                Err::<(), anchor_lang::error::Error>(BeamError::NoSpaceInAllocations.into())
+            )
+        );
+    }
+    #[test]
+    fn test_remove_beam() {
+        let mut state = State::default();
+        let keys = vec![
+            Pubkey::new_unique(),
+            Pubkey::new_unique(),
+            Pubkey::new_unique(),
+        ];
+
+        state.allocations = vec![
+            BeamDetails::new(keys[0], 20),
+            BeamDetails::new(keys[1], 50),
+            BeamDetails::new(keys[2], 0),
+        ];
+
+        // Fails because allocation is non-zero.
+        let expect_to_fail1 = state.remove_beam(&keys[0]);
+        assert_eq!(
+            format!("{:?}", expect_to_fail1),
+            format!(
+                "{:?}",
+                Err::<(), anchor_lang::error::Error>(BeamError::NonZeroAllocation.into())
+            )
+        );
+        assert!(state.remove_beam(&keys[1]).is_err());
+        assert!(state.remove_beam(&keys[2]).is_ok());
+
+        // Fails because key[2] has been removed and is no longer in allocations.
+        let expect_to_fail2 = state.remove_beam(&keys[2]);
+        assert_eq!(
+            format!("{:?}", expect_to_fail2),
+            format!(
+                "{:?}",
+                Err::<(), anchor_lang::error::Error>(BeamError::UnidentifiedBeam.into())
+            )
+        );
+    }
+    #[test]
+    fn test_get_beam_details() {
+        let mut state = State::default();
+        let key = Pubkey::new_unique();
+
+        state.allocations = vec![
+            BeamDetails::new(key, 90),
+            BeamDetails::default(),
+            BeamDetails::new(Pubkey::new_unique(), 10),
+        ];
+
+        assert!(matches!(state.get_beam_details(&key), Some(&ref _discard)));
+        assert!(matches!(
+            state.get_mut_beam_details(&key.clone()),
+            Some(&mut ref _discard)
+        ));
+
+        if let Some(res) = state.get_beam_details(&key) {
+            assert!(res.key == key);
+            assert!(res.allocation == 90);
+        } else {
+            panic!("")
+        }
+
+        if let Some(res) = state.get_mut_beam_details(&key) {
+            assert!(res.key == key);
+            assert!(res.allocation == 90);
+        } else {
+            panic!("")
+        }
+    }
+    #[test]
+    fn test_size_calculations() {
+        let mut state = State::default();
+
+        let initial_size = state.size_inner();
+        assert!(state.allocations.len() == 0);
+        assert!(initial_size == State::SIZE_WITH_ZERO_BEAMS);
+        assert!(initial_size == State::size(0));
+
+        state.allocations = vec![BeamDetails::default(); 10];
+        let size = state.size_inner();
+        assert!(size == State::size(10));
+        assert!(size == initial_size + (10 * BeamDetails::SIZE))
+    }
 }
