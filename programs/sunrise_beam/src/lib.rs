@@ -4,6 +4,7 @@
 mod instructions;
 mod state;
 mod system;
+mod tests;
 mod token;
 mod utils;
 
@@ -120,7 +121,7 @@ pub struct RegisterBeam<'info> {
         has_one = update_authority
     )]
     pub state: Account<'info, State>,
-    
+
     #[account(mut)]
     pub payer: Signer<'info>,
 
@@ -278,6 +279,10 @@ pub enum BeamError {
     /// Thrown on an attempt to register a beam that's already present.
     #[msg("Tried to register an already-registered beam.")]
     DuplicateBeamEntry,
+
+    /// Thrown if there's no available space for adding a new beam.
+    #[msg("Can't add new beam to allocations")]
+    NoSpaceInAllocations,
 
     /// Thrown if an action requires a beam be present, but it isn't.
     #[msg("Not a valid beam that this program recognizes.")]
