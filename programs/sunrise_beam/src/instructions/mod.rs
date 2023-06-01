@@ -4,6 +4,7 @@ pub mod mint_gsol;
 pub mod register_beam;
 pub mod register_state;
 pub mod remove_beam;
+pub mod resize_allocations;
 pub mod update_allocations;
 pub mod update_state;
 
@@ -13,5 +14,6 @@ pub use mint_gsol::*;
 pub use register_beam::*;
 pub use register_state::*;
 pub use remove_beam::*;
+pub use resize_allocations::*;
 pub use update_allocations::*;
 pub use update_state::*;

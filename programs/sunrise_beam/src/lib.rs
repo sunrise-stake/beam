@@ -4,7 +4,6 @@
 mod instructions;
 mod state;
 mod system;
-mod tests;
 mod token;
 mod utils;
 
@@ -38,8 +37,16 @@ pub mod sunrise_beam {
     /// The `beam` is an account that will be expected to sign CPI requests to this program.
     ///
     /// Errors if a resize is needed but the `alloc_window` is zero.
-    pub fn register_beam(ctx: Context<RegisterBeam>, state: Pubkey) -> Result<()> {
-        register_beam::handler(ctx, state)
+    pub fn register_beam(ctx: Context<RegisterBeam>) -> Result<()> {
+        register_beam::handler(ctx)
+    }
+
+    /// Resize the state so it can append `additional` more allocations.
+    pub fn resize_allocations(
+        ctx: Context<ResizeAllocations>,
+        additional_beams: usize,
+    ) -> Result<()> {
+        resize_allocations::handler(ctx, additional_beams)
     }
 
     /// Updates allocations for beams.
@@ -114,7 +121,6 @@ pub struct RegisterState<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(state: Pubkey)]
 pub struct RegisterBeam<'info> {
     #[account(
         mut,
@@ -128,12 +134,7 @@ pub struct RegisterBeam<'info> {
     pub update_authority: Signer<'info>,
 
     /// CHECK: The beam's expected signer and identifier.
-    #[account(
-        constraint = beam_account.key() == state.key()
-    )]
     pub beam_account: UncheckedAccount<'info>,
-
-    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -258,37 +259,54 @@ pub struct ExportMintAuthority<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+#[derive(Accounts)]
+pub struct ResizeAllocations<'info> {
+    pub update_authority: Signer<'info>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    #[account(has_one = update_authority)]
+    pub state: Account<'info, State>,
+
+    pub system_program: Program<'info, System>,
+}
+
 #[error_code]
 pub enum BeamError {
     /// Thrown if an instruction parameter could cause invalid behaviour.
-    #[msg("Invariant violated by parameter input.")]
+    #[msg("Invariant violated by parameter input")]
     InvalidParameter,
 
     /// Thrown if a beam's allocation doesn't support minting the set amount.
-    #[msg("This beam does not support minting this amount.")]
+    #[msg("This beam does not support minting this amount")]
     MintWindowExceeded,
 
     /// Thrown if a beam's allocation doesn't support burning the set amount.
-    #[msg("This beam does not support burning this amount.")]
+    #[msg("This beam does not support burning this amount")]
     BurnWindowExceeded,
 
     /// Thrown if a state has hit the maximum number of beams it can support.
-    #[msg("Can't exceed the beam capacity of this state.")]
+    #[msg("Can't exceed the beam capacity of this state")]
     WouldExceedBeamCapacity,
 
     /// Thrown on an attempt to register a beam that's already present.
-    #[msg("Tried to register an already-registered beam.")]
+    #[msg("Tried to register an already-registered beam")]
     DuplicateBeamEntry,
 
     /// Thrown if there's no available space for adding a new beam.
-    #[msg("Can't add new beam to allocations")]
+    #[msg("No space in allocations for new entry")]
     NoSpaceInAllocations,
 
     /// Thrown if an action requires a beam be present, but it isn't.
-    #[msg("Not a valid beam that this program recognizes.")]
+    #[msg("Not a valid beam that this program recognizes")]
     UnidentifiedBeam,
 
     /// Thrown the program directly making the CPI isn't the beam program.
-    #[msg("Cpi isn't directly being made by beam program.")]
+    #[msg("Cpi isn't directly being made by beam program")]
     UnidentifiedCallingProgram,
+
+    /// Thrown on an attempt to remove a beam with a non-zero allocation.
+    #[msg("Can't remove a beam with a non-zero allocation")]
+    NonZeroAllocation,
 }
