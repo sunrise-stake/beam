@@ -23,6 +23,7 @@ pub fn check_beam_validity(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn resize_state<'a>(
     state: &mut Account<'a, State>,
     payer: &AccountInfo<'a>,

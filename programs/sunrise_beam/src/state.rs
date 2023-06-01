@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 
 /// The state for the Sunrise beam controller program.
 #[account]
+#[derive(Default)]
 pub struct State {
     /// Update authority for this state.
     pub update_authority: Pubkey,
@@ -28,7 +29,7 @@ pub struct State {
 }
 
 /// Holds information about a registed beam.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default, Eq, Hash, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct BeamDetails {
     /// Expected signer for mint and burn requests.
     pub key: Pubkey,
@@ -131,7 +132,7 @@ impl State {
     ///
     /// Returns [None] if the vec is filled. i.e no default to replace.
     /// Returns [Some(())] on success.
-    pub fn add_beam(&mut self, new_beam: BeamDetails) -> Result<Option<()>> {
+    pub fn add_beam(&mut self, new_beam: BeamDetails) -> Result<()> {
         if self.contains_beam(&new_beam.key) {
             return Err(BeamError::DuplicateBeamEntry.into());
         }
@@ -141,10 +142,10 @@ impl State {
         if let Some(beam) = found {
             *beam = new_beam;
 
-            return Ok(Some(()));
+            return Ok(());
         }
 
-        Ok(None)
+        Err(BeamError::NoSpaceInAllocations.into())
     }
 
     /// Get the number of beams in the state.
@@ -168,20 +169,20 @@ impl State {
     /// Remove a beam from the state via its key.
     ///
     /// Returns [None] if the beam is not present.
-    pub fn remove_beam(&mut self, beam: &Pubkey) -> Option<()> {
+    pub fn remove_beam(&mut self, beam: &Pubkey) -> Result<()> {
         let found = self.get_mut_beam_details(beam);
 
         if let Some(allocation) = found {
             *allocation = BeamDetails::default();
-            Some(())
+            Ok(())
         } else {
-            None
+            Err(BeamError::UnidentifiedBeam.into())
         }
     }
 
     /// Check if the state contains a beam of this particular `key`.
     pub fn contains_beam(&self, key: &Pubkey) -> bool {
-        self.get_beam_details(key).is_none()
+        self.get_beam_details(key).is_some()
     }
 }
 
