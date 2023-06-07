@@ -172,18 +172,18 @@ pub struct BurnGsol<'info> {
     #[account(mut)]
     pub gsol_mint: Account<'info, Mint>,
 
-    pub mint_gsol_to_owner: Signer<'info>,
+    pub burn_gsol_from_owner: Signer<'info>,
 
     #[account(
         mut,
         token::mint = gsol_mint,
-        token::authority = mint_gsol_to_owner
+        token::authority = burn_gsol_from_owner
     )]
-    pub mint_gsol_to: Account<'info, TokenAccount>,
+    pub burn_gsol_from: Account<'info, TokenAccount>,
 
-    /// CHECK: verified instructions sysvar.
+    /// CHECK: Verified Instructions Sysvar.
     #[account(address = sysvar::instructions::ID)]
-    pub sysvar: UncheckedAccount<'info>,
+    pub instructions_sysvar: UncheckedAccount<'info>,
 
     pub token_program: Program<'info, Token>,
 }
@@ -213,9 +213,9 @@ pub struct MintGsol<'info> {
     #[account(mut, token::mint = gsol_mint)]
     pub mint_gsol_to: Box<Account<'info, TokenAccount>>,
 
-    /// CHECK: verified instructions sysvar
+    /// CHECK: Verified Instructions Sysvar.
     #[account(address = sysvar::instructions::ID)]
-    pub sysvar: UncheckedAccount<'info>,
+    pub instructions_sysvar: UncheckedAccount<'info>,
 
     pub token_program: Program<'info, Token>,
 }

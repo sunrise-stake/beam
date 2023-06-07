@@ -1,11 +1,12 @@
-use crate::{system, token, utils, BeamError, BurnGsol};
 use anchor_lang::prelude::*;
+use crate::{system, token, utils, BeamError, BurnGsol};
 
-pub fn handler(ctx: Context<BurnGsol>, amount: u64) -> Result<()> {
+pub fn handler(ctx: Context<BurnGsol>, amount_in_lamports: u64) -> Result<()> {
+    let amount = amount_in_lamports;
     let state = &mut ctx.accounts.state;
 
     // Check that the requesting program is valid.
-    let cpi_program = utils::get_cpi_program_id(&ctx.accounts.sysvar.to_account_info())?;
+    let cpi_program = utils::get_cpi_program_id(&ctx.accounts.instructions_sysvar.to_account_info())?;
     system::check_beam_validity(state, &ctx.accounts.beam, &cpi_program)?;
 
     let details = state
@@ -20,8 +21,8 @@ pub fn handler(ctx: Context<BurnGsol>, amount: u64) -> Result<()> {
     token::burn(
         amount,
         &ctx.accounts.gsol_mint.to_account_info(),
-        &ctx.accounts.mint_gsol_to_owner.to_account_info(),
-        &ctx.accounts.mint_gsol_to.to_account_info(),
+        &ctx.accounts.burn_gsol_from_owner.to_account_info(),
+        &ctx.accounts.burn_gsol_from.to_account_info(),
         &ctx.accounts.token_program,
     )?;
 
