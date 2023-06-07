@@ -1,5 +1,5 @@
-use anchor_lang::prelude::*;
 use crate::{state::BeamDetails, RegisterBeam};
+use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<RegisterBeam>) -> Result<()> {
     let state = &mut ctx.accounts.state;

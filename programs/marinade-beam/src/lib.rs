@@ -5,12 +5,12 @@ mod state;
 mod sunrise_helpers;
 mod utils;
 
-use std::ops::Deref;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::{program::invoke_signed, system_instruction};
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use marinade_cpi::state::{State as MarinadeState, TicketAccountData as MarinadeTicketAccount};
 use state::{ProxyTicketAccount, RegisterInput, State};
+use std::ops::Deref;
 use sunrise_beam as sunrise_beam_cpi;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
@@ -132,7 +132,7 @@ pub struct Initialize<'info> {
         init,
         space = State::SPACE,
         payer = payer,
-        seeds = [constants::STATE], 
+        seeds = [constants::STATE],
         bump
     )]
     pub state: Account<'info, State>,

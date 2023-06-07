@@ -15,7 +15,10 @@ pub fn mint_gsol<'a>(
     let seeds = [crate::constants::STATE, &[state_bump]];
     let signer = &[&seeds[..]];
 
-    cpi_mint_gsol(CpiContext::new(cpi_program, accounts).with_signer(signer), lamports)
+    cpi_mint_gsol(
+        CpiContext::new(cpi_program, accounts).with_signer(signer),
+        lamports,
+    )
 }
 
 macro_rules! impl_mint_gsol {
@@ -49,7 +52,10 @@ pub fn burn_gsol<'a>(
     let seeds = [crate::constants::STATE, &[state_bump]];
     let signer = &[&seeds[..]];
 
-    cpi_burn_gsol(CpiContext::new(cpi_program, accounts).with_signer(signer), lamports)
+    cpi_burn_gsol(
+        CpiContext::new(cpi_program, accounts).with_signer(signer),
+        lamports,
+    )
 }
 
 impl<'a> From<&crate::OrderUnstake<'a>> for BurnGsol<'a> {
