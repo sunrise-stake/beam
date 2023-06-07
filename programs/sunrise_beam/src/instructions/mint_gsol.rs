@@ -1,5 +1,5 @@
-use anchor_lang::prelude::*;
 use crate::{system, token, utils, BeamError, MintGsol};
+use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<MintGsol>, amount_in_lamports: u64) -> Result<()> {
     let amount = amount_in_lamports;
@@ -7,7 +7,8 @@ pub fn handler(ctx: Context<MintGsol>, amount_in_lamports: u64) -> Result<()> {
     let gsol_mint = &ctx.accounts.gsol_mint;
 
     // Check that the executing program is valid.
-    let cpi_program = utils::get_cpi_program_id(&ctx.accounts.instructions_sysvar.to_account_info())?;
+    let cpi_program =
+        utils::get_cpi_program_id(&ctx.accounts.instructions_sysvar.to_account_info())?;
     system::check_beam_validity(state, &ctx.accounts.beam, &cpi_program)?;
 
     let pre_supply = state.pre_supply;

@@ -1,5 +1,5 @@
-use anchor_lang::prelude::*;
 use crate::{state::State, BeamError};
+use anchor_lang::prelude::*;
 
 /// Verifies that a mint request is valid by:
 /// - Checking that the beam is present in the state.
