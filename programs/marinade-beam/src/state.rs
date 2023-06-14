@@ -27,17 +27,8 @@ impl State {
         32 + /*marinade_state*/
         32 + /*sunrise_beam*/
         32 + /*gsol_mint*/
-        1; /*msol_authority_bump*/
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct RegisterInput {
-    pub update_authority: Pubkey,
-    pub sunrise_beam: Pubkey,
-    pub marinade_state: Pubkey,
-    pub treasury: Pubkey,
-    pub gsol_mint: Pubkey,
-    pub msol_authority_bump: u8,
+        1  + /*msol_authority_bump*/
+        32; /*treasury*/
 }
 
 /// Maps a Marinade ticket account to a GSOL token holder

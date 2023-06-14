@@ -14,8 +14,7 @@ pub fn proportional(amount: u64, numerator: u64, denominator: u64) -> Result<u64
         .map_err(|_| error!(crate::MarinadeBeamError::CalculationFailure))
 }
 
-/// All lifted from https://github.com/marinade-finance/liquid-staking-program/blob/447f9607a8c755cac7ad63223febf047142c6c8f/programs/marinade-finance/src/state.rs#L227
-
+// All lifted from https://github.com/marinade-finance/liquid-staking-program/blob/447f9607a8c755cac7ad63223febf047142c6c8f/programs/marinade-finance/src/state.rs#L227
 pub fn calc_msol_from_lamports(marinade_state: &MarinadeState, stake_lamports: u64) -> Result<u64> {
     msg!("calc_msol_from_lamports");
     msg!("stake_lamports: {}", stake_lamports);
@@ -29,6 +28,16 @@ pub fn calc_msol_from_lamports(marinade_state: &MarinadeState, stake_lamports: u
         marinade_state.msol_supply,
         total_virtual_staked_lamports(marinade_state),
     )
+}
+
+pub fn get_delegated_stake_amount(stake_account: &AccountInfo) -> Result<u64> {
+    // Gets the active stake amount of the stake account. We need this to determine how much gSol to mint.
+    let stake_state = try_from_slice_unchecked::<StakeState>(&stake_account.data.borrow())?;
+
+    match stake_state.delegation() {
+        Some(delegation) => Ok(delegation.stake),
+        None => Err(crate::MarinadeBeamError::NotDelegated.into()),
+    }
 }
 
 fn total_cooling_down(marinade_state: &MarinadeState) -> u64 {
@@ -55,12 +64,3 @@ fn total_virtual_staked_lamports(marinade_state: &MarinadeState) -> u64 {
         .saturating_sub(marinade_state.circulating_ticket_balance) //tickets created -> cooling down lamports or lamports already in reserve and not claimed yet
 }
 
-pub fn get_delegated_stake_amount(stake_account: &AccountInfo) -> Result<u64> {
-    // Gets the active stake amount of the stake account. We need this to determine how much gSol to mint.
-    let stake_state = try_from_slice_unchecked::<StakeState>(&stake_account.data.borrow())?;
-
-    match stake_state.delegation() {
-        Some(delegation) => Ok(delegation.stake),
-        None => Err(crate::MarinadeBeamError::NotDelegated.into()),
-    }
-}

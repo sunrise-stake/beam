@@ -64,7 +64,7 @@ impl<'a> From<&crate::OrderUnstake<'a>> for BurnGsol<'a> {
             state: accounts.sunrise_beam.to_account_info(),
             beam: accounts.state.to_account_info(),
             gsol_mint: accounts.gsol_mint.to_account_info(),
-            burn_gsol_from_owner: accounts.gsol_token_account_owner.to_account_info(),
+            burn_gsol_from_owner: accounts.withdrawer.to_account_info(),
             burn_gsol_from: accounts.gsol_token_account.to_account_info(),
             instructions_sysvar: accounts.instructions_sysvar.to_account_info(),
             token_program: accounts.token_program.to_account_info(),
