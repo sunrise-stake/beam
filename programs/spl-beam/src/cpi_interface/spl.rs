@@ -92,7 +92,11 @@ pub fn deposit_stake(accounts: &crate::DepositStake) -> Result<()> {
     Ok(())
 }
 
-pub fn withdraw(accounts: &crate::Withdraw, pool_token_lamports: u64, state_bump: u8) -> Result<()> {
+pub fn withdraw(
+    accounts: &crate::Withdraw,
+    pool_token_lamports: u64,
+    state_bump: u8,
+) -> Result<()> {
     let seeds = [crate::constants::STATE, &[state_bump]];
     let signer = &[&seeds[..]];
 
@@ -110,7 +114,6 @@ pub fn withdraw(accounts: &crate::Withdraw, pool_token_lamports: u64, state_bump
             accounts.token_program.key,
             pool_token_lamports,
         ),
-        
         &[
             accounts.spl_stake_pool_program.to_account_info(),
             accounts.stake_pool.to_account_info(),
@@ -132,7 +135,11 @@ pub fn withdraw(accounts: &crate::Withdraw, pool_token_lamports: u64, state_bump
     Ok(())
 }
 
-pub fn withdraw_stake(accounts: &crate::WithdrawStake, lamports: u64, state_bump: u8) -> Result<()> {
+pub fn withdraw_stake(
+    accounts: &crate::WithdrawStake,
+    lamports: u64,
+    state_bump: u8,
+) -> Result<()> {
     let pool_tokens = crate::utils::pool_tokens_from_lamports(&accounts.stake_pool, lamports)?;
     let seeds = [crate::constants::STATE, &[state_bump]];
     let signer = &[&seeds[..]];
@@ -174,4 +181,3 @@ pub fn withdraw_stake(accounts: &crate::WithdrawStake, lamports: u64, state_bump
 
     Ok(())
 }
-

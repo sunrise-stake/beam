@@ -1,33 +1,42 @@
 use anchor_lang::prelude::*;
-use marinade_cpi::{
-    cpi::{
-        accounts::{AddLiquidity as MarinadeAddLiquidity, RemoveLiquidity as MarinadeRemoveLiquidity},
-        add_liquidity as marinade_add_liquidity, remove_liquidity as marinade_remove_liquidity
-    }
+use marinade_cpi::cpi::{
+    accounts::{AddLiquidity as MarinadeAddLiquidity, RemoveLiquidity as MarinadeRemoveLiquidity},
+    add_liquidity as marinade_add_liquidity, remove_liquidity as marinade_remove_liquidity,
 };
 
-pub fn add_liquidity(accounts: &crate::AddLiquidity, lamports: u64, signer: Option<&[&[&[u8]]]>) -> Result<()> {
+pub fn add_liquidity(
+    accounts: &crate::AddLiquidity,
+    lamports: u64,
+    signer: Option<&[&[&[u8]]]>,
+) -> Result<()> {
     let cpi_program = accounts.marinade_program.to_account_info();
     let cpi_ctx = match signer {
         Some(signature) => CpiContext::new(cpi_program, accounts.into()).with_signer(signature),
-        None => CpiContext::new(cpi_program, accounts.into())
+        None => CpiContext::new(cpi_program, accounts.into()),
     };
     marinade_add_liquidity(cpi_ctx, lamports)?;
 
     Ok(())
 }
 
-pub fn remove_liquidity(accounts: &crate::RemoveLiquidity, liq_pool_tokens_amount: u64) -> Result<()> {
+pub fn remove_liquidity(
+    accounts: &crate::RemoveLiquidity,
+    liq_pool_tokens_amount: u64,
+) -> Result<()> {
     let bump = &[accounts.state.liq_pool_vault_authority_bump][..];
     let state_address = accounts.state.key();
-    let seeds = &[state_address.as_ref(), crate::constants::VAULT_AUTHORITY, bump][..];
+    let seeds = &[
+        state_address.as_ref(),
+        crate::constants::VAULT_AUTHORITY,
+        bump,
+    ][..];
 
     let cpi_program = accounts.marinade_program.to_account_info();
     let cpi_ctx = CpiContext::new(cpi_program, accounts.into());
     marinade_remove_liquidity(cpi_ctx.with_signer(&[seeds]), liq_pool_tokens_amount)?;
-    
+
     Ok(())
-} 
+}
 
 impl<'a> From<&crate::AddLiquidity<'a>> for MarinadeAddLiquidity<'a> {
     fn from(accounts: &crate::AddLiquidity<'a>) -> MarinadeAddLiquidity<'a> {
@@ -40,7 +49,7 @@ impl<'a> From<&crate::AddLiquidity<'a>> for MarinadeAddLiquidity<'a> {
             transfer_from: accounts.depositor.to_account_info(),
             mint_to: accounts.liq_pool_token_vault.to_account_info(),
             system_program: accounts.system_program.to_account_info(),
-            token_program: accounts.token_program.to_account_info()
+            token_program: accounts.token_program.to_account_info(),
         }
     }
 }

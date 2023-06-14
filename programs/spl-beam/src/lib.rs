@@ -1,14 +1,16 @@
-use std::ops::Deref;
+#![allow(clippy::result_large_err)]
+
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
+use std::ops::Deref;
 
 mod cpi_interface;
 mod state;
 mod utils;
 
-use state::State;
 use cpi_interface::spl as spl_interface;
 use cpi_interface::sunrise as sunrise_interface;
+use state::State;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -35,10 +37,10 @@ pub mod spl_beam {
         let state_bump = *ctx.bumps.get("state").unwrap();
         // CPI: Mint GSOL of the same proportion as the lamports deposited to depositor.
         sunrise_interface::mint_gsol(
-            ctx.accounts.deref(), 
-            ctx.accounts.beam_program.to_account_info(), 
-            state_bump, 
-            lamports
+            ctx.accounts.deref(),
+            ctx.accounts.beam_program.to_account_info(),
+            state_bump,
+            lamports,
         )?;
         Ok(())
     }
@@ -52,17 +54,18 @@ pub mod spl_beam {
         let state_bump = *ctx.bumps.get("state").unwrap();
         // CPI: Mint Gsol of the same proportion as the stake amount.
         sunrise_interface::mint_gsol(
-            ctx.accounts.deref(), 
-            ctx.accounts.beam_program.to_account_info(), 
-            state_bump, 
-            amount
+            ctx.accounts.deref(),
+            ctx.accounts.beam_program.to_account_info(),
+            state_bump,
+            amount,
         )?;
         Ok(())
     }
 
     pub fn withdraw(ctx: Context<Withdraw>, lamports: u64) -> Result<()> {
         // Calculate the number of pool tokens needed to be burnt to withdraw `lamports` lamports.
-        let pool_tokens_amount = utils::pool_tokens_from_lamports(&ctx.accounts.stake_pool, lamports)?;
+        let pool_tokens_amount =
+            utils::pool_tokens_from_lamports(&ctx.accounts.stake_pool, lamports)?;
         let state_bump = *ctx.bumps.get("state").unwrap();
 
         // CPI: Withdraw SOL from SPL stake pool.
@@ -70,10 +73,10 @@ pub mod spl_beam {
 
         // CPI: Burn GSOL of the same proportion as the lamports withdrawn.
         sunrise_interface::burn_gsol(
-            ctx.accounts.deref(), 
-            ctx.accounts.beam_program.to_account_info(), 
+            ctx.accounts.deref(),
+            ctx.accounts.beam_program.to_account_info(),
             state_bump,
-            lamports
+            lamports,
         )?;
 
         Ok(())
@@ -81,7 +84,8 @@ pub mod spl_beam {
 
     pub fn withdraw_stake(ctx: Context<WithdrawStake>, lamports: u64) -> Result<()> {
         // Calculate the number of pool tokens needed to be burnt to withdraw `lamports` worth of stake.
-        let pool_tokens_amount = utils::pool_tokens_from_lamports(&ctx.accounts.stake_pool, lamports)?;
+        let pool_tokens_amount =
+            utils::pool_tokens_from_lamports(&ctx.accounts.stake_pool, lamports)?;
 
         let state_bump = *ctx.bumps.get("state").unwrap();
         // CPI: Withdraw SOL from SPL stake pool into a stake account.
@@ -89,10 +93,10 @@ pub mod spl_beam {
 
         // CPI: Burn GSOL of the same proportion as the lamports withdrawn.
         sunrise_interface::burn_gsol(
-            ctx.accounts.deref(), 
-            ctx.accounts.beam_program.to_account_info(), 
+            ctx.accounts.deref(),
+            ctx.accounts.beam_program.to_account_info(),
             state_bump,
-            lamports
+            lamports,
         )?;
 
         Ok(())
@@ -389,7 +393,7 @@ pub struct WithdrawStake<'info> {
     pub validator_stake_list: UncheckedAccount<'info>,
     #[account(mut)]
     // The SPL StakePool program checks that this is either
-    // the stake account of a recognized validator, or the 
+    // the stake account of a recognized validator, or the
     // pool's reserve stake account.
     /// CHECK: The stake account to split from.
     pub stake_account_to_split: UncheckedAccount<'info>,

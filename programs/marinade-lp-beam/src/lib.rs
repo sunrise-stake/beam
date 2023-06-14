@@ -1,15 +1,17 @@
-use std::ops::Deref;
+#![allow(clippy::result_large_err)]
+
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
 use marinade_cpi::State as MarinadeState;
+use std::ops::Deref;
 
+mod cpi_interface;
 mod state;
 mod utils;
-mod cpi_interface;
 
-use state::State;
-use cpi_interface::sunrise as sunrise_interface;
 use cpi_interface::marinade_lp as marinade_lp_interface;
+use cpi_interface::sunrise as sunrise_interface;
+use state::State;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -30,8 +32,8 @@ pub mod marinade_lp_beam {
     }
 
     pub fn add_liquidity(ctx: Context<AddLiquidity>, lamports: u64) -> Result<()> {
-        // CPI: Add liquidity to Marinade liq_pool. The liq_pool tokens are minted into a 
-        // vault controlled by a PDA of this program. 
+        // CPI: Add liquidity to Marinade liq_pool. The liq_pool tokens are minted into a
+        // vault controlled by a PDA of this program.
         marinade_lp_interface::add_liquidity(ctx.accounts, lamports, None)?;
 
         let state_bump = *ctx.bumps.get("state").unwrap();
@@ -52,7 +54,7 @@ pub mod marinade_lp_beam {
             &ctx.accounts.marinade_state,
             &ctx.accounts.liq_pool_mint,
             &ctx.accounts.liq_pool_sol_leg_pda,
-            lamports
+            lamports,
         )?;
         // CPI: Remove liquidity from Marinade liq_pool. The liq_pool tokens vault owned by
         // this vault is the source burning lp tokens.
@@ -64,7 +66,7 @@ pub mod marinade_lp_beam {
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
             state_bump,
-            lamports
+            lamports,
         )?;
         Ok(())
     }
@@ -194,7 +196,7 @@ pub struct RemoveLiquidity<'info> {
     pub liq_pool_vault_authority: UncheckedAccount<'info>,
 
     #[account(mut, address = state.msol_token_account)]
-    /// CHECK: TODO! 
+    /// CHECK: TODO!
     pub transfer_msol_to: UncheckedAccount<'info>,
     #[account(mut)]
     /// CHECK: Checked in the Marinade program.
@@ -224,7 +226,6 @@ pub struct RemoveLiquidity<'info> {
     /// CHECK: The Marinade program ID.
     pub marinade_program: UncheckedAccount<'info>,
 }
-
 
 #[error_code]
 pub enum MarinadeLpBeamError {

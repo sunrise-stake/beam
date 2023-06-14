@@ -63,4 +63,3 @@ fn total_virtual_staked_lamports(marinade_state: &MarinadeState) -> u64 {
     total_lamports_under_control(marinade_state)
         .saturating_sub(marinade_state.circulating_ticket_balance) //tickets created -> cooling down lamports or lamports already in reserve and not claimed yet
 }
-

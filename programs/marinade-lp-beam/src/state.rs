@@ -33,8 +33,5 @@ impl State {
         32 + /*gsol_mint*/
         1  + /*liq_pool_vault_authority_bump*/
         32 + /*msol_token_account*/
-        32;  /*treasury*/
+        32; /*treasury*/
 }
-
-
-

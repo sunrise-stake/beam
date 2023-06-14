@@ -15,10 +15,10 @@ fn proportional(amount: u64, numerator: u64, denominator: u64) -> Result<u64> {
 }
 
 pub fn liq_pool_tokens_from_lamports(
-    marinade_state: &MarinadeState, 
+    marinade_state: &MarinadeState,
     liq_pool_mint: &Account<Mint>,
     liq_pool_sol_leg_pda: &AccountInfo,
-    lamports: u64
+    lamports: u64,
 ) -> Result<u64> {
     let liq_pool_lamports = liq_pool_sol_leg_pda
         .lamports()
@@ -28,4 +28,3 @@ pub fn liq_pool_tokens_from_lamports(
 
     proportional(liq_pool_mint_supply, lamports, liq_pool_lamports)
 }
-

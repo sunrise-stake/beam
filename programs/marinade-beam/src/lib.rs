@@ -1,18 +1,18 @@
 #![allow(clippy::result_large_err)]
 
-use std::ops::Deref;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::{program::invoke_signed, system_instruction};
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use marinade_cpi::{State as MarinadeState, TicketAccountData as MarinadeTicketAccount};
+use std::ops::Deref;
 
+mod cpi_interface;
 mod state;
 mod utils;
-mod cpi_interface;
 
-use state::{ProxyTicketAccount, State};
-use cpi_interface::sunrise as sunrise_interface;
 use cpi_interface::marinade as marinade_interface;
+use cpi_interface::sunrise as sunrise_interface;
+use state::{ProxyTicketAccount, State};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -33,8 +33,8 @@ pub mod marinade_beam {
     }
 
     pub fn deposit(ctx: Context<Deposit>, lamports: u64) -> Result<()> {
-        // CPI: Deposit SOL to Marinade pool. The msol tokens are minted into a vault controlled 
-        // by a PDA of this program. 
+        // CPI: Deposit SOL to Marinade pool. The msol tokens are minted into a vault controlled
+        // by a PDA of this program.
         marinade_interface::deposit(ctx.accounts, lamports)?;
 
         let bump = *ctx.bumps.get("state").unwrap();

@@ -1,5 +1,4 @@
 #![allow(clippy::result_large_err)]
-#![allow(unreachable_code)]
 
 mod instructions;
 mod state;

@@ -42,7 +42,11 @@ pub fn order_unstake(accounts: &crate::OrderUnstake, msol_lamports: u64) -> Resu
 
     let bump = &[accounts.state.msol_authority_bump][..];
     let state_address = accounts.state.key();
-    let seeds = &[state_address.as_ref(), crate::constants::VAULT_AUTHORITY, bump][..];
+    let seeds = &[
+        state_address.as_ref(),
+        crate::constants::VAULT_AUTHORITY,
+        bump,
+    ][..];
     cpi_order_unstake(cpi_ctx.with_signer(&[seeds]), msol_lamports)
 }
 
@@ -113,4 +117,3 @@ impl<'a> From<&crate::ClaimUnstakeTicket<'a>> for MarinadeClaim<'a> {
         }
     }
 }
-
