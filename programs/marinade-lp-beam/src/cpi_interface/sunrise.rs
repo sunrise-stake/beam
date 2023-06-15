@@ -21,8 +21,8 @@ pub fn mint_gsol<'a>(
     )
 }
 
-impl<'a> From<&crate::AddLiquidity<'a>> for MintGsol<'a> {
-    fn from(accounts: &crate::AddLiquidity<'a>) -> Self {
+impl<'a> From<&crate::Deposit<'a>> for MintGsol<'a> {
+    fn from(accounts: &crate::Deposit<'a>) -> Self {
         Self {
             state: accounts.sunrise_beam.to_account_info(),
             beam: accounts.state.to_account_info(),
@@ -51,8 +51,8 @@ pub fn burn_gsol<'a>(
     )
 }
 
-impl<'a> From<&crate::RemoveLiquidity<'a>> for BurnGsol<'a> {
-    fn from(accounts: &crate::RemoveLiquidity<'a>) -> Self {
+impl<'a> From<&crate::Withdraw<'a>> for BurnGsol<'a> {
+    fn from(accounts: &crate::Withdraw<'a>) -> Self {
         Self {
             state: accounts.sunrise_beam.to_account_info(),
             beam: accounts.state.to_account_info(),

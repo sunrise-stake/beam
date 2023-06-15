@@ -13,6 +13,9 @@ use cpi_interface::marinade_lp as marinade_lp_interface;
 use cpi_interface::sunrise as sunrise_interface;
 use state::State;
 
+// TODO: Use actual CPI crate.
+use sunrise_beam as sunrise_beam_cpi;
+
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 mod constants {
@@ -31,7 +34,12 @@ pub mod marinade_lp_beam {
         Ok(())
     }
 
-    pub fn add_liquidity(ctx: Context<AddLiquidity>, lamports: u64) -> Result<()> {
+    pub fn update(ctx: Context<Update>, update_input: State) -> Result<()> {
+        ctx.accounts.state.set_inner(update_input);
+        Ok(())
+    }
+
+    pub fn deposit(ctx: Context<Deposit>, lamports: u64) -> Result<()> {
         // CPI: Add liquidity to Marinade liq_pool. The liq_pool tokens are minted into a
         // vault controlled by a PDA of this program.
         marinade_lp_interface::add_liquidity(ctx.accounts, lamports, None)?;
@@ -48,7 +56,7 @@ pub mod marinade_lp_beam {
         Ok(())
     }
 
-    pub fn remove_liquidity(ctx: Context<RemoveLiquidity>, lamports: u64) -> Result<()> {
+    pub fn withdraw(ctx: Context<Withdraw>, lamports: u64) -> Result<()> {
         // Calculate the number of liq_pool tokens `lamports` is worth.
         let liq_pool_tokens = utils::liq_pool_tokens_from_lamports(
             &ctx.accounts.marinade_state,
@@ -70,6 +78,14 @@ pub mod marinade_lp_beam {
         )?;
         Ok(())
     }
+
+    pub fn order_withdrawal(_ctx: Context<Noop>) -> Result<()> {
+        Err(MarinadeLpBeamError::Unimplemented.into())
+    }
+
+    pub fn redeem_ticket(_ctx: Context<Noop>) -> Result<()> {
+        Err(MarinadeLpBeamError::Unimplemented.into())
+    }
 }
 
 #[derive(Accounts)]
@@ -88,7 +104,18 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
-pub struct AddLiquidity<'info> {
+pub struct Update<'info> {
+    #[account(mut)]
+    pub update_authority: Signer<'info>,
+    #[account(
+        mut,
+        has_one = update_authority
+    )]
+    pub state: Account<'info, State>,
+}
+
+#[derive(Accounts)]
+pub struct Deposit<'info> {
     #[account(
         mut,
         has_one = gsol_mint,
@@ -114,7 +141,7 @@ pub struct AddLiquidity<'info> {
     #[account(
         mut,
         token::mint = liq_pool_mint,
-        token::authority = liq_pool_vault_authority,
+        token::authority = vault_authority,
     )]
     pub liq_pool_token_vault: Account<'info, TokenAccount>,
     #[account(
@@ -122,33 +149,33 @@ pub struct AddLiquidity<'info> {
             state.key().as_ref(),
             constants::VAULT_AUTHORITY
         ],
-        bump = state.liq_pool_vault_authority_bump
+        bump = state.vault_authority_bump
     )]
     /// CHECK: The vault authority PDA with verified seeds.
-    pub liq_pool_vault_authority: UncheckedAccount<'info>,
+    pub vault_authority: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub gsol_mint: Account<'info, Mint>,
-    /// CHECK: Checked in the Sunrise beam program.
+    /// CHECK: Checked by Sunrise CPI.
     pub gsol_mint_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked in the Sunrise beam program.
+    /// CHECK: Checked by Sunrise CPI.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
     #[account(mut)]
-    /// CHECK: Checked in the Marinade program.
+    /// CHECK: Checked by Marinade CPI.
     pub liq_pool_sol_leg_pda: UncheckedAccount<'info>,
     #[account(mut)]
     pub liq_pool_msol_leg: Box<Account<'info, TokenAccount>>,
-    /// CHECK: Checked in the Marinade program.
+    /// CHECK: Checked by Marinade CPI.
     pub liq_pool_msol_leg_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked in the Marinade program.
+    /// CHECK: Checked by Marinade CPI.
     pub liq_pool_mint_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked in the Marinade program.
+    /// CHECK: Checked by Marinade CPI.
     pub system_program: UncheckedAccount<'info>,
-    /// CHECK: Checked in the Marinade program.
+    /// CHECK: Checked by Marinade CPI.
     pub token_program: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam::ID)]
+    #[account(address = sunrise_beam_cpi::ID)]
     /// CHECK: The Sunrise ProgramID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = marinade_cpi::ID)]
@@ -157,7 +184,7 @@ pub struct AddLiquidity<'info> {
 }
 
 #[derive(Accounts)]
-pub struct RemoveLiquidity<'info> {
+pub struct Withdraw<'info> {
     #[account(
         mut,
         has_one = gsol_mint,
@@ -182,7 +209,7 @@ pub struct RemoveLiquidity<'info> {
     #[account(
         mut,
         token::mint = liq_pool_mint,
-        token::authority = liq_pool_vault_authority,
+        token::authority = vault_authority,
     )]
     pub liq_pool_token_vault: Account<'info, TokenAccount>,
     #[account(
@@ -190,36 +217,35 @@ pub struct RemoveLiquidity<'info> {
             state.key().as_ref(),
             constants::VAULT_AUTHORITY
         ],
-        bump = state.liq_pool_vault_authority_bump
+        bump = state.vault_authority_bump
     )]
     /// CHECK: The vault authority PDA with verified seeds.
-    pub liq_pool_vault_authority: UncheckedAccount<'info>,
+    pub vault_authority: UncheckedAccount<'info>,
 
-    #[account(mut, address = state.msol_token_account)]
-    /// CHECK: TODO!
-    pub transfer_msol_to: UncheckedAccount<'info>,
+    #[account(mut, token::authority = vault_authority)]
+    pub transfer_msol_to: Account<'info, TokenAccount>,
     #[account(mut)]
-    /// CHECK: Checked in the Marinade program.
+    /// CHECK: Checked by Marinade CPI.
     pub liq_pool_sol_leg_pda: UncheckedAccount<'info>,
     #[account(mut)]
-    /// CHECK: Checked in the Marinade program.
+    /// CHECK: Checked by Marinade CPI.
     pub liq_pool_msol_leg: UncheckedAccount<'info>,
     #[account(mut)]
-    /// CHECK: Checked in the Marinade program.
+    /// CHECK: Checked by Marinade CPI.
     pub liq_pool_msol_leg_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked in the Marinade program.
+    /// CHECK: Checked by Marinade CPI.
     pub system_program: UncheckedAccount<'info>,
-    /// CHECK: Checked in the Marinade program.
+    /// CHECK: Checked by Marinade CPI.
     pub token_program: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub gsol_mint: Account<'info, Mint>,
-    /// CHECK: Checked in the Sunrise beam program.
+    /// CHECK: Checked by Sunrise CPI.
     pub gsol_mint_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked in the Sunrise beam program.
+    /// CHECK: Checked by Sunrise CPI.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam::ID)]
+    #[account(address = sunrise_beam_cpi::ID)]
     /// CHECK: The Sunrise program ID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = marinade_cpi::ID)]
@@ -227,8 +253,13 @@ pub struct RemoveLiquidity<'info> {
     pub marinade_program: UncheckedAccount<'info>,
 }
 
+#[derive(Accounts)]
+pub struct Noop {}
+
 #[error_code]
 pub enum MarinadeLpBeamError {
     #[msg("An error occurred during calculation")]
     CalculationFailure,
+    #[msg("This feature is unimplemented for this beam")]
+    Unimplemented,
 }
