@@ -76,7 +76,7 @@ pub mod marinade_beam {
         Ok(())
     }
 
-    pub fn liquid_unstake(ctx: Context<LiquidUnstake>, lamports: u64) -> Result<()> {
+    pub fn withdraw(ctx: Context<Withdraw>, lamports: u64) -> Result<()> {
         // Calculate how much msol_lamports need to be deposited to unstake `lamports` lamports.
         let msol_lamports =
             utils::calc_msol_from_lamports(ctx.accounts.marinade_state.as_ref(), lamports)?;
@@ -96,7 +96,7 @@ pub mod marinade_beam {
         Ok(())
     }
 
-    pub fn order_unstake(ctx: Context<OrderUnstake>, lamports: u64) -> Result<()> {
+    pub fn order_withdrawal(ctx: Context<OrderWithdrawal>, lamports: u64) -> Result<()> {
         // Calculate how much msol_lamports need to be deposited to unstake `lamports` lamports.
         let msol_lamports =
             utils::calc_msol_from_lamports(ctx.accounts.marinade_state.as_ref(), lamports)?;
@@ -121,7 +121,7 @@ pub mod marinade_beam {
         Ok(())
     }
 
-    pub fn claim_unstake_ticket(ctx: Context<ClaimUnstakeTicket>) -> Result<()> {
+    pub fn redeem_ticket(ctx: Context<RedeemTicket>) -> Result<()> {
         // CPI: Claim SOL via Marinade unstake ticket:
         marinade_interface::claim_unstake_ticket(ctx.accounts)?;
 
@@ -327,7 +327,7 @@ pub struct DepositStake<'info> {
 }
 
 #[derive(Accounts)]
-pub struct LiquidUnstake<'info> {
+pub struct Withdraw<'info> {
     #[account(
         mut,
         has_one = gsol_mint,
@@ -395,7 +395,7 @@ pub struct LiquidUnstake<'info> {
 }
 
 #[derive(Accounts)]
-pub struct OrderUnstake<'info> {
+pub struct OrderWithdrawal<'info> {
     #[account(
         mut,
         has_one = gsol_mint,
@@ -465,7 +465,7 @@ pub struct OrderUnstake<'info> {
 }
 
 #[derive(Accounts)]
-pub struct ClaimUnstakeTicket<'info> {
+pub struct RedeemTicket<'info> {
     #[account(mut, has_one = marinade_state)]
     pub state: Account<'info, State>,
     #[account(mut)]

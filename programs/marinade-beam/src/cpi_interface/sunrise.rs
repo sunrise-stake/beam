@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+// TODO: Use actual CPI crate.
 use sunrise_beam as sunrise_beam_cpi;
 use sunrise_beam_cpi::cpi::{
     accounts::{BurnGsol, MintGsol},
@@ -65,8 +66,8 @@ impl<'a> From<&crate::DepositStake<'a>> for MintGsol<'a> {
     }
 }
 
-impl<'a> From<&crate::LiquidUnstake<'a>> for BurnGsol<'a> {
-    fn from(accounts: &crate::LiquidUnstake<'a>) -> Self {
+impl<'a> From<&crate::Withdraw<'a>> for BurnGsol<'a> {
+    fn from(accounts: &crate::Withdraw<'a>) -> Self {
         Self {
             state: accounts.sunrise_state.to_account_info(),
             beam: accounts.state.to_account_info(),
@@ -79,8 +80,8 @@ impl<'a> From<&crate::LiquidUnstake<'a>> for BurnGsol<'a> {
     }
 }
 
-impl<'a> From<&crate::OrderUnstake<'a>> for BurnGsol<'a> {
-    fn from(accounts: &crate::OrderUnstake<'a>) -> Self {
+impl<'a> From<&crate::OrderWithdrawal<'a>> for BurnGsol<'a> {
+    fn from(accounts: &crate::OrderWithdrawal<'a>) -> Self {
         Self {
             state: accounts.sunrise_state.to_account_info(),
             beam: accounts.state.to_account_info(),

@@ -22,13 +22,13 @@ pub fn deposit_stake_account(accounts: &crate::DepositStake, validator_index: u3
     cpi_deposit_stake_account(cpi_ctx, validator_index)
 }
 
-pub fn liquid_unstake(accounts: &crate::LiquidUnstake, msol_lamports: u64) -> Result<()> {
+pub fn liquid_unstake(accounts: &crate::Withdraw, msol_lamports: u64) -> Result<()> {
     let cpi_program = accounts.marinade_program.to_account_info();
     let cpi_ctx = CpiContext::new(cpi_program, accounts.into());
     cpi_liquid_unstake(cpi_ctx, msol_lamports)
 }
 
-pub fn order_unstake(accounts: &crate::OrderUnstake, msol_lamports: u64) -> Result<()> {
+pub fn order_unstake(accounts: &crate::OrderWithdrawal, msol_lamports: u64) -> Result<()> {
     let cpi_program = accounts.marinade_program.to_account_info();
     let cpi_accounts = MarinadeOrderUnstake {
         state: accounts.marinade_state.to_account_info(),
@@ -52,7 +52,7 @@ pub fn order_unstake(accounts: &crate::OrderUnstake, msol_lamports: u64) -> Resu
     cpi_order_unstake(cpi_ctx.with_signer(&[seeds]), msol_lamports)
 }
 
-pub fn claim_unstake_ticket(accounts: &crate::ClaimUnstakeTicket) -> Result<()> {
+pub fn claim_unstake_ticket(accounts: &crate::RedeemTicket) -> Result<()> {
     let cpi_program = accounts.marinade_program.to_account_info();
     let cpi_ctx = CpiContext::new(cpi_program, accounts.into());
     cpi_marinade_claim(cpi_ctx)
@@ -98,8 +98,25 @@ impl<'a> From<&crate::DepositStake<'a>> for MarinadeDepositStakeAccount<'a> {
     }
 }
 
-impl<'a> From<&crate::OrderUnstake<'a>> for MarinadeOrderUnstake<'a> {
-    fn from(accounts: &crate::OrderUnstake<'a>) -> Self {
+impl<'a> From<&crate::Withdraw<'a>> for MarinadeLiquidUnstake<'a> {
+    fn from(accounts: &crate::Withdraw<'a>) -> Self {
+        Self {
+            state: accounts.marinade_state.to_account_info(),
+            msol_mint: accounts.msol_mint.to_account_info(),
+            liq_pool_sol_leg_pda: accounts.liq_pool_sol_leg_pda.to_account_info(),
+            liq_pool_msol_leg: accounts.liq_pool_msol_leg.to_account_info(),
+            treasury_msol_account: accounts.treasury_msol_account.to_account_info(),
+            get_msol_from: accounts.msol_vault.to_account_info(),
+            get_msol_from_authority: accounts.vault_authority.to_account_info(),
+            transfer_sol_to: accounts.withdrawer.to_account_info(),
+            system_program: accounts.system_program.to_account_info(),
+            token_program: accounts.token_program.to_account_info(),
+        }
+    }
+}
+
+impl<'a> From<&crate::OrderWithdrawal<'a>> for MarinadeOrderUnstake<'a> {
+    fn from(accounts: &crate::OrderWithdrawal<'a>) -> Self {
         Self {
             state: accounts.marinade_state.to_account_info(),
             msol_mint: accounts.msol_mint.to_account_info(),
@@ -113,8 +130,8 @@ impl<'a> From<&crate::OrderUnstake<'a>> for MarinadeOrderUnstake<'a> {
     }
 }
 
-impl<'a> From<&crate::ClaimUnstakeTicket<'a>> for MarinadeClaim<'a> {
-    fn from(accounts: &crate::ClaimUnstakeTicket<'a>) -> Self {
+impl<'a> From<&crate::RedeemTicket<'a>> for MarinadeClaim<'a> {
+    fn from(accounts: &crate::RedeemTicket<'a>) -> Self {
         Self {
             state: accounts.marinade_state.to_account_info(),
             reserve_pda: accounts.reserve_pda.to_account_info(),
@@ -122,23 +139,6 @@ impl<'a> From<&crate::ClaimUnstakeTicket<'a>> for MarinadeClaim<'a> {
             transfer_sol_to: accounts.beneficiary.to_account_info(),
             clock: accounts.clock.to_account_info(),
             system_program: accounts.system_program.to_account_info(),
-        }
-    }
-}
-
-impl<'a> From<&crate::LiquidUnstake<'a>> for MarinadeLiquidUnstake<'a> {
-    fn from(accounts: &crate::LiquidUnstake<'a>) -> Self {
-        Self {
-            state: accounts.marinade_state.to_account_info(),
-            msol_mint: accounts.msol_mint.to_account_info(),
-            liq_pool_sol_leg_pda: accounts.liq_pool_sol_leg_pda.to_account_info(),
-            liq_pool_msol_leg: accounts.liq_pool_msol_leg.to_account_info(),
-            treasury_msol_account: accounts.treasury_msol_account.to_account_info(),
-            get_msol_from: accounts.msol_vault.to_account_info(),
-            get_msol_from_authority: accounts.vault_authority.to_account_info(),
-            transfer_sol_to: accounts.withdrawer.to_account_info(),
-            system_program: accounts.system_program.to_account_info(),
-            token_program: accounts.token_program.to_account_info(),
         }
     }
 }
