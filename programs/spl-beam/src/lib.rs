@@ -12,6 +12,9 @@ use cpi_interface::spl as spl_interface;
 use cpi_interface::sunrise as sunrise_interface;
 use state::State;
 
+// TODO: Use actual CPI crate.
+use sunrise_beam as sunrise_beam_cpi;
+
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 mod constants {
@@ -27,6 +30,11 @@ pub mod spl_beam {
 
     pub fn initialize(ctx: Context<Initialize>, input: State) -> Result<()> {
         ctx.accounts.state.set_inner(input);
+        Ok(())
+    }
+
+    pub fn update(ctx: Context<Update>, update_input: State) -> Result<()> {
+        ctx.accounts.state.set_inner(update_input);
         Ok(())
     }
 
@@ -101,6 +109,16 @@ pub mod spl_beam {
 
         Ok(())
     }
+
+    pub fn order_withdrawal(_ctx: Context<Noop>) -> Result<()> {
+        // Spl stake pools only support immediate withdrawals.
+        Err(SplBeamError::Unimplemented.into())
+    }
+
+    pub fn redeem_ticket(_ctx: Context<Noop>) -> Result<()> {
+        // Spl stake pools only support immediate withdrawals.
+        Err(SplBeamError::Unimplemented.into())
+    }
 }
 
 #[derive(Accounts)]
@@ -119,11 +137,22 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
+pub struct Update<'info> {
+    #[account(mut)]
+    pub update_authority: Signer<'info>,
+    #[account(
+        mut,
+        has_one = update_authority
+    )]
+    pub state: Account<'info, State>,
+}
+
+#[derive(Accounts)]
 pub struct Deposit<'info> {
     #[account(
         mut,
         has_one = gsol_mint,
-        has_one = sunrise_beam,
+        has_one = sunrise_state,
         has_one = stake_pool,
         seeds = [constants::STATE], bump
     )]
@@ -133,7 +162,7 @@ pub struct Deposit<'info> {
     pub stake_pool: UncheckedAccount<'info>,
     #[account(mut)]
     /// CHECK: The main Sunrise beam state.
-    pub sunrise_beam: UncheckedAccount<'info>,
+    pub sunrise_state: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub depositor: Signer<'info>,
@@ -145,7 +174,7 @@ pub struct Deposit<'info> {
     #[account(
         mut,
         token::mint = pool_mint,
-        token::authority = pool_tokens_vault_auth
+        token::authority = vault_authority
     )]
     pub pool_tokens_vault: Account<'info, TokenAccount>,
     #[account(
@@ -156,26 +185,26 @@ pub struct Deposit<'info> {
         bump = state.vault_authority_bump
     )]
     /// CHECK: The vault authority PDA with verified seeds.
-    pub pool_tokens_vault_auth: UncheckedAccount<'info>,
+    pub vault_authority: UncheckedAccount<'info>,
 
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     pub stake_pool_withdraw_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     #[account(mut)]
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     pub reserve_stake_account: UncheckedAccount<'info>,
     #[account(mut)]
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     pub manager_fee_account: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub gsol_mint: Account<'info, Mint>,
-    /// CHECK: Checked in the Sunrise beam program.
+    /// CHECK: Checked by CPI to Sunrise.
     pub gsol_mint_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked in the Sunrise beam program.
+    /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam::ID)]
+    #[account(address = sunrise_beam_cpi::ID)]
     /// CHECK: The Sunrise ProgramID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = spl_stake_pool::ID)]
@@ -191,7 +220,7 @@ pub struct DepositStake<'info> {
     #[account(
         mut,
         has_one = gsol_mint,
-        has_one = sunrise_beam,
+        has_one = sunrise_state,
         has_one = stake_pool,
         seeds = [constants::STATE], bump
     )]
@@ -201,7 +230,7 @@ pub struct DepositStake<'info> {
     pub stake_pool: UncheckedAccount<'info>,
     #[account(mut)]
     /// CHECK: The main Sunrise beam state.
-    pub sunrise_beam: UncheckedAccount<'info>,
+    pub sunrise_state: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub stake_owner: Signer<'info>,
@@ -216,7 +245,7 @@ pub struct DepositStake<'info> {
     #[account(
         mut,
         token::mint = pool_mint,
-        token::authority = pool_tokens_vault_auth
+        token::authority = vault_authority
     )]
     pub pool_tokens_vault: Account<'info, TokenAccount>,
     #[account(
@@ -227,39 +256,39 @@ pub struct DepositStake<'info> {
         bump = state.vault_authority_bump
     )]
     /// CHECK: The vault authority PDA with verified seeds.
-    pub pool_tokens_vault_auth: UncheckedAccount<'info>,
+    pub vault_authority: UncheckedAccount<'info>,
 
     #[account(mut)]
-    /// CHECK: Checked in SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool program.
     pub validator_list: UncheckedAccount<'info>,
-    /// CHECK: Checked in SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool program.
     pub stake_pool_deposit_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked in SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool program.
     pub stake_pool_withdraw_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked in SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool program.
     #[account(mut)]
-    /// CHECK: Checked in SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool program.
     pub reserve_stake_account: UncheckedAccount<'info>,
-    /// CHECK: Checked in SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool program.
     pub validator_stake_account: UncheckedAccount<'info>,
     #[account(mut)]
-    /// CHECK: Checked in SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool program.
     pub manager_fee_account: UncheckedAccount<'info>,
-    /// CHECK: Checked in SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool program.
     pub sysvar_stake_history: UncheckedAccount<'info>,
-    /// CHECK: Checked in SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool program.
     pub sysvar_clock: UncheckedAccount<'info>,
-    /// CHECK: Checked in SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool program.
     pub native_stake_program: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub gsol_mint: Account<'info, Mint>,
-    /// CHECK: Checked in the Sunrise beam program.
+    /// CHECK: Checked by CPI to Sunrise.
     pub gsol_mint_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked in the Sunrise beam program.
+    /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam::ID)]
+    #[account(address = sunrise_beam_cpi::ID)]
     /// CHECK: The Sunrise ProgramID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = spl_stake_pool::ID)]
@@ -275,7 +304,7 @@ pub struct Withdraw<'info> {
     #[account(
         mut,
         has_one = gsol_mint,
-        has_one = sunrise_beam,
+        has_one = sunrise_state,
         has_one = stake_pool,
         seeds = [constants::STATE], bump
     )]
@@ -285,7 +314,7 @@ pub struct Withdraw<'info> {
     pub stake_pool: UncheckedAccount<'info>,
     #[account(mut)]
     /// CHECK: The main Sunrise beam state.
-    pub sunrise_beam: UncheckedAccount<'info>,
+    pub sunrise_state: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub withdrawer: Signer<'info>,
@@ -297,7 +326,7 @@ pub struct Withdraw<'info> {
     #[account(
         mut,
         token::mint = pool_mint,
-        token::authority = pool_tokens_vault_auth
+        token::authority = vault_authority
     )]
     pub pool_tokens_vault: Account<'info, TokenAccount>,
     #[account(
@@ -308,32 +337,32 @@ pub struct Withdraw<'info> {
         bump = state.vault_authority_bump
     )]
     /// CHECK: The vault authority PDA with verified seeds.
-    pub pool_tokens_vault_auth: UncheckedAccount<'info>,
+    pub vault_authority: UncheckedAccount<'info>,
 
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     pub stake_pool_withdraw_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     #[account(mut)]
-    /// CHECK: Checked in SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool program.
     pub reserve_stake_account: UncheckedAccount<'info>,
     #[account(mut)]
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     pub manager_fee_account: UncheckedAccount<'info>,
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     pub sysvar_stake_history: UncheckedAccount<'info>,
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     pub sysvar_clock: UncheckedAccount<'info>,
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     pub native_stake_program: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub gsol_mint: Account<'info, Mint>,
-    /// CHECK: Checked in the Sunrise beam program.
+    /// CHECK: Checked by CPI to Sunrise.
     pub gsol_mint_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked in the Sunrise beam program.
+    /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam::ID)]
+    #[account(address = sunrise_beam_cpi::ID)]
     /// CHECK: The Sunrise program ID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = spl_stake_pool::ID)]
@@ -349,17 +378,17 @@ pub struct WithdrawStake<'info> {
     #[account(
         mut,
         has_one = gsol_mint,
-        has_one = sunrise_beam,
+        has_one = sunrise_state,
         has_one = stake_pool,
         seeds = [constants::STATE], bump
     )]
     pub state: Account<'info, State>,
     #[account(mut)]
-    /// CHECK: The registered Spl stake pool.
+    /// CHECK: The registered spl stake pool.
     pub stake_pool: UncheckedAccount<'info>,
     #[account(mut)]
     /// CHECK: The main Sunrise beam state.
-    pub sunrise_beam: UncheckedAccount<'info>,
+    pub sunrise_state: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub withdrawer: Signer<'info>,
@@ -373,7 +402,7 @@ pub struct WithdrawStake<'info> {
     #[account(
         mut,
         token::mint = pool_mint,
-        token::authority = pool_tokens_vault_auth
+        token::authority = vault_authority
     )]
     pub pool_tokens_vault: Account<'info, TokenAccount>,
     #[account(
@@ -384,12 +413,12 @@ pub struct WithdrawStake<'info> {
         bump = state.vault_authority_bump
     )]
     /// CHECK: The vault authority PDA with verified seeds.
-    pub pool_tokens_vault_auth: UncheckedAccount<'info>,
+    pub vault_authority: UncheckedAccount<'info>,
 
-    /// CHECK: Checked in SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool program.
     pub stake_pool_withdraw_authority: UncheckedAccount<'info>,
     #[account(mut)]
-    /// CHECK: Checked in SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool program.
     pub validator_stake_list: UncheckedAccount<'info>,
     #[account(mut)]
     // The SPL StakePool program checks that this is either
@@ -397,25 +426,25 @@ pub struct WithdrawStake<'info> {
     // pool's reserve stake account.
     /// CHECK: The stake account to split from.
     pub stake_account_to_split: UncheckedAccount<'info>,
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     #[account(mut)]
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     pub manager_fee_account: UncheckedAccount<'info>,
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     pub sysvar_stake_history: UncheckedAccount<'info>,
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     pub sysvar_clock: UncheckedAccount<'info>,
-    /// CHECK: Checked in the SPL StakePool Program.
+    /// CHECK: Checked by CPI to SPL StakePool Program.
     pub native_stake_program: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub gsol_mint: Account<'info, Mint>,
-    /// CHECK: Checked in the Sunrise beam program.
+    /// CHECK: Checked by CPI to Sunrise.
     pub gsol_mint_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked in the Sunrise beam program.
+    /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam::ID)]
+    #[account(address = sunrise_beam_cpi::ID)]
     /// CHECK: The Sunrise ProgramID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = spl_stake_pool::ID)]
@@ -426,10 +455,15 @@ pub struct WithdrawStake<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+#[derive(Accounts)]
+pub struct Noop {}
+
 #[error_code]
 pub enum SplBeamError {
     #[msg("No delegation for stake account deposit")]
     NotDelegated,
     #[msg("An error occurred during calculation")]
     CalculationFailure,
+    #[msg("This feature is unimplemented for this beam")]
+    Unimplemented,
 }
