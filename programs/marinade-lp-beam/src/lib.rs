@@ -80,10 +80,12 @@ pub mod marinade_lp_beam {
     }
 
     pub fn order_withdrawal(_ctx: Context<Noop>) -> Result<()> {
+        // Marinade liq_pool only supports immediate withdrawals.
         Err(MarinadeLpBeamError::Unimplemented.into())
     }
 
     pub fn redeem_ticket(_ctx: Context<Noop>) -> Result<()> {
+        // Marinade liq_pool only supports immediate withdrawals.
         Err(MarinadeLpBeamError::Unimplemented.into())
     }
 }
@@ -119,7 +121,7 @@ pub struct Deposit<'info> {
     #[account(
         mut,
         has_one = gsol_mint,
-        has_one = sunrise_beam,
+        has_one = sunrise_state,
         has_one = marinade_state,
         seeds = [constants::STATE], bump
     )]
@@ -129,7 +131,7 @@ pub struct Deposit<'info> {
     pub marinade_state: UncheckedAccount<'info>,
     #[account(mut)]
     /// CHECK: The main Sunrise beam state.
-    pub sunrise_beam: UncheckedAccount<'info>,
+    pub sunrise_state: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub depositor: Signer<'info>,
@@ -188,7 +190,7 @@ pub struct Withdraw<'info> {
     #[account(
         mut,
         has_one = gsol_mint,
-        has_one = sunrise_beam,
+        has_one = sunrise_state,
         has_one = marinade_state,
         seeds = [constants::STATE], bump
     )]
@@ -197,7 +199,7 @@ pub struct Withdraw<'info> {
     pub marinade_state: Account<'info, MarinadeState>,
     #[account(mut)]
     /// CHECK: The main Sunrise beam state.
-    pub sunrise_beam: UncheckedAccount<'info>,
+    pub sunrise_state: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub withdrawer: Signer<'info>,
