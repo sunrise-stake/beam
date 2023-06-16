@@ -5,7 +5,7 @@ pub struct State {
     /// The update authority of the state.
     pub update_authority: Pubkey,
 
-    /// The marinade state account.
+    /// The marinade state account for this liquidity pool.
     pub marinade_state: Pubkey,
 
     /// The state of the main sunrise beam.
@@ -14,8 +14,8 @@ pub struct State {
     /// The sunrise gsol mint.
     pub gsol_mint: Pubkey,
 
-    //// The bump of the PDA that can authorize spending from the vault
-    /// that holds pool tokens(msol in this case).
+    /// The bump of the PDA that can authorize spending from the vault
+    /// that holds pool tokens(both liq_pool and marinade stake pool).
     pub vault_authority_bump: u8,
 
     /// This state's SOL vault.
@@ -30,15 +30,4 @@ impl State {
         32 + /*gsol_mint*/
         1  + /*vault_authority_bump*/
         32; /*treasury*/
-}
-
-/// Maps a Marinade ticket account to a GSOL token holder
-#[account]
-pub struct ProxyTicketAccount {
-    pub state_address: Pubkey,
-    pub marinade_ticket_account: Pubkey,
-    pub beneficiary: Pubkey,
-}
-impl ProxyTicketAccount {
-    pub const SPACE: usize = 32 + 32 + 32 + 8 /* DISCRIMINATOR */;
 }
