@@ -102,7 +102,7 @@ pub struct RegisterState<'info> {
 
     pub gsol_mint: Account<'info, Mint>,
 
-    /// CHECK: validate PDA seeds.
+    /// CHECK: Valid PDA seeds.
     #[account(
         seeds = [
             state.key().as_ref(),
@@ -113,8 +113,6 @@ pub struct RegisterState<'info> {
     pub gsol_mint_authority: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
-
-    pub token_program: Program<'info, Token>,
 
     pub rent: Sysvar<'info, Rent>,
 }
@@ -172,7 +170,6 @@ pub struct BurnGsol<'info> {
     pub gsol_mint: Account<'info, Mint>,
 
     pub burn_gsol_from_owner: Signer<'info>,
-
     #[account(
         mut,
         token::mint = gsol_mint,
