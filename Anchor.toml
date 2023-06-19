@@ -1,3 +1,6 @@
+[workspace]
+types = "client/sdks/types"
+
 [features]
 seeds = false
 skip-lint = false
