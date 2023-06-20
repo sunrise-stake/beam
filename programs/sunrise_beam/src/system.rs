@@ -9,7 +9,7 @@ pub fn check_beam_validity(
     beam: &AccountInfo,
     cpi_program_id: &Pubkey,
 ) -> Result<()> {
-    if state.contains_beam(beam.key) {
+    if !state.contains_beam(beam.key) {
         return Err(BeamError::UnidentifiedBeam.into());
     }
     if beam.owner != cpi_program_id {

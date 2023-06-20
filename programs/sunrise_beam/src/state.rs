@@ -106,7 +106,7 @@ impl State {
         // * Completely fill up the vec so that the length also gives the capacity.
         // * Add a beam by finding and replacing a default BeamDetails struct.
         // * Remove a beam by replacing it with a default BeamDetails struct.
-        self.allocations = vec![BeamDetails::default(); input.initial_capacity];
+        self.allocations = vec![BeamDetails::default(); input.initial_capacity as usize];
     }
 
     /// Update the fields of a [State] object.
@@ -195,7 +195,7 @@ impl State {
 pub struct RegisterStateInput {
     pub update_authority: Pubkey,
     pub yield_account: Pubkey,
-    pub initial_capacity: usize,
+    pub initial_capacity: u8,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]

@@ -41,11 +41,8 @@ pub mod sunrise_beam {
     }
 
     /// Resize the state so it can append `additional` more allocations.
-    pub fn resize_allocations(
-        ctx: Context<ResizeAllocations>,
-        additional_beams: usize,
-    ) -> Result<()> {
-        resize_allocations::handler(ctx, additional_beams)
+    pub fn resize_allocations(ctx: Context<ResizeAllocations>, additional_beams: u8) -> Result<()> {
+        resize_allocations::handler(ctx, additional_beams as usize)
     }
 
     /// Updates allocations for beams.
@@ -96,7 +93,7 @@ pub struct RegisterState<'info> {
     #[account(
         init,
         payer = payer,
-        space = State::size(input.initial_capacity),
+        space = State::size(input.initial_capacity as usize),
     )]
     pub state: Account<'info, State>,
 
@@ -262,7 +259,7 @@ pub struct ResizeAllocations<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    #[account(has_one = update_authority)]
+    #[account(mut, has_one = update_authority)]
     pub state: Account<'info, State>,
 
     pub system_program: Program<'info, System>,
