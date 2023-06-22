@@ -179,7 +179,6 @@ pub struct Update<'info> {
 pub struct Deposit<'info> {
     #[account(
         mut,
-        has_one = gsol_mint,
         has_one = sunrise_state,
         has_one = marinade_state,
         seeds = [constants::STATE], bump
@@ -217,6 +216,7 @@ pub struct Deposit<'info> {
     pub vault_authority: UncheckedAccount<'info>,
 
     #[account(mut)]
+    // Verified in CPI to Sunrise program.
     pub gsol_mint: Account<'info, Mint>,
     /// CHECK: Checked by Sunrise CPI.
     pub gsol_mint_authority: UncheckedAccount<'info>,
@@ -252,7 +252,6 @@ pub struct Deposit<'info> {
 pub struct DepositStake<'info> {
     #[account(
         mut,
-        has_one = gsol_mint,
         has_one = sunrise_state,
         has_one = marinade_state,
         seeds = [constants::STATE], bump
@@ -293,6 +292,7 @@ pub struct DepositStake<'info> {
     pub vault_authority: UncheckedAccount<'info>,
 
     #[account(mut)]
+    /// Verified in CPI to Sunrise program.
     pub gsol_mint: Account<'info, Mint>,
     /// CHECK: Checked by Sunrise CPI.
     pub gsol_mint_authority: UncheckedAccount<'info>,
@@ -330,7 +330,6 @@ pub struct DepositStake<'info> {
 pub struct Withdraw<'info> {
     #[account(
         mut,
-        has_one = gsol_mint,
         has_one = sunrise_state,
         has_one = marinade_state,
         seeds = [constants::STATE], bump
@@ -347,6 +346,7 @@ pub struct Withdraw<'info> {
     #[account(mut, token::mint = gsol_mint)]
     pub gsol_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
+    /// Verified in CPI to Sunrise program.
     pub gsol_mint: Account<'info, Mint>,
 
     #[account(mut)]
@@ -398,7 +398,6 @@ pub struct Withdraw<'info> {
 pub struct OrderWithdrawal<'info> {
     #[account(
         mut,
-        has_one = gsol_mint,
         has_one = sunrise_state,
         has_one = marinade_state,
         seeds = [constants::STATE], bump
@@ -415,6 +414,7 @@ pub struct OrderWithdrawal<'info> {
     #[account(mut, token::mint = gsol_mint)]
     pub gsol_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
+    /// Verified in CPI to Sunrise program.
     pub gsol_mint: Account<'info, Mint>,
 
     #[account(mut)]
