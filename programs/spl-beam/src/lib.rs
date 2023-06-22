@@ -122,6 +122,7 @@ pub mod spl_beam {
 }
 
 #[derive(Accounts)]
+#[instruction(input: State)]
 pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -129,7 +130,7 @@ pub struct Initialize<'info> {
         init,
         space = State::SPACE,
         payer = payer,
-        seeds = [constants::STATE],
+        seeds = [constants::STATE, input.sunrise_state.as_ref()],
         bump
     )]
     pub state: Account<'info, State>,
@@ -153,7 +154,8 @@ pub struct Deposit<'info> {
         mut,
         has_one = sunrise_state,
         has_one = stake_pool,
-        seeds = [constants::STATE], bump
+        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        bump
     )]
     pub state: Account<'info, State>,
     #[account(mut)]
@@ -221,7 +223,8 @@ pub struct DepositStake<'info> {
         mut,
         has_one = sunrise_state,
         has_one = stake_pool,
-        seeds = [constants::STATE], bump
+        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        bump
     )]
     pub state: Account<'info, State>,
     #[account(mut)]
@@ -305,7 +308,8 @@ pub struct Withdraw<'info> {
         mut,
         has_one = sunrise_state,
         has_one = stake_pool,
-        seeds = [constants::STATE], bump
+        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        bump
     )]
     pub state: Account<'info, State>,
     #[account(mut)]
@@ -379,7 +383,8 @@ pub struct WithdrawStake<'info> {
         mut,
         has_one = sunrise_state,
         has_one = stake_pool,
-        seeds = [constants::STATE], bump
+        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        bump
     )]
     pub state: Account<'info, State>,
     #[account(mut)]

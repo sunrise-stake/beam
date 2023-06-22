@@ -150,6 +150,7 @@ pub mod marinade_beam {
 }
 
 #[derive(Accounts)]
+#[instruction(input: State)]
 pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -157,7 +158,7 @@ pub struct Initialize<'info> {
         init,
         space = State::SPACE,
         payer = payer,
-        seeds = [constants::STATE],
+        seeds = [constants::STATE, input.sunrise_state.as_ref()],
         bump
     )]
     pub state: Account<'info, State>,
@@ -180,8 +181,7 @@ pub struct Deposit<'info> {
     #[account(
         mut,
         has_one = sunrise_state,
-        has_one = marinade_state,
-        seeds = [constants::STATE], bump
+        has_one = marinade_state
     )]
     pub state: Account<'info, State>,
     #[account(mut)]
@@ -253,8 +253,7 @@ pub struct DepositStake<'info> {
     #[account(
         mut,
         has_one = sunrise_state,
-        has_one = marinade_state,
-        seeds = [constants::STATE], bump
+        has_one = marinade_state
     )]
     pub state: Account<'info, State>,
     #[account(mut)]
@@ -331,8 +330,7 @@ pub struct Withdraw<'info> {
     #[account(
         mut,
         has_one = sunrise_state,
-        has_one = marinade_state,
-        seeds = [constants::STATE], bump
+        has_one = marinade_state
     )]
     pub state: Account<'info, State>,
     #[account(mut)]
@@ -399,8 +397,7 @@ pub struct OrderWithdrawal<'info> {
     #[account(
         mut,
         has_one = sunrise_state,
-        has_one = marinade_state,
-        seeds = [constants::STATE], bump
+        has_one = marinade_state
     )]
     pub state: Account<'info, State>,
     #[account(mut)]
