@@ -11,15 +11,15 @@ pub struct State {
     /// The state of the main sunrise beam.
     pub sunrise_state: Pubkey,
 
-    /// The sunrise gsol mint.
-    pub gsol_mint: Pubkey,
-
     /// The bump of the PDA that can authorize spending from the vault
     /// that holds pool tokens(both liq_pool and marinade stake pool).
     pub vault_authority_bump: u8,
 
     /// This state's SOL vault.
     pub treasury: Pubkey,
+
+    /// The token-account that receives msol when withdrawing liquidity.
+    pub msol_token_account: Pubkey,
 }
 
 impl State {
@@ -27,7 +27,7 @@ impl State {
         32 + /*update_authority*/
         32 + /*marinade_state*/
         32 + /*sunrise_state*/
-        32 + /*gsol_mint*/
         1  + /*vault_authority_bump*/
-        32; /*treasury*/
+        32 + /*treasury*/
+        32; /*msol-token-account*/
 }
