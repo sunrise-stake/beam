@@ -14,8 +14,8 @@ import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { type AnchorProvider, Wallet } from "@coral-xyz/anchor";
-import { SunriseStake } from "../sdks/sunrise/src";
+import { type AnchorProvider } from "@coral-xyz/anchor";
+import { SunriseClient } from "../sdks/sunrise/src";
 
 export const sendAndConfirmTransaction = (
   provider: AnchorProvider,
@@ -83,7 +83,7 @@ export const transferMintAuthority = async (
 };
 
 export const createGSolTokenAccount = async (
-  client: SunriseStake,
+  client: SunriseClient,
   owner: PublicKey
 ): Promise<void> => {
   let account = PublicKey.findProgramAddressSync(

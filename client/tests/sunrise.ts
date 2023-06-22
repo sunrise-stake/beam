@@ -1,6 +1,6 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { AnchorError, AnchorProvider, BN } from "@coral-xyz/anchor";
-import { SunriseStake } from "../sdks/sunrise/src";
+import { SunriseClient } from "../sdks/sunrise/src";
 import { expect } from "chai";
 import {
   createGSolTokenAccount,
@@ -16,10 +16,10 @@ const BEAM_DETAILS_LEN: number = 42;
 
 describe("sunrise-stake", () => {
   let provider = AnchorProvider.env();
-  let client: SunriseStake;
+  let client: SunriseClient;
   let beamKps: Keypair[] = [];
   let beams: PublicKey[];
-  let owner = Keypair.generate();
+  let testUser = Keypair.generate();
   let tokenAccount: PublicKey;
 
   it("can register a new sunrise-stake state", async () => {
@@ -27,7 +27,7 @@ describe("sunrise-stake", () => {
     let yieldAccount = Keypair.generate();
     let { mint, authority } = await initializeTestMint(provider);
 
-    client = await SunriseStake.register(
+    client = await SunriseClient.register(
       provider,
       state,
       provider.publicKey,
@@ -43,7 +43,9 @@ describe("sunrise-stake", () => {
     let account = client.account.pretty();
     expect(account.address).to.equal(state.publicKey.toBase58());
     expect(account.yieldAccount).to.equal(yieldAccount.publicKey.toBase58());
-    expect(account.gsolAuthBump).to.equal(client.gsolMintAuthority()[1]);
+    expect(account.gsolAuthBump).to.equal(
+      client.gsolMintAuthority()[1].toString()
+    );
     expect(account.preSupply).to.equal("0");
     expect(account.gsolMint).to.equal(mint.toBase58());
     expect(account.updateAuthority).to.equal(provider.publicKey.toBase58());
@@ -63,7 +65,7 @@ describe("sunrise-stake", () => {
   it("can update a sunrise state", async () => {
     let newYieldAccount = Keypair.generate().publicKey;
     let tx = await client.updateState(null, newYieldAccount, null, null);
-    await sendAndConfirmTransaction(provider, tx);
+    await sendAndConfirmTransaction(provider, tx, []);
     await client.refresh();
 
     // changed
@@ -82,14 +84,14 @@ describe("sunrise-stake", () => {
 
     for (let beam of beams) {
       let tx = await client.registerBeam(beam);
-      await sendAndConfirmTransaction(provider, tx);
+      await sendAndConfirmTransaction(provider, tx, []);
     }
 
     await client.refresh();
     let account = client.account.pretty();
     for (let i = 0; i < 5; ++i) {
       expect(account.beams[i].key).to.equal(beams[i].toBase58());
-      expect(account.beams[i].allocation).to.equal(0);
+      expect(account.beams[i].allocation).to.equal("0");
       expect(account.beams[i].minted).to.equal("0");
     }
     for (let beam of account.beams.slice(5, 15)) {
@@ -150,17 +152,18 @@ describe("sunrise-stake", () => {
 
     for (let beam of client.account.pretty().beams) {
       if (beam.key == beams[0].toBase58() || beam.key == beams[3].toBase58()) {
-        expect(beam.allocation).to.equal(50);
+        expect(beam.allocation).to.equal("50");
       } else {
-        expect(beam.allocation).to.equal(0);
+        expect(beam.allocation).to.equal("0");
       }
     }
   });
 
   it("can't mint Gsol without CPI", async () => {
-    await createGSolTokenAccount(client, owner.publicKey);
-    let accounts = client.mintGsolAccounts(beams[1], owner.publicKey);
+    await createGSolTokenAccount(client, testUser.publicKey);
+    let accounts = client.mintGsolAccounts(beams[1], testUser.publicKey);
     tokenAccount = accounts.mintGsolTo;
+    let thrown = false;
     try {
       await client.program.methods
         .mintGsol(new BN(10))
@@ -168,31 +171,31 @@ describe("sunrise-stake", () => {
         .signers([beamKps[1]])
         .rpc();
     } catch (_err) {
+      thrown = true;
       const err: AnchorError = _err;
       expect(err.error.errorCode.code).to.equal("UnidentifiedCallingProgram");
       expect(err.error.errorCode.number).to.equal(6007);
       expect(err.program.equals(client.program.programId)).is.true;
     }
+    expect(thrown).to.be.true;
   });
 
   it("can't burn Gsol without CPI", async () => {
-    let accounts = client.burnGsolAccounts(
-      beams[4],
-      tokenAccount,
-      owner.publicKey
-    );
+    let accounts = client.burnGsolAccounts(beams[4], testUser.publicKey);
+    let thrown = false;
     try {
       await client.program.methods
         .burnGsol(new BN(10))
         .accounts(accounts)
-        .signers([beamKps[4], owner])
+        .signers([beamKps[4], testUser])
         .rpc();
     } catch (_err) {
-      console.log(_err);
+      thrown = true;
       const err: AnchorError = _err;
       expect(err.error.errorCode.code).to.equal("UnidentifiedCallingProgram");
       expect(err.error.errorCode.number).to.equal(6007);
       expect(err.program.equals(client.program.programId)).is.true;
     }
+    expect(thrown).to.be.true;
   });
 });
