@@ -377,8 +377,6 @@ pub struct Withdraw<'info> {
     pub treasury_msol_account: UncheckedAccount<'info>,
 
     /// CHECK: Checked by Sunrise CPI.
-    pub gsol_mint_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked by Sunrise CPI.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
     #[account(address = sunrise_beam_cpi::ID)]
@@ -433,8 +431,6 @@ pub struct OrderWithdrawal<'info> {
     )]
     pub vault_authority: UncheckedAccount<'info>,
 
-    /// CHECK: Checked by Sunrise CPI.
-    pub gsol_mint_authority: UncheckedAccount<'info>,
     /// CHECK: Checked by Sunrise CPI.
     pub instructions_sysvar: UncheckedAccount<'info>,
 

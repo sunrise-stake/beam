@@ -246,8 +246,6 @@ pub struct Withdraw<'info> {
     /// Verified in CPI to Sunrise program.
     pub gsol_mint: Account<'info, Mint>,
     /// CHECK: Checked by Sunrise CPI.
-    pub gsol_mint_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked by Sunrise CPI.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
     #[account(address = sunrise_beam_cpi::ID)]
