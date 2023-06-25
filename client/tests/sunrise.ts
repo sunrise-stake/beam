@@ -1,47 +1,55 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { AnchorError, AnchorProvider, BN } from "@coral-xyz/anchor";
+import { AnchorError, AnchorProvider, Wallet } from "@coral-xyz/anchor";
 import { SunriseClient } from "../sdks/sunrise/src";
 import { expect } from "chai";
 import {
-  createGSolTokenAccount,
+  airdropTo,
+  createTokenAccount,
+  createKeypairFromFile,
   initializeTestMint,
   sendAndConfirmTransaction,
   transferMintAuthority,
+  expectStakerSolBalance,
+  expectAssociatedTokenAccountBalanceB,
+  waitForNextEpoch,
+  solBalance,
 } from "./utils";
+import { MarinadeClient } from "../sdks/marinade-sp/src";
+import BN from "bn.js";
 
-const TEST_PROGRAM_ID: PublicKey = new PublicKey(
-  "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-);
 const BEAM_DETAILS_LEN: number = 42;
+const provider = AnchorProvider.env();
+const path = process.cwd() + "/client/tests/fixtures/sunrise_state.json";
+const sunrise = createKeypairFromFile(path);
+let gsolMint: PublicKey;
 
 describe("sunrise-stake", () => {
-  let provider = AnchorProvider.env();
   let client: SunriseClient;
-  let beamKps: Keypair[] = [];
+  let mState: PublicKey; // marinade-beam state address.
+  let splState: PublicKey; // spl-beam state address.
+  let tempBeam = Keypair.generate();
   let beams: PublicKey[];
-  let testUser = Keypair.generate();
   let tokenAccount: PublicKey;
 
   it("can register a new sunrise-stake state", async () => {
-    let state = Keypair.generate();
-    let yieldAccount = Keypair.generate();
+    const yieldAccount = Keypair.generate();
     let { mint, authority } = await initializeTestMint(provider);
+    gsolMint = mint;
 
     client = await SunriseClient.register(
       provider,
-      state,
+      sunrise,
       provider.publicKey,
       yieldAccount.publicKey,
       15,
-      mint,
-      TEST_PROGRAM_ID
+      mint
     );
     await client.refresh();
 
     expect(client.account).to.not.be.undefined;
 
     let account = client.account.pretty();
-    expect(account.address).to.equal(state.publicKey.toBase58());
+    expect(account.address).to.equal(sunrise.publicKey.toBase58());
     expect(account.yieldAccount).to.equal(yieldAccount.publicKey.toBase58());
     expect(account.gsolAuthBump).to.equal(
       client.gsolMintAuthority()[1].toString()
@@ -79,8 +87,9 @@ describe("sunrise-stake", () => {
   });
 
   it("can add beams to the state", async () => {
-    for (let i = 0; i < 5; ++i) beamKps.push(Keypair.generate());
-    beams = beamKps.map((kp) => kp.publicKey);
+    mState = MarinadeClient.deriveStateAddress(client.state)[0];
+    splState = Keypair.generate().publicKey; // TODO: Use valid derived spl state.
+    beams = [mState, splState, tempBeam.publicKey];
 
     for (let beam of beams) {
       let tx = await client.registerBeam(beam);
@@ -89,30 +98,17 @@ describe("sunrise-stake", () => {
 
     await client.refresh();
     let account = client.account.pretty();
-    for (let i = 0; i < 5; ++i) {
-      expect(account.beams[i].key).to.equal(beams[i].toBase58());
-      expect(account.beams[i].allocation).to.equal("0");
-      expect(account.beams[i].minted).to.equal("0");
+    for (let beam of account.beams) {
+      expect(beam.allocation).to.equal("0");
+      expect(beam.minted).to.equal("0");
     }
-    for (let beam of account.beams.slice(5, 15)) {
+    expect(account.beams[0].key).to.equal(mState.toBase58());
+    expect(account.beams[1].key).to.equal(splState.toBase58());
+    expect(account.beams[2].key).to.equal(tempBeam.publicKey.toBase58());
+
+    for (let beam of account.beams.slice(3, 15)) {
       expect(beam.key).to.equal(PublicKey.default.toBase58());
     }
-  });
-
-  it("can remove a beam from the state", async () => {
-    let removed = beams[2];
-    let tx = await client.removeBeam(removed);
-    await sendAndConfirmTransaction(provider, tx);
-    await client.refresh();
-
-    expect(
-      client.account.beams.find(
-        (beam) => beam.key.toBase58() == removed.toBase58()
-      )
-    ).to.be.undefined;
-    expect(client.account.beams[2].key.toBase58()).to.equal(
-      PublicKey.default.toBase58()
-    );
   });
 
   it("can resize the state", async () => {
@@ -137,11 +133,11 @@ describe("sunrise-stake", () => {
   it("can update beam allocations", async () => {
     let newAllocations = [
       {
-        beam: beams[0],
+        beam: mState,
         newAllocation: 50,
       },
       {
-        beam: beams[3],
+        beam: splState,
         newAllocation: 50,
       },
     ];
@@ -151,7 +147,7 @@ describe("sunrise-stake", () => {
     await client.refresh();
 
     for (let beam of client.account.pretty().beams) {
-      if (beam.key == beams[0].toBase58() || beam.key == beams[3].toBase58()) {
+      if (beam.key == mState.toBase58() || beam.key == splState.toBase58()) {
         expect(beam.allocation).to.equal("50");
       } else {
         expect(beam.allocation).to.equal("0");
@@ -160,42 +156,256 @@ describe("sunrise-stake", () => {
   });
 
   it("can't mint Gsol without CPI", async () => {
-    await createGSolTokenAccount(client, testUser.publicKey);
-    let accounts = client.mintGsolAccounts(beams[1], testUser.publicKey);
+    const testUser = Keypair.generate();
+    await createTokenAccount(client.provider, testUser.publicKey, gsolMint);
+    let accounts = client.mintGsolAccounts(
+      tempBeam.publicKey,
+      testUser.publicKey
+    );
     tokenAccount = accounts.mintGsolTo;
-    let thrown = false;
+    let failed = false;
     try {
       await client.program.methods
         .mintGsol(new BN(10))
         .accounts(accounts)
-        .signers([beamKps[1]])
+        .signers([tempBeam])
         .rpc();
     } catch (_err) {
-      thrown = true;
-      const err: AnchorError = _err;
+      failed = true;
+      const err = AnchorError.parse(_err.logs);
       expect(err.error.errorCode.code).to.equal("UnidentifiedCallingProgram");
       expect(err.error.errorCode.number).to.equal(6007);
       expect(err.program.equals(client.program.programId)).is.true;
     }
-    expect(thrown).to.be.true;
+    expect(failed).to.be.true;
   });
 
   it("can't burn Gsol without CPI", async () => {
-    let accounts = client.burnGsolAccounts(beams[4], testUser.publicKey);
-    let thrown = false;
+    const testUser = Keypair.generate();
+    let accounts = client.burnGsolAccounts(
+      tempBeam.publicKey,
+      testUser.publicKey
+    );
+    await createTokenAccount(client.provider, testUser.publicKey, gsolMint);
+    let failed = false;
     try {
       await client.program.methods
         .burnGsol(new BN(10))
         .accounts(accounts)
-        .signers([beamKps[4], testUser])
+        .signers([tempBeam, testUser])
         .rpc();
     } catch (_err) {
-      thrown = true;
-      const err: AnchorError = _err;
+      failed = true;
+      const err = AnchorError.parse(_err.logs);
       expect(err.error.errorCode.code).to.equal("UnidentifiedCallingProgram");
       expect(err.error.errorCode.number).to.equal(6007);
       expect(err.program.equals(client.program.programId)).is.true;
     }
-    expect(thrown).to.be.true;
+    expect(failed).to.be.true;
+  });
+
+  it("can remove a beam from the state", async () => {
+    let tx = await client.removeBeam(tempBeam.publicKey);
+    await sendAndConfirmTransaction(provider, tx);
+    await client.refresh();
+
+    expect(
+      client.account.beams.find(
+        (beam) => beam.key.toBase58() == tempBeam.publicKey.toBase58()
+      )
+    ).to.be.undefined;
+    expect(client.account.beams[2].key.toBase58()).to.equal(
+      PublicKey.default.toBase58()
+    );
+  });
+});
+
+describe("sunrise-marinade", () => {
+  let client: MarinadeClient;
+  const provider = AnchorProvider.env();
+
+  const staker = Keypair.generate();
+  const stakerIdentity = new AnchorProvider(
+    provider.connection,
+    new Wallet(staker),
+    {}
+  );
+
+  let stakerMsolBalance: BN = new BN(0);
+  let stakerGsolBalance: BN = new BN(0);
+
+  let marinadeDelayedTicket: PublicKey;
+  let sunriseDelayedTicket: PublicKey;
+  let orderUnstakeLamports: number;
+
+  it("can initialize a state", async () => {
+    let treasury = Keypair.generate();
+    client = await MarinadeClient.initialize(
+      provider,
+      provider.publicKey,
+      sunrise.publicKey,
+      treasury.publicKey
+    );
+
+    await client.refresh();
+    expect(client.account).to.not.be.undefined;
+    let info = client.account.pretty();
+    expect(info.proxyState).to.equal(
+      client.marinade.state.marinadeStateAddress.toBase58()
+    );
+    expect(info.sunriseState).to.equal(sunrise.publicKey.toBase58());
+    expect(info.vaultAuthorityBump).to.equal(
+      client.vaultAuthority[1].toString()
+    );
+    expect(info.updateAuthority).to.equal(provider.publicKey.toBase58());
+  });
+
+  it("can deposit and mint gsol", async () => {
+    let amount = 10; // sol
+
+    await airdropTo(provider, staker.publicKey, 30);
+    client = await MarinadeClient.get(client.state, stakerIdentity);
+    await sendAndConfirmTransaction(
+      stakerIdentity,
+      await client.deposit(new BN(10)),
+      []
+    );
+
+    const expectedGsol = stakerGsolBalance.addn(amount);
+    const expectedMsol = stakerMsolBalance.addn(
+      Math.floor(amount / client.marinade.state.mSolPrice)
+    );
+    await expectAssociatedTokenAccountBalanceB(
+      client.provider,
+      client.sunrise.stakerGsolATA,
+      expectedGsol
+    );
+    await expectAssociatedTokenAccountBalanceB(
+      client.provider,
+      client.marinade.beamMsolVault,
+      expectedMsol
+    );
+    stakerGsolBalance = expectedGsol;
+    stakerMsolBalance = expectedMsol;
+  });
+
+  it("can't deposit due to exceeding allocation", async () => {
+    let amount = 1; // sol
+    let failed = false;
+    try {
+      await sendAndConfirmTransaction(
+        stakerIdentity,
+        await client.deposit(new BN(amount)),
+        []
+      );
+    } catch (_err) {
+      failed = true;
+      const err = AnchorError.parse(_err.logs);
+      expect(err.error.errorCode.number).to.equal(6001);
+      expect(err.error.errorCode.code).to.equal(
+        client.sunrise.client.program.idl["errors"][1].name
+      );
+      expect(err.program.equals(client.sunrise.client.program.programId)).is
+        .true;
+    }
+    expect(failed).to.be.true;
+  });
+
+  it("can withdraw and burn gsol", async () => {
+    let amount = 5; //gsol
+    await sendAndConfirmTransaction(
+      stakerIdentity,
+      await client.withdraw(new BN(amount)),
+      []
+    );
+
+    const expectedGsol = stakerGsolBalance.subn(amount);
+    const expectedMsol = stakerMsolBalance.subn(
+      Math.floor(amount / client.marinade.state.mSolPrice)
+    );
+    await expectAssociatedTokenAccountBalanceB(
+      client.provider,
+      client.sunrise.stakerGsolATA,
+      expectedGsol
+    );
+    await expectAssociatedTokenAccountBalanceB(
+      client.provider,
+      client.marinade.beamMsolVault,
+      expectedMsol
+    );
+    stakerGsolBalance = expectedGsol;
+    stakerMsolBalance = expectedMsol;
+  });
+
+  it("can order a withdrawal and burn gsol", async () => {
+    let amount = 5;
+    let { tx, sunriseTicket, marinadeTicket } = await client.orderWithdraw(
+      new BN(amount)
+    );
+    await sendAndConfirmTransaction(stakerIdentity, tx, [
+      sunriseTicket,
+      marinadeTicket,
+    ]);
+
+    let ticketAccount = await client.program.account.proxyTicketAccount.fetch(
+      sunriseTicket.publicKey
+    );
+    expect(ticketAccount.beneficiary.toBase58()).to.equal(
+      staker.publicKey.toBase58()
+    );
+    expect(ticketAccount.marinadeTicketAccount.toBase58()).to.equal(
+      marinadeTicket.publicKey.toBase58()
+    );
+    expect(ticketAccount.stateAddress.toBase58()).to.equal(
+      client.state.toBase58()
+    );
+
+    const expectedGsol = stakerGsolBalance.subn(amount);
+    const expectedMsol = stakerMsolBalance.subn(
+      Math.floor(amount / client.marinade.state.mSolPrice)
+    );
+    await expectAssociatedTokenAccountBalanceB(
+      client.provider,
+      client.sunrise.stakerGsolATA,
+      expectedGsol
+    );
+    await expectAssociatedTokenAccountBalanceB(
+      client.provider,
+      client.marinade.beamMsolVault,
+      expectedMsol
+    );
+
+    marinadeDelayedTicket = marinadeTicket.publicKey;
+    sunriseDelayedTicket = sunriseTicket.publicKey;
+    orderUnstakeLamports = 5;
+  });
+
+  it("can redeem an unstake ticket after one epoch has passed", async () => {
+    const stakerPreSolBalance = await solBalance(client.provider);
+
+    // unfortunately with the test validator, it is impossible to move the epoch forward without just waiting.
+    // we run the validator at 32 slots per epoch, so we "only" need to wait for ~12 seconds
+    // An alternative is to write rust tests using solana-program-test
+    await waitForNextEpoch(client.provider);
+
+    const sunriseLamports = await client.provider.connection
+      .getAccountInfo(sunriseDelayedTicket)
+      .then((account) => account?.lamports);
+    await sendAndConfirmTransaction(
+      client.provider,
+      await client.redeemTicket(sunriseDelayedTicket),
+      []
+    );
+
+    // the staker does not get the marinade ticket rent
+    const expectedPostUnstakeBalance = stakerPreSolBalance
+      .addn(orderUnstakeLamports)
+      .addn(sunriseLamports ?? 0)
+      .subn(5000);
+    await expectStakerSolBalance(
+      client.provider,
+      expectedPostUnstakeBalance,
+      100
+    );
   });
 });
