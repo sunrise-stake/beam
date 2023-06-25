@@ -5,9 +5,10 @@ types = "client/sdks/types"
 seeds = false
 skip-lint = false
 [programs.localnet]
-spl-beam = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-sunrise_beam = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-marinade-beam = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+spl_beam = "EUZfY4LePXSZVMvRuiVzbxazw9yBDYU99DpGJKCthxbS"
+sunrise_beam = "Ed4u8JNwKGJJcMucgG7nF4DNXsvmXhunB7ULL8mHGFrf"
+marinade_beam = "G9nMA5HvMa1HLXy1DBA3biH445Zxb2dkqsG4eDfcvgjm"
+marinade_lp_beam = "9Xek4q2hsdPm4yaRt4giQnVTTgRGwGhXQ1HBXbinuPTP"
 
 [registry]
 url = "https://api.apr.dev"
@@ -18,3 +19,35 @@ wallet = "/home/ademola/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 client/tests/*.ts"
+
+[test.validator]
+slots_per_epoch = "32"
+#url = "https://api.mainnet-beta.solana.com"
+
+[[test.genesis]]
+# Marinade finance program.
+address = "MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD"
+program = "client/tests/fixtures/marinade/marinade_finance.so"
+
+# Marinade accounts.
+[[test.validator.account]] #marinade-state
+address = "8szGkuLTAux9XMgZ2vtY39jVSowEcpBfFfD8hXSEqdGC" 
+filename = "client/tests/fixtures/marinade/state.json"
+[[test.validator.account]] #msol
+address = "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So"
+filename = "client/tests/fixtures/marinade/msol_mint.json"
+[[test.validator.account]] #msol-leg
+address = "7GgPYjS5Dza89wV6FpZ23kUJRG5vbQ1GM25ezspYFSoE"
+filename = "client/tests/fixtures/marinade/msol_leg.json"
+[[test.validator.account]] #treasury-msol-account
+address = "B1aLzaNMeFVAyQ6f3XbbUyKcH2YPHu2fqiEagmiF23VR"
+filename = "client/tests/fixtures/marinade/treasury_msol_account.json"
+[[test.validator.account]] #sol-leg-pda
+address = "UefNb6z6yvArqe4cJHTXCqStRsKmWhGxnZzuHbikP5Q"
+filename = "client/tests/fixtures/marinade/sol_leg_pda.json"
+[[test.validator.account]] #lp-mint
+address = "LPmSozJJ8Jh69ut2WP3XmVohTjL4ipR18yiCzxrUmVj"
+filename = "client/tests/fixtures/marinade/lp_mint.json"
+[[test.validator.account]] #reserve-pda
+address = "Du3Ysj1wKbxPKkuPPnvzQLQh8oMSVifs3jGZjJWXFmHN"
+filename = "client/tests/fixtures/marinade/reserve_pda.json"
