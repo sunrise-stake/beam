@@ -11,7 +11,7 @@ export class StateAccount {
   public readonly yieldAccount: PublicKey;
   public readonly beams: BeamDetails[];
 
-  protected constructor(
+  private constructor(
     _address: PublicKey,
     account: IdlAccounts<SunriseBeam>["state"]
   ) {
@@ -34,20 +34,16 @@ export class StateAccount {
 
   /** Pretty print. */
   public pretty(): {
-    address: string;
-    updateAuthority: string;
-    gsolMint: string;
-    preSupply: string;
-    gsolAuthBump: number;
-    yieldAccount: string;
-    beams: Array<ReturnType<typeof printBeamDetails>>;
+    [Property in keyof Omit<StateAccount, "pretty">]: Property extends "beams"
+      ? Array<BeamDetailsPretty>
+      : string;
   } {
     return {
       address: this.address.toBase58(),
       updateAuthority: this.updateAuthority.toBase58(),
       gsolMint: this.gsolMint.toBase58(),
       preSupply: this.preSupply.toString(),
-      gsolAuthBump: this.gsolAuthBump,
+      gsolAuthBump: this.gsolAuthBump.toString(),
       yieldAccount: this.yieldAccount.toBase58(),
       beams: this.beams.map((beam) => printBeamDetails(beam)),
     };
@@ -61,18 +57,13 @@ export type BeamDetails = {
   drainingMode: boolean;
 };
 
-const printBeamDetails = (
-  raw: BeamDetails
-): {
-  key: string;
-  allocation: number;
-  minted: string;
-  drainingMode: boolean;
-} => {
+type BeamDetailsPretty = { [Property in keyof BeamDetails]: string };
+
+const printBeamDetails = (raw: BeamDetails): BeamDetailsPretty => {
   return {
     key: raw.key.toBase58(),
-    allocation: raw.allocation,
+    allocation: raw.allocation.toString(),
     minted: raw.minted.toString(),
-    drainingMode: raw.drainingMode,
+    drainingMode: raw.drainingMode.toString(),
   };
 };

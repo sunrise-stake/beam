@@ -15,8 +15,8 @@ import { IDL, type SunriseBeam } from "../../types/sunrise_beam";
 import { StateAccount } from "./state";
 import { GSOL_AUTHORITY_SEED, SUNRISE_PROGRAM_ID } from "./constants";
 
-/** An instance of a Sunrise state. */
-export class SunriseStake {
+/** An instance of the Sunrise beam program.*/
+export class SunriseClient {
   // The sunrise program.
   readonly program: Program<SunriseBeam>;
   // The state address.
@@ -33,23 +33,27 @@ export class SunriseStake {
     this.state = state;
   }
 
-  /** Fetch a SunriseStake instance for a particular state.*/
-  public static fetch(
+  /** Get a new MarinadeBeamClient instance*/
+  public static async get(
     state: PublicKey,
     provider: AnchorProvider,
-    programId?: PublicKey
-  ): SunriseStake {
-    const client = new SunriseStake(
+    programId?: PublicKey,
+    refreshOverride?: boolean
+  ): Promise<SunriseClient> {
+    const client = new SunriseClient(
       provider,
       state,
       programId ?? SUNRISE_PROGRAM_ID
     );
+    if (refreshOverride === undefined || refreshOverride === false) {
+      await client.refresh();
+    }
     return client;
   }
 
   /** Query on-chain data for the most recent account state. */
   public async refresh(): Promise<void> {
-    let idlState = await this.program.account.state.fetch(this.state);
+    const idlState = await this.program.account.state.fetch(this.state);
     this.account = StateAccount.fromIdlAccount(idlState, this.state);
   }
 
@@ -62,9 +66,9 @@ export class SunriseStake {
     initialCapacity: number,
     gsolMint: PublicKey,
     programId?: PublicKey
-  ): Promise<SunriseStake> {
-    let client = this.fetch(state.publicKey, provider, programId);
-    let register = await client.program.methods
+  ): Promise<SunriseClient> {
+    const client = await this.get(state.publicKey, provider, programId, true);
+    const register = await client.program.methods
       .registerState({ updateAuthority, yieldAccount, initialCapacity })
       .accounts({
         payer: client.provider.publicKey,
@@ -156,7 +160,8 @@ export class SunriseStake {
   /** Required accounts for mint-gsol CPI. */
   public mintGsolAccounts(
     beam: PublicKey,
-    tokenAccountOwner: PublicKey
+    tokenAccountOwner: PublicKey,
+    gsolTokenAccount?: PublicKey
   ): {
     state: PublicKey;
     beam: PublicKey;
@@ -171,7 +176,8 @@ export class SunriseStake {
       beam,
       gsolMint: this.account.gsolMint,
       gsolMintAuthority: this.gsolMintAuthority()[0],
-      mintGsolTo: this.gsolAssociatedTokenAccount(tokenAccountOwner),
+      mintGsolTo:
+        gsolTokenAccount ?? this.gsolAssociatedTokenAccount(tokenAccountOwner),
       instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
       tokenProgram: TOKEN_PROGRAM_ID,
     };
@@ -180,8 +186,8 @@ export class SunriseStake {
   /** Required accounts for burn-gsol CPI. */
   public burnGsolAccounts(
     beam: PublicKey,
-    gsolTokenAccount: PublicKey,
-    tokenAccountOwner: PublicKey
+    tokenAccountOwner: PublicKey,
+    gsolTokenAccount?: PublicKey
   ): {
     state: PublicKey;
     beam: PublicKey;
@@ -196,7 +202,8 @@ export class SunriseStake {
       beam,
       gsolMint: this.account.gsolMint,
       burnGsolFromOwner: tokenAccountOwner,
-      burnGsolFrom: gsolTokenAccount,
+      burnGsolFrom:
+        gsolTokenAccount ?? this.gsolAssociatedTokenAccount(tokenAccountOwner),
       instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
       tokenProgram: TOKEN_PROGRAM_ID,
     };
