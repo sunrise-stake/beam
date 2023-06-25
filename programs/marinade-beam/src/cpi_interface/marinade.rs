@@ -25,7 +25,15 @@ pub fn deposit_stake_account(accounts: &crate::DepositStake, validator_index: u3
 pub fn liquid_unstake(accounts: &crate::Withdraw, msol_lamports: u64) -> Result<()> {
     let cpi_program = accounts.marinade_program.to_account_info();
     let cpi_ctx = CpiContext::new(cpi_program, accounts.into());
-    cpi_liquid_unstake(cpi_ctx, msol_lamports)
+
+    let bump = &[accounts.state.vault_authority_bump][..];
+    let state_address = accounts.state.key();
+    let seeds = &[
+        state_address.as_ref(),
+        crate::constants::VAULT_AUTHORITY,
+        bump,
+    ][..];
+    cpi_liquid_unstake(cpi_ctx.with_signer(&[seeds]), msol_lamports)
 }
 
 pub fn order_unstake(accounts: &crate::OrderWithdrawal, msol_lamports: u64) -> Result<()> {
@@ -136,7 +144,7 @@ impl<'a> From<&crate::RedeemTicket<'a>> for MarinadeClaim<'a> {
             state: accounts.marinade_state.to_account_info(),
             reserve_pda: accounts.reserve_pda.to_account_info(),
             ticket_account: accounts.marinade_ticket_account.to_account_info(),
-            transfer_sol_to: accounts.beneficiary.to_account_info(),
+            transfer_sol_to: accounts.vault_authority.to_account_info(),
             clock: accounts.clock.to_account_info(),
             system_program: accounts.system_program.to_account_info(),
         }
