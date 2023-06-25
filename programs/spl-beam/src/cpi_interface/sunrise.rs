@@ -9,11 +9,12 @@ use sunrise_beam_cpi::cpi::{
 pub fn mint_gsol<'a>(
     accounts: impl Into<MintGsol<'a>>,
     cpi_program: AccountInfo<'a>,
+    sunrise_key: Pubkey,
     state_bump: u8,
     lamports: u64,
 ) -> Result<()> {
     let accounts: MintGsol<'a> = accounts.into();
-    let seeds = [crate::constants::STATE, &[state_bump]];
+    let seeds = [crate::constants::STATE, sunrise_key.as_ref(), &[state_bump]];
     let signer = &[&seeds[..]];
 
     cpi_mint_gsol(
@@ -52,11 +53,12 @@ impl<'a> From<&crate::DepositStake<'a>> for MintGsol<'a> {
 pub fn burn_gsol<'a>(
     accounts: impl Into<BurnGsol<'a>>,
     cpi_program: AccountInfo<'a>,
+    sunrise_key: Pubkey,
     state_bump: u8,
     lamports: u64,
 ) -> Result<()> {
     let accounts: BurnGsol<'a> = accounts.into();
-    let seeds = [crate::constants::STATE, &[state_bump]];
+    let seeds = [crate::constants::STATE, sunrise_key.as_ref(), &[state_bump]];
     let signer = &[&seeds[..]];
 
     cpi_burn_gsol(

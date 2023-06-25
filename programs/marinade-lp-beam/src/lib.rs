@@ -16,7 +16,7 @@ use state::State;
 // TODO: Use actual CPI crate.
 use sunrise_beam as sunrise_beam_cpi;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("9Xek4q2hsdPm4yaRt4giQnVTTgRGwGhXQ1HBXbinuPTP");
 
 mod constants {
     /// Seed of the PDA that can authorize spending from the vault that holds pool tokens.
@@ -49,6 +49,7 @@ pub mod marinade_lp_beam {
         sunrise_interface::mint_gsol(
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
             state_bump,
             lamports,
         )?;
@@ -73,6 +74,7 @@ pub mod marinade_lp_beam {
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
             state_bump,
             lamports,
         )?;
