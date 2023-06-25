@@ -5,8 +5,8 @@
   "license": "MIT",
   "dependencies": {
     "@coral-xyz/anchor": "^0.28.0",
-    "@marinade.finance/marinade-ts-sdk": "^5.0.1",
-    "@solana/spl-token": "^0.3.8",
-    "@solana/web3.js": "^1.77.3"
+    "@solana/spl-token": "^0.3.7",
+    "@solana/web3.js": "^1.77.3",
+    "@sunrisestake/marinade-ts-sdk": "^4.0.4-alpha.18"
   }
 }
