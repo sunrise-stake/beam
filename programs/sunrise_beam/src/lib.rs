@@ -14,7 +14,7 @@ use state::*;
 
 pub const GSOL_AUTHORITY: &[u8] = b"gsol_mint_authority";
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("Ed4u8JNwKGJJcMucgG7nF4DNXsvmXhunB7ULL8mHGFrf");
 
 #[program]
 pub mod sunrise_beam {
