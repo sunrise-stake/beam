@@ -15,7 +15,7 @@ use state::State;
 // TODO: Use actual CPI crate.
 use sunrise_beam as sunrise_beam_cpi;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("EUZfY4LePXSZVMvRuiVzbxazw9yBDYU99DpGJKCthxbS");
 
 mod constants {
     /// Seed of the PDA that can authorize spending from the vault that holds pool tokens.
@@ -47,6 +47,7 @@ pub mod spl_beam {
         sunrise_interface::mint_gsol(
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
             state_bump,
             lamports,
         )?;
@@ -64,6 +65,7 @@ pub mod spl_beam {
         sunrise_interface::mint_gsol(
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
             state_bump,
             amount,
         )?;
@@ -83,6 +85,7 @@ pub mod spl_beam {
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
             state_bump,
             lamports,
         )?;
@@ -103,6 +106,7 @@ pub mod spl_beam {
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
             state_bump,
             lamports,
         )?;
@@ -122,6 +126,7 @@ pub mod spl_beam {
 }
 
 #[derive(Accounts)]
+#[instruction(input: State)]
 pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -129,7 +134,7 @@ pub struct Initialize<'info> {
         init,
         space = State::SPACE,
         payer = payer,
-        seeds = [constants::STATE],
+        seeds = [constants::STATE, input.sunrise_state.as_ref()],
         bump
     )]
     pub state: Account<'info, State>,
@@ -151,10 +156,10 @@ pub struct Update<'info> {
 pub struct Deposit<'info> {
     #[account(
         mut,
-        has_one = gsol_mint,
         has_one = sunrise_state,
         has_one = stake_pool,
-        seeds = [constants::STATE], bump
+        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        bump
     )]
     pub state: Account<'info, State>,
     #[account(mut)]
@@ -198,6 +203,7 @@ pub struct Deposit<'info> {
     pub manager_fee_account: UncheckedAccount<'info>,
 
     #[account(mut)]
+    /// Verified in CPI to Sunrise program.
     pub gsol_mint: Account<'info, Mint>,
     /// CHECK: Checked by CPI to Sunrise.
     pub gsol_mint_authority: UncheckedAccount<'info>,
@@ -219,10 +225,10 @@ pub struct Deposit<'info> {
 pub struct DepositStake<'info> {
     #[account(
         mut,
-        has_one = gsol_mint,
         has_one = sunrise_state,
         has_one = stake_pool,
-        seeds = [constants::STATE], bump
+        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        bump
     )]
     pub state: Account<'info, State>,
     #[account(mut)]
@@ -282,6 +288,7 @@ pub struct DepositStake<'info> {
     pub native_stake_program: UncheckedAccount<'info>,
 
     #[account(mut)]
+    /// Verified in CPI to Sunrise program.
     pub gsol_mint: Account<'info, Mint>,
     /// CHECK: Checked by CPI to Sunrise.
     pub gsol_mint_authority: UncheckedAccount<'info>,
@@ -303,10 +310,10 @@ pub struct DepositStake<'info> {
 pub struct Withdraw<'info> {
     #[account(
         mut,
-        has_one = gsol_mint,
         has_one = sunrise_state,
         has_one = stake_pool,
-        seeds = [constants::STATE], bump
+        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        bump
     )]
     pub state: Account<'info, State>,
     #[account(mut)]
@@ -356,9 +363,8 @@ pub struct Withdraw<'info> {
     pub native_stake_program: UncheckedAccount<'info>,
 
     #[account(mut)]
+    /// Verified in CPI to Sunrise program.
     pub gsol_mint: Account<'info, Mint>,
-    /// CHECK: Checked by CPI to Sunrise.
-    pub gsol_mint_authority: UncheckedAccount<'info>,
     /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
@@ -377,10 +383,10 @@ pub struct Withdraw<'info> {
 pub struct WithdrawStake<'info> {
     #[account(
         mut,
-        has_one = gsol_mint,
         has_one = sunrise_state,
         has_one = stake_pool,
-        seeds = [constants::STATE], bump
+        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        bump
     )]
     pub state: Account<'info, State>,
     #[account(mut)]
@@ -438,9 +444,8 @@ pub struct WithdrawStake<'info> {
     pub native_stake_program: UncheckedAccount<'info>,
 
     #[account(mut)]
+    /// Verified in CPI to Sunrise program.
     pub gsol_mint: Account<'info, Mint>,
-    /// CHECK: Checked by CPI to Sunrise.
-    pub gsol_mint_authority: UncheckedAccount<'info>,
     /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 

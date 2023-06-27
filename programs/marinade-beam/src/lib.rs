@@ -2,6 +2,7 @@
 
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::{program::invoke_signed, system_instruction};
+use anchor_spl::associated_token::{AssociatedToken, Create};
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use marinade_cpi::{State as MarinadeState, TicketAccountData as MarinadeTicketAccount};
 use std::ops::Deref;
@@ -12,12 +13,12 @@ mod utils;
 
 use cpi_interface::marinade as marinade_interface;
 use cpi_interface::sunrise as sunrise_interface;
-use state::{ProxyTicketAccount, State};
+use state::{ProxyTicketAccount, State, StateEntry};
 
 // TODO: Use actual CPI crate.
 use sunrise_beam as sunrise_beam_cpi;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("G9nMA5HvMa1HLXy1DBA3biH445Zxb2dkqsG4eDfcvgjm");
 
 mod constants {
     /// Seed of the PDA that can authorize spending from the vault that holds pool tokens.
@@ -30,13 +31,23 @@ mod constants {
 pub mod marinade_beam {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, input: State) -> Result<()> {
-        ctx.accounts.state.set_inner(input);
+    pub fn initialize(ctx: Context<Initialize>, input: StateEntry) -> Result<()> {
+        ctx.accounts.state.set_inner(input.into());
+        let cpi_program = ctx.accounts.associated_token_program.to_account_info();
+        let cpi_accounts = Create {
+            payer: ctx.accounts.payer.to_account_info(),
+            authority: ctx.accounts.msol_vault_authority.to_account_info(),
+            associated_token: ctx.accounts.msol_vault.to_account_info(),
+            mint: ctx.accounts.msol_mint.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            token_program: ctx.accounts.token_program.to_account_info(),
+        };
+        anchor_spl::associated_token::create(CpiContext::new(cpi_program, cpi_accounts))?;
         Ok(())
     }
 
-    pub fn update(ctx: Context<Update>, update_input: State) -> Result<()> {
-        ctx.accounts.state.set_inner(update_input);
+    pub fn update(ctx: Context<Update>, update_input: StateEntry) -> Result<()> {
+        ctx.accounts.state.set_inner(update_input.into());
         Ok(())
     }
 
@@ -50,6 +61,7 @@ pub mod marinade_beam {
         sunrise_interface::mint_gsol(
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
             bump,
             lamports,
         )?;
@@ -69,6 +81,7 @@ pub mod marinade_beam {
         sunrise_interface::mint_gsol(
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
             bump,
             lamports,
         )?;
@@ -89,6 +102,7 @@ pub mod marinade_beam {
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
             bump,
             lamports,
         )?;
@@ -114,6 +128,7 @@ pub mod marinade_beam {
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
             bump,
             lamports,
         )?;
@@ -150,6 +165,7 @@ pub mod marinade_beam {
 }
 
 #[derive(Accounts)]
+#[instruction(input: State)]
 pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -157,11 +173,27 @@ pub struct Initialize<'info> {
         init,
         space = State::SPACE,
         payer = payer,
-        seeds = [constants::STATE],
+        seeds = [constants::STATE, input.sunrise_state.as_ref()],
         bump
     )]
     pub state: Account<'info, State>,
+    /// CHECK: The msol mint.
+    pub msol_mint: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: Initialized as token account in handler.
+    pub msol_vault: UncheckedAccount<'info>,
+    /// CHECK: PDA authority of the msol vault.
+    #[account(
+        seeds = [
+            state.key().as_ref(),
+            constants::VAULT_AUTHORITY
+        ],
+        bump = input.vault_authority_bump
+    )]
+    pub msol_vault_authority: UncheckedAccount<'info>,
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
@@ -179,12 +211,12 @@ pub struct Update<'info> {
 pub struct Deposit<'info> {
     #[account(
         mut,
-        has_one = gsol_mint,
         has_one = sunrise_state,
         has_one = marinade_state,
-        seeds = [constants::STATE], bump
+        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        bump
     )]
-    pub state: Account<'info, State>,
+    pub state: Box<Account<'info, State>>,
     #[account(mut)]
     /// CHECK: The registered marinade state.
     pub marinade_state: UncheckedAccount<'info>,
@@ -195,11 +227,11 @@ pub struct Deposit<'info> {
     #[account(mut)]
     pub depositor: Signer<'info>,
     #[account(mut,token::mint = gsol_mint,token::authority = depositor)]
-    pub mint_gsol_to: Account<'info, TokenAccount>,
+    pub mint_gsol_to: Box<Account<'info, TokenAccount>>,
 
     #[account(mut)]
     // Checked by Marinade CPI.
-    pub msol_mint: Account<'info, Mint>,
+    pub msol_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
         token::mint = msol_mint,
@@ -217,7 +249,8 @@ pub struct Deposit<'info> {
     pub vault_authority: UncheckedAccount<'info>,
 
     #[account(mut)]
-    pub gsol_mint: Account<'info, Mint>,
+    // Verified in CPI to Sunrise program.
+    pub gsol_mint: Box<Account<'info, Mint>>,
     /// CHECK: Checked by Sunrise CPI.
     pub gsol_mint_authority: UncheckedAccount<'info>,
     /// CHECK: Checked by Sunrise CPI.
@@ -252,12 +285,12 @@ pub struct Deposit<'info> {
 pub struct DepositStake<'info> {
     #[account(
         mut,
-        has_one = gsol_mint,
         has_one = sunrise_state,
         has_one = marinade_state,
-        seeds = [constants::STATE], bump
+        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        bump
     )]
-    pub state: Account<'info, State>,
+    pub state: Box<Account<'info, State>>,
     #[account(mut)]
     /// CHECK: The registered Marinade state.
     pub marinade_state: UncheckedAccount<'info>,
@@ -271,17 +304,17 @@ pub struct DepositStake<'info> {
     /// CHECK: The stake account to be deposited.
     pub stake_account: UncheckedAccount<'info>,
     #[account(mut,token::mint = gsol_mint,token::authority = stake_owner)]
-    pub mint_gsol_to: Account<'info, TokenAccount>,
+    pub mint_gsol_to: Box<Account<'info, TokenAccount>>,
 
     #[account(mut)]
     // Checked by Marinade CPI.
-    pub msol_mint: Account<'info, Mint>,
+    pub msol_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
         token::mint = msol_mint,
         token::authority = vault_authority,
     )]
-    pub msol_vault: Account<'info, TokenAccount>,
+    pub msol_vault: Box<Account<'info, TokenAccount>>,
     /// CHECK: Seeds of the MSOL vault authority.
     #[account(
         seeds = [
@@ -293,7 +326,8 @@ pub struct DepositStake<'info> {
     pub vault_authority: UncheckedAccount<'info>,
 
     #[account(mut)]
-    pub gsol_mint: Account<'info, Mint>,
+    /// Verified in CPI to Sunrise program.
+    pub gsol_mint: Box<Account<'info, Mint>>,
     /// CHECK: Checked by Sunrise CPI.
     pub gsol_mint_authority: UncheckedAccount<'info>,
     /// CHECK: Checked by Sunrise CPI.
@@ -330,10 +364,10 @@ pub struct DepositStake<'info> {
 pub struct Withdraw<'info> {
     #[account(
         mut,
-        has_one = gsol_mint,
         has_one = sunrise_state,
         has_one = marinade_state,
-        seeds = [constants::STATE], bump
+        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        bump
     )]
     pub state: Account<'info, State>,
     #[account(mut)]
@@ -345,19 +379,20 @@ pub struct Withdraw<'info> {
     #[account(mut)]
     pub withdrawer: Signer<'info>,
     #[account(mut, token::mint = gsol_mint)]
-    pub gsol_token_account: Account<'info, TokenAccount>,
+    pub gsol_token_account: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
-    pub gsol_mint: Account<'info, Mint>,
+    /// Verified in CPI to Sunrise program.
+    pub gsol_mint: Box<Account<'info, Mint>>,
 
     #[account(mut)]
     // Checked by Marinade CPI.
-    pub msol_mint: Account<'info, Mint>,
+    pub msol_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
         token::mint = msol_mint,
         token::authority = vault_authority,
     )]
-    pub msol_vault: Account<'info, TokenAccount>,
+    pub msol_vault: Box<Account<'info, TokenAccount>>,
     /// CHECK: Seeds of the MSOL vault authority.
     #[account(
         seeds = [
@@ -379,8 +414,6 @@ pub struct Withdraw<'info> {
     pub treasury_msol_account: UncheckedAccount<'info>,
 
     /// CHECK: Checked by Sunrise CPI.
-    pub gsol_mint_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked by Sunrise CPI.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
     #[account(address = sunrise_beam_cpi::ID)]
@@ -398,12 +431,12 @@ pub struct Withdraw<'info> {
 pub struct OrderWithdrawal<'info> {
     #[account(
         mut,
-        has_one = gsol_mint,
         has_one = sunrise_state,
         has_one = marinade_state,
-        seeds = [constants::STATE], bump
+        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        bump
     )]
-    pub state: Account<'info, State>,
+    pub state: Box<Account<'info, State>>,
     #[account(mut)]
     pub marinade_state: Box<Account<'info, MarinadeState>>,
     #[account(mut)]
@@ -413,19 +446,20 @@ pub struct OrderWithdrawal<'info> {
     #[account(mut)]
     pub withdrawer: Signer<'info>,
     #[account(mut, token::mint = gsol_mint)]
-    pub gsol_token_account: Account<'info, TokenAccount>,
+    pub gsol_token_account: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
-    pub gsol_mint: Account<'info, Mint>,
+    /// Verified in CPI to Sunrise program.
+    pub gsol_mint: Box<Account<'info, Mint>>,
 
     #[account(mut)]
     // Checked by Marinade CPI.
-    pub msol_mint: Account<'info, Mint>,
+    pub msol_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
         token::mint = msol_mint,
         token::authority = vault_authority,
     )]
-    pub msol_vault: Account<'info, TokenAccount>,
+    pub msol_vault: Box<Account<'info, TokenAccount>>,
     /// CHECK: Seeds of the MSOL vault authority.
     #[account(
         seeds = [
@@ -437,19 +471,17 @@ pub struct OrderWithdrawal<'info> {
     pub vault_authority: UncheckedAccount<'info>,
 
     /// CHECK: Checked by Sunrise CPI.
-    pub gsol_mint_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked by Sunrise CPI.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(zero, rent_exempt = enforce)]
     /// CHECK: Checked by Marinade CPI.
+    #[account(mut)]
     pub new_ticket_account: UncheckedAccount<'info>,
     #[account(
         init,
         space = ProxyTicketAccount::SPACE,
         payer = withdrawer
     )]
-    pub proxy_ticket_account: Account<'info, ProxyTicketAccount>,
+    pub proxy_ticket_account: Box<Account<'info, ProxyTicketAccount>>,
 
     #[account(address = sunrise_beam_cpi::ID)]
     /// CHECK: The Sunrise Program ID.

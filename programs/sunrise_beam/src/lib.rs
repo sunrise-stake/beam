@@ -14,7 +14,7 @@ use state::*;
 
 pub const GSOL_AUTHORITY: &[u8] = b"gsol_mint_authority";
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("Ed4u8JNwKGJJcMucgG7nF4DNXsvmXhunB7ULL8mHGFrf");
 
 #[program]
 pub mod sunrise_beam {
@@ -41,11 +41,8 @@ pub mod sunrise_beam {
     }
 
     /// Resize the state so it can append `additional` more allocations.
-    pub fn resize_allocations(
-        ctx: Context<ResizeAllocations>,
-        additional_beams: usize,
-    ) -> Result<()> {
-        resize_allocations::handler(ctx, additional_beams)
+    pub fn resize_allocations(ctx: Context<ResizeAllocations>, additional_beams: u8) -> Result<()> {
+        resize_allocations::handler(ctx, additional_beams as usize)
     }
 
     /// Updates allocations for beams.
@@ -96,13 +93,13 @@ pub struct RegisterState<'info> {
     #[account(
         init,
         payer = payer,
-        space = State::size(input.initial_capacity),
+        space = State::size(input.initial_capacity as usize),
     )]
     pub state: Account<'info, State>,
 
     pub gsol_mint: Account<'info, Mint>,
 
-    /// CHECK: validate PDA seeds.
+    /// CHECK: Valid PDA seeds.
     #[account(
         seeds = [
             state.key().as_ref(),
@@ -113,8 +110,6 @@ pub struct RegisterState<'info> {
     pub gsol_mint_authority: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
-
-    pub token_program: Program<'info, Token>,
 
     pub rent: Sysvar<'info, Rent>,
 }
@@ -172,7 +167,6 @@ pub struct BurnGsol<'info> {
     pub gsol_mint: Account<'info, Mint>,
 
     pub burn_gsol_from_owner: Signer<'info>,
-
     #[account(
         mut,
         token::mint = gsol_mint,
@@ -265,7 +259,7 @@ pub struct ResizeAllocations<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    #[account(has_one = update_authority)]
+    #[account(mut, has_one = update_authority)]
     pub state: Account<'info, State>,
 
     pub system_program: Program<'info, System>,
