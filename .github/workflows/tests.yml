@@ -5,7 +5,7 @@ on:
 
 env:
   solana_version: v1.14.18
-  anchor_version: 0.27.0
+  anchor_version: 0.28.0
 
 jobs:
   install:
@@ -24,7 +24,7 @@ jobs:
 
       - uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '18'
 
       - name: Cache node dependencies
         uses: actions/cache@v3

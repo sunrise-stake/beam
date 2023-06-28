@@ -1,0 +1,686 @@
+marinade-beam v0.1.0 (/Users/daniel/code/sunrise-stake/beam/programs/marinade-beam)
+├── anchor-lang v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728)
+│   ├── anchor-attribute-access-control v0.28.0 (proc-macro) (https://github.com/coral-xyz/anchor#29b8a728)
+│   │   ├── anchor-syn v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728)
+│   │   │   ├── anyhow v1.0.71
+│   │   │   ├── bs58 v0.5.0
+│   │   │   ├── heck v0.3.3
+│   │   │   │   └── unicode-segmentation v1.10.1
+│   │   │   ├── proc-macro2 v1.0.63
+│   │   │   │   └── unicode-ident v1.0.9
+│   │   │   ├── quote v1.0.28
+│   │   │   │   └── proc-macro2 v1.0.63 (*)
+│   │   │   ├── serde v1.0.164
+│   │   │   │   └── serde_derive v1.0.164 (proc-macro)
+│   │   │   │       ├── proc-macro2 v1.0.63 (*)
+│   │   │   │       ├── quote v1.0.28 (*)
+│   │   │   │       └── syn v2.0.22
+│   │   │   │           ├── proc-macro2 v1.0.63 (*)
+│   │   │   │           ├── quote v1.0.28 (*)
+│   │   │   │           └── unicode-ident v1.0.9
+│   │   │   ├── serde_json v1.0.99
+│   │   │   │   ├── itoa v1.0.6
+│   │   │   │   ├── ryu v1.0.13
+│   │   │   │   └── serde v1.0.164 (*)
+│   │   │   ├── sha2 v0.10.7
+│   │   │   │   ├── cfg-if v1.0.0
+│   │   │   │   ├── cpufeatures v0.2.8
+│   │   │   │   │   └── libc v0.2.147
+│   │   │   │   └── digest v0.10.7
+│   │   │   │       ├── block-buffer v0.10.4
+│   │   │   │       │   └── generic-array v0.14.7
+│   │   │   │       │       ├── serde v1.0.164 (*)
+│   │   │   │       │       └── typenum v1.16.0
+│   │   │   │       │       [build-dependencies]
+│   │   │   │       │       └── version_check v0.9.4
+│   │   │   │       ├── crypto-common v0.1.6
+│   │   │   │       │   ├── generic-array v0.14.7 (*)
+│   │   │   │       │   └── typenum v1.16.0
+│   │   │   │       └── subtle v2.4.1
+│   │   │   ├── syn v1.0.109
+│   │   │   │   ├── proc-macro2 v1.0.63 (*)
+│   │   │   │   ├── quote v1.0.28 (*)
+│   │   │   │   └── unicode-ident v1.0.9
+│   │   │   └── thiserror v1.0.40
+│   │   │       └── thiserror-impl v1.0.40 (proc-macro)
+│   │   │           ├── proc-macro2 v1.0.63 (*)
+│   │   │           ├── quote v1.0.28 (*)
+│   │   │           └── syn v2.0.22 (*)
+│   │   ├── anyhow v1.0.71
+│   │   ├── proc-macro2 v1.0.63 (*)
+│   │   ├── quote v1.0.28 (*)
+│   │   ├── regex v1.8.4
+│   │   │   ├── aho-corasick v1.0.2
+│   │   │   │   └── memchr v2.5.0
+│   │   │   ├── memchr v2.5.0
+│   │   │   └── regex-syntax v0.7.2
+│   │   └── syn v1.0.109 (*)
+│   ├── anchor-attribute-account v0.28.0 (proc-macro) (https://github.com/coral-xyz/anchor#29b8a728)
+│   │   ├── anchor-syn v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728) (*)
+│   │   ├── anyhow v1.0.71
+│   │   ├── bs58 v0.5.0
+│   │   ├── proc-macro2 v1.0.63 (*)
+│   │   ├── quote v1.0.28 (*)
+│   │   ├── rustversion v1.0.12 (proc-macro)
+│   │   └── syn v1.0.109 (*)
+│   ├── anchor-attribute-constant v0.28.0 (proc-macro) (https://github.com/coral-xyz/anchor#29b8a728)
+│   │   ├── anchor-syn v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728) (*)
+│   │   ├── proc-macro2 v1.0.63 (*)
+│   │   └── syn v1.0.109 (*)
+│   ├── anchor-attribute-error v0.28.0 (proc-macro) (https://github.com/coral-xyz/anchor#29b8a728)
+│   │   ├── anchor-syn v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728) (*)
+│   │   ├── proc-macro2 v1.0.63 (*)
+│   │   ├── quote v1.0.28 (*)
+│   │   └── syn v1.0.109 (*)
+│   ├── anchor-attribute-event v0.28.0 (proc-macro) (https://github.com/coral-xyz/anchor#29b8a728)
+│   │   ├── anchor-syn v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728) (*)
+│   │   ├── anyhow v1.0.71
+│   │   ├── proc-macro2 v1.0.63 (*)
+│   │   ├── quote v1.0.28 (*)
+│   │   └── syn v1.0.109 (*)
+│   ├── anchor-attribute-program v0.28.0 (proc-macro) (https://github.com/coral-xyz/anchor#29b8a728)
+│   │   ├── anchor-syn v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728) (*)
+│   │   ├── anyhow v1.0.71
+│   │   ├── proc-macro2 v1.0.63 (*)
+│   │   ├── quote v1.0.28 (*)
+│   │   └── syn v1.0.109 (*)
+│   ├── anchor-derive-accounts v0.28.0 (proc-macro) (https://github.com/coral-xyz/anchor#29b8a728)
+│   │   ├── anchor-syn v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728) (*)
+│   │   ├── anyhow v1.0.71
+│   │   ├── proc-macro2 v1.0.63 (*)
+│   │   ├── quote v1.0.28 (*)
+│   │   └── syn v1.0.109 (*)
+│   ├── anchor-derive-space v0.28.0 (proc-macro) (https://github.com/coral-xyz/anchor#29b8a728)
+│   │   ├── proc-macro2 v1.0.63 (*)
+│   │   ├── quote v1.0.28 (*)
+│   │   └── syn v1.0.109 (*)
+│   ├── arrayref v0.3.7
+│   ├── base64 v0.13.1
+│   ├── bincode v1.3.3
+│   │   └── serde v1.0.164 (*)
+│   ├── borsh v0.9.3
+│   │   ├── borsh-derive v0.9.3 (proc-macro)
+│   │   │   ├── borsh-derive-internal v0.9.3
+│   │   │   │   ├── proc-macro2 v1.0.63 (*)
+│   │   │   │   ├── quote v1.0.28 (*)
+│   │   │   │   └── syn v1.0.109 (*)
+│   │   │   ├── borsh-schema-derive-internal v0.9.3
+│   │   │   │   ├── proc-macro2 v1.0.63 (*)
+│   │   │   │   ├── quote v1.0.28 (*)
+│   │   │   │   └── syn v1.0.109 (*)
+│   │   │   ├── proc-macro-crate v0.1.5
+│   │   │   │   └── toml v0.5.11
+│   │   │   │       └── serde v1.0.164 (*)
+│   │   │   ├── proc-macro2 v1.0.63 (*)
+│   │   │   └── syn v1.0.109 (*)
+│   │   └── hashbrown v0.11.2
+│   │       └── ahash v0.7.6
+│   │           ├── getrandom v0.2.10
+│   │           │   ├── cfg-if v1.0.0
+│   │           │   └── libc v0.2.147
+│   │           └── once_cell v1.18.0
+│   │           [build-dependencies]
+│   │           └── version_check v0.9.4
+│   ├── bytemuck v1.13.1
+│   │   └── bytemuck_derive v1.4.1 (proc-macro)
+│   │       ├── proc-macro2 v1.0.63 (*)
+│   │       ├── quote v1.0.28 (*)
+│   │       └── syn v2.0.22 (*)
+│   ├── getrandom v0.2.10 (*)
+│   ├── solana-program v1.14.17
+│   │   ├── base64 v0.13.1
+│   │   ├── bincode v1.3.3 (*)
+│   │   ├── bitflags v1.3.2
+│   │   ├── blake3 v1.4.0
+│   │   │   ├── arrayref v0.3.7
+│   │   │   ├── arrayvec v0.7.4
+│   │   │   ├── cfg-if v1.0.0
+│   │   │   ├── constant_time_eq v0.2.6
+│   │   │   └── digest v0.10.7 (*)
+│   │   │   [build-dependencies]
+│   │   │   └── cc v1.0.79
+│   │   │       └── jobserver v0.1.26
+│   │   │           └── libc v0.2.147
+│   │   ├── borsh v0.9.3 (*)
+│   │   ├── borsh-derive v0.9.3 (proc-macro) (*)
+│   │   ├── bs58 v0.4.0
+│   │   ├── bv v0.11.1
+│   │   │   └── serde v1.0.164 (*)
+│   │   │   [build-dependencies]
+│   │   │   └── feature-probe v0.1.1
+│   │   ├── bytemuck v1.13.1 (*)
+│   │   ├── curve25519-dalek v3.2.1
+│   │   │   ├── byteorder v1.4.3
+│   │   │   ├── digest v0.9.0
+│   │   │   │   └── generic-array v0.14.7 (*)
+│   │   │   ├── rand_core v0.5.1
+│   │   │   │   └── getrandom v0.1.16
+│   │   │   │       ├── cfg-if v1.0.0
+│   │   │   │       └── libc v0.2.147
+│   │   │   ├── serde v1.0.164 (*)
+│   │   │   ├── subtle v2.4.1
+│   │   │   └── zeroize v1.3.0
+│   │   │       └── zeroize_derive v1.4.2 (proc-macro)
+│   │   │           ├── proc-macro2 v1.0.63 (*)
+│   │   │           ├── quote v1.0.28 (*)
+│   │   │           └── syn v2.0.22 (*)
+│   │   ├── itertools v0.10.5
+│   │   │   └── either v1.8.1
+│   │   ├── lazy_static v1.4.0
+│   │   ├── libc v0.2.147
+│   │   ├── libsecp256k1 v0.6.0
+│   │   │   ├── arrayref v0.3.7
+│   │   │   ├── base64 v0.12.3
+│   │   │   ├── digest v0.9.0 (*)
+│   │   │   ├── hmac-drbg v0.3.0
+│   │   │   │   ├── digest v0.9.0 (*)
+│   │   │   │   ├── generic-array v0.14.7 (*)
+│   │   │   │   └── hmac v0.8.1
+│   │   │   │       ├── crypto-mac v0.8.0
+│   │   │   │       │   ├── generic-array v0.14.7 (*)
+│   │   │   │       │   └── subtle v2.4.1
+│   │   │   │       └── digest v0.9.0 (*)
+│   │   │   ├── libsecp256k1-core v0.2.2
+│   │   │   │   ├── crunchy v0.2.2
+│   │   │   │   ├── digest v0.9.0 (*)
+│   │   │   │   └── subtle v2.4.1
+│   │   │   ├── rand v0.7.3
+│   │   │   │   ├── getrandom v0.1.16 (*)
+│   │   │   │   ├── libc v0.2.147
+│   │   │   │   ├── rand_chacha v0.2.2
+│   │   │   │   │   ├── ppv-lite86 v0.2.17
+│   │   │   │   │   └── rand_core v0.5.1 (*)
+│   │   │   │   └── rand_core v0.5.1 (*)
+│   │   │   ├── serde v1.0.164 (*)
+│   │   │   ├── sha2 v0.9.9
+│   │   │   │   ├── block-buffer v0.9.0
+│   │   │   │   │   ├── block-padding v0.2.1
+│   │   │   │   │   └── generic-array v0.14.7 (*)
+│   │   │   │   ├── cfg-if v1.0.0
+│   │   │   │   ├── cpufeatures v0.2.8 (*)
+│   │   │   │   ├── digest v0.9.0 (*)
+│   │   │   │   └── opaque-debug v0.3.0
+│   │   │   └── typenum v1.16.0
+│   │   │   [build-dependencies]
+│   │   │   ├── libsecp256k1-gen-ecmult v0.2.1
+│   │   │   │   └── libsecp256k1-core v0.2.2 (*)
+│   │   │   └── libsecp256k1-gen-genmult v0.2.1
+│   │   │       └── libsecp256k1-core v0.2.2 (*)
+│   │   ├── log v0.4.19
+│   │   ├── memoffset v0.6.5
+│   │   │   [build-dependencies]
+│   │   │   └── autocfg v1.1.0
+│   │   ├── num-derive v0.3.3 (proc-macro)
+│   │   │   ├── proc-macro2 v1.0.63 (*)
+│   │   │   ├── quote v1.0.28 (*)
+│   │   │   └── syn v1.0.109 (*)
+│   │   ├── num-traits v0.2.15
+│   │   │   [build-dependencies]
+│   │   │   └── autocfg v1.1.0
+│   │   ├── rand v0.7.3 (*)
+│   │   ├── rand_chacha v0.2.2 (*)
+│   │   ├── rustversion v1.0.12 (proc-macro)
+│   │   ├── serde v1.0.164 (*)
+│   │   ├── serde_bytes v0.11.9
+│   │   │   └── serde v1.0.164 (*)
+│   │   ├── serde_derive v1.0.164 (proc-macro) (*)
+│   │   ├── serde_json v1.0.99 (*)
+│   │   ├── sha2 v0.10.7 (*)
+│   │   ├── sha3 v0.10.8
+│   │   │   ├── digest v0.10.7 (*)
+│   │   │   └── keccak v0.1.4
+│   │   │       └── cpufeatures v0.2.8 (*)
+│   │   ├── solana-frozen-abi v1.14.17
+│   │   │   ├── ahash v0.7.6 (*)
+│   │   │   ├── blake3 v1.4.0 (*)
+│   │   │   ├── block-buffer v0.9.0 (*)
+│   │   │   ├── bs58 v0.4.0
+│   │   │   ├── bv v0.11.1 (*)
+│   │   │   ├── byteorder v1.4.3
+│   │   │   ├── cc v1.0.79 (*)
+│   │   │   ├── either v1.8.1
+│   │   │   ├── generic-array v0.14.7 (*)
+│   │   │   ├── getrandom v0.1.16 (*)
+│   │   │   ├── hashbrown v0.12.3
+│   │   │   │   └── ahash v0.7.6 (*)
+│   │   │   ├── im v15.1.0
+│   │   │   │   ├── bitmaps v2.1.0
+│   │   │   │   │   └── typenum v1.16.0
+│   │   │   │   ├── rand_core v0.6.4
+│   │   │   │   │   └── getrandom v0.2.10 (*)
+│   │   │   │   ├── rand_xoshiro v0.6.0
+│   │   │   │   │   └── rand_core v0.6.4 (*)
+│   │   │   │   ├── rayon v1.7.0
+│   │   │   │   │   ├── either v1.8.1
+│   │   │   │   │   └── rayon-core v1.11.0
+│   │   │   │   │       ├── crossbeam-channel v0.5.8
+│   │   │   │   │       │   ├── cfg-if v1.0.0
+│   │   │   │   │       │   └── crossbeam-utils v0.8.16
+│   │   │   │   │       │       └── cfg-if v1.0.0
+│   │   │   │   │       ├── crossbeam-deque v0.8.3
+│   │   │   │   │       │   ├── cfg-if v1.0.0
+│   │   │   │   │       │   ├── crossbeam-epoch v0.9.15
+│   │   │   │   │       │   │   ├── cfg-if v1.0.0
+│   │   │   │   │       │   │   ├── crossbeam-utils v0.8.16 (*)
+│   │   │   │   │       │   │   ├── memoffset v0.9.0
+│   │   │   │   │       │   │   │   [build-dependencies]
+│   │   │   │   │       │   │   │   └── autocfg v1.1.0
+│   │   │   │   │       │   │   └── scopeguard v1.1.0
+│   │   │   │   │       │   │   [build-dependencies]
+│   │   │   │   │       │   │   └── autocfg v1.1.0
+│   │   │   │   │       │   └── crossbeam-utils v0.8.16 (*)
+│   │   │   │   │       ├── crossbeam-utils v0.8.16 (*)
+│   │   │   │   │       └── num_cpus v1.15.0
+│   │   │   │   │           └── libc v0.2.147
+│   │   │   │   ├── serde v1.0.164 (*)
+│   │   │   │   ├── sized-chunks v0.6.5
+│   │   │   │   │   ├── bitmaps v2.1.0 (*)
+│   │   │   │   │   └── typenum v1.16.0
+│   │   │   │   └── typenum v1.16.0
+│   │   │   │   [build-dependencies]
+│   │   │   │   └── version_check v0.9.4
+│   │   │   ├── lazy_static v1.4.0
+│   │   │   ├── log v0.4.19
+│   │   │   ├── memmap2 v0.5.10
+│   │   │   │   └── libc v0.2.147
+│   │   │   ├── once_cell v1.18.0
+│   │   │   ├── rand_core v0.6.4 (*)
+│   │   │   ├── serde v1.0.164 (*)
+│   │   │   ├── serde_bytes v0.11.9 (*)
+│   │   │   ├── serde_derive v1.0.164 (proc-macro) (*)
+│   │   │   ├── serde_json v1.0.99 (*)
+│   │   │   ├── sha2 v0.10.7 (*)
+│   │   │   ├── solana-frozen-abi-macro v1.14.17 (proc-macro)
+│   │   │   │   ├── proc-macro2 v1.0.63 (*)
+│   │   │   │   ├── quote v1.0.28 (*)
+│   │   │   │   └── syn v1.0.109 (*)
+│   │   │   │   [build-dependencies]
+│   │   │   │   └── rustc_version v0.4.0
+│   │   │   │       └── semver v1.0.17
+│   │   │   ├── subtle v2.4.1
+│   │   │   └── thiserror v1.0.40 (*)
+│   │   │   [build-dependencies]
+│   │   │   └── rustc_version v0.4.0 (*)
+│   │   ├── solana-frozen-abi-macro v1.14.17 (proc-macro) (*)
+│   │   ├── solana-sdk-macro v1.14.17 (proc-macro)
+│   │   │   ├── bs58 v0.4.0
+│   │   │   ├── proc-macro2 v1.0.63 (*)
+│   │   │   ├── quote v1.0.28 (*)
+│   │   │   ├── rustversion v1.0.12 (proc-macro)
+│   │   │   └── syn v1.0.109 (*)
+│   │   ├── thiserror v1.0.40 (*)
+│   │   ├── tiny-bip39 v0.8.2
+│   │   │   ├── anyhow v1.0.71
+│   │   │   ├── hmac v0.8.1 (*)
+│   │   │   ├── once_cell v1.18.0
+│   │   │   ├── pbkdf2 v0.4.0
+│   │   │   │   └── crypto-mac v0.8.0 (*)
+│   │   │   ├── rand v0.7.3 (*)
+│   │   │   ├── rustc-hash v1.1.0
+│   │   │   ├── sha2 v0.9.9 (*)
+│   │   │   ├── thiserror v1.0.40 (*)
+│   │   │   ├── unicode-normalization v0.1.22
+│   │   │   │   └── tinyvec v1.6.0
+│   │   │   │       └── tinyvec_macros v0.1.1
+│   │   │   └── zeroize v1.3.0 (*)
+│   │   ├── wasm-bindgen v0.2.87
+│   │   │   ├── cfg-if v1.0.0
+│   │   │   └── wasm-bindgen-macro v0.2.87 (proc-macro)
+│   │   │       ├── quote v1.0.28 (*)
+│   │   │       └── wasm-bindgen-macro-support v0.2.87
+│   │   │           ├── proc-macro2 v1.0.63 (*)
+│   │   │           ├── quote v1.0.28 (*)
+│   │   │           ├── syn v2.0.22 (*)
+│   │   │           ├── wasm-bindgen-backend v0.2.87
+│   │   │           │   ├── bumpalo v3.13.0
+│   │   │           │   ├── log v0.4.19
+│   │   │           │   ├── once_cell v1.18.0
+│   │   │           │   ├── proc-macro2 v1.0.63 (*)
+│   │   │           │   ├── quote v1.0.28 (*)
+│   │   │           │   ├── syn v2.0.22 (*)
+│   │   │           │   └── wasm-bindgen-shared v0.2.87
+│   │   │           └── wasm-bindgen-shared v0.2.87
+│   │   └── zeroize v1.3.0 (*)
+│   │   [build-dependencies]
+│   │   ├── cc v1.0.79 (*)
+│   │   └── rustc_version v0.4.0 (*)
+│   └── thiserror v1.0.40 (*)
+├── anchor-spl v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728)
+│   ├── anchor-lang v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728) (*)
+│   ├── solana-program v1.14.17 (*)
+│   ├── spl-associated-token-account v1.1.3
+│   │   ├── assert_matches v1.5.0
+│   │   ├── borsh v0.9.3 (*)
+│   │   ├── num-derive v0.3.3 (proc-macro) (*)
+│   │   ├── num-traits v0.2.15 (*)
+│   │   ├── solana-program v1.14.17 (*)
+│   │   ├── spl-token v3.5.0
+│   │   │   ├── arrayref v0.3.7
+│   │   │   ├── bytemuck v1.13.1 (*)
+│   │   │   ├── num-derive v0.3.3 (proc-macro) (*)
+│   │   │   ├── num-traits v0.2.15 (*)
+│   │   │   ├── num_enum v0.5.11
+│   │   │   │   └── num_enum_derive v0.5.11 (proc-macro)
+│   │   │   │       ├── proc-macro-crate v1.3.1
+│   │   │   │       │   ├── once_cell v1.18.0
+│   │   │   │       │   └── toml_edit v0.19.8
+│   │   │   │       │       ├── indexmap v1.9.3
+│   │   │   │       │       │   └── hashbrown v0.12.3 (*)
+│   │   │   │       │       │   [build-dependencies]
+│   │   │   │       │       │   └── autocfg v1.1.0
+│   │   │   │       │       ├── toml_datetime v0.6.1
+│   │   │   │       │       └── winnow v0.4.1
+│   │   │   │       ├── proc-macro2 v1.0.63 (*)
+│   │   │   │       ├── quote v1.0.28 (*)
+│   │   │   │       └── syn v1.0.109 (*)
+│   │   │   ├── solana-program v1.14.17 (*)
+│   │   │   └── thiserror v1.0.40 (*)
+│   │   ├── spl-token-2022 v0.6.1
+│   │   │   ├── arrayref v0.3.7
+│   │   │   ├── bytemuck v1.13.1 (*)
+│   │   │   ├── num-derive v0.3.3 (proc-macro) (*)
+│   │   │   ├── num-traits v0.2.15 (*)
+│   │   │   ├── num_enum v0.5.11 (*)
+│   │   │   ├── solana-program v1.14.17 (*)
+│   │   │   ├── solana-zk-token-sdk v1.14.17
+│   │   │   │   ├── aes-gcm-siv v0.10.3
+│   │   │   │   │   ├── aead v0.4.3
+│   │   │   │   │   │   └── generic-array v0.14.7 (*)
+│   │   │   │   │   ├── aes v0.7.5
+│   │   │   │   │   │   ├── cfg-if v1.0.0
+│   │   │   │   │   │   ├── cipher v0.3.0
+│   │   │   │   │   │   │   └── generic-array v0.14.7 (*)
+│   │   │   │   │   │   ├── cpufeatures v0.2.8 (*)
+│   │   │   │   │   │   └── opaque-debug v0.3.0
+│   │   │   │   │   ├── cipher v0.3.0 (*)
+│   │   │   │   │   ├── ctr v0.8.0
+│   │   │   │   │   │   └── cipher v0.3.0 (*)
+│   │   │   │   │   ├── polyval v0.5.3
+│   │   │   │   │   │   ├── cfg-if v1.0.0
+│   │   │   │   │   │   ├── cpufeatures v0.2.8 (*)
+│   │   │   │   │   │   ├── opaque-debug v0.3.0
+│   │   │   │   │   │   └── universal-hash v0.4.1
+│   │   │   │   │   │       ├── generic-array v0.14.7 (*)
+│   │   │   │   │   │       └── subtle v2.4.1
+│   │   │   │   │   ├── subtle v2.4.1
+│   │   │   │   │   └── zeroize v1.3.0 (*)
+│   │   │   │   ├── arrayref v0.3.7
+│   │   │   │   ├── base64 v0.13.1
+│   │   │   │   ├── bincode v1.3.3 (*)
+│   │   │   │   ├── bytemuck v1.13.1 (*)
+│   │   │   │   ├── byteorder v1.4.3
+│   │   │   │   ├── cipher v0.4.4
+│   │   │   │   │   ├── crypto-common v0.1.6 (*)
+│   │   │   │   │   └── inout v0.1.3
+│   │   │   │   │       └── generic-array v0.14.7 (*)
+│   │   │   │   ├── curve25519-dalek v3.2.1 (*)
+│   │   │   │   ├── getrandom v0.1.16 (*)
+│   │   │   │   ├── itertools v0.10.5 (*)
+│   │   │   │   ├── lazy_static v1.4.0
+│   │   │   │   ├── merlin v3.0.0
+│   │   │   │   │   ├── byteorder v1.4.3
+│   │   │   │   │   ├── keccak v0.1.4 (*)
+│   │   │   │   │   ├── rand_core v0.6.4 (*)
+│   │   │   │   │   └── zeroize v1.3.0 (*)
+│   │   │   │   ├── num-derive v0.3.3 (proc-macro) (*)
+│   │   │   │   ├── num-traits v0.2.15 (*)
+│   │   │   │   ├── rand v0.7.3 (*)
+│   │   │   │   ├── serde v1.0.164 (*)
+│   │   │   │   ├── serde_json v1.0.99 (*)
+│   │   │   │   ├── sha3 v0.9.1
+│   │   │   │   │   ├── block-buffer v0.9.0 (*)
+│   │   │   │   │   ├── digest v0.9.0 (*)
+│   │   │   │   │   ├── keccak v0.1.4 (*)
+│   │   │   │   │   └── opaque-debug v0.3.0
+│   │   │   │   ├── solana-program v1.14.17 (*)
+│   │   │   │   ├── solana-sdk v1.14.17
+│   │   │   │   │   ├── assert_matches v1.5.0
+│   │   │   │   │   ├── base64 v0.13.1
+│   │   │   │   │   ├── bincode v1.3.3 (*)
+│   │   │   │   │   ├── bitflags v1.3.2
+│   │   │   │   │   ├── borsh v0.9.3 (*)
+│   │   │   │   │   ├── bs58 v0.4.0
+│   │   │   │   │   ├── bytemuck v1.13.1 (*)
+│   │   │   │   │   ├── byteorder v1.4.3
+│   │   │   │   │   ├── chrono v0.4.26
+│   │   │   │   │   │   └── num-traits v0.2.15 (*)
+│   │   │   │   │   ├── derivation-path v0.2.0
+│   │   │   │   │   ├── digest v0.10.7 (*)
+│   │   │   │   │   ├── ed25519-dalek v1.0.1
+│   │   │   │   │   │   ├── curve25519-dalek v3.2.1 (*)
+│   │   │   │   │   │   ├── ed25519 v1.5.3
+│   │   │   │   │   │   │   └── signature v1.6.4
+│   │   │   │   │   │   ├── rand v0.7.3 (*)
+│   │   │   │   │   │   ├── serde v1.0.164 (*)
+│   │   │   │   │   │   ├── sha2 v0.9.9 (*)
+│   │   │   │   │   │   └── zeroize v1.3.0 (*)
+│   │   │   │   │   ├── ed25519-dalek-bip32 v0.2.0
+│   │   │   │   │   │   ├── derivation-path v0.2.0
+│   │   │   │   │   │   ├── ed25519-dalek v1.0.1 (*)
+│   │   │   │   │   │   ├── hmac v0.12.1
+│   │   │   │   │   │   │   └── digest v0.10.7 (*)
+│   │   │   │   │   │   └── sha2 v0.10.7 (*)
+│   │   │   │   │   ├── generic-array v0.14.7 (*)
+│   │   │   │   │   ├── hmac v0.12.1 (*)
+│   │   │   │   │   ├── itertools v0.10.5 (*)
+│   │   │   │   │   ├── lazy_static v1.4.0
+│   │   │   │   │   ├── libsecp256k1 v0.6.0 (*)
+│   │   │   │   │   ├── log v0.4.19
+│   │   │   │   │   ├── memmap2 v0.5.10 (*)
+│   │   │   │   │   ├── num-derive v0.3.3 (proc-macro) (*)
+│   │   │   │   │   ├── num-traits v0.2.15 (*)
+│   │   │   │   │   ├── pbkdf2 v0.11.0
+│   │   │   │   │   │   └── digest v0.10.7 (*)
+│   │   │   │   │   ├── qstring v0.7.2
+│   │   │   │   │   │   └── percent-encoding v2.3.0
+│   │   │   │   │   ├── rand v0.7.3 (*)
+│   │   │   │   │   ├── rand_chacha v0.2.2 (*)
+│   │   │   │   │   ├── rustversion v1.0.12 (proc-macro)
+│   │   │   │   │   ├── serde v1.0.164 (*)
+│   │   │   │   │   ├── serde_bytes v0.11.9 (*)
+│   │   │   │   │   ├── serde_derive v1.0.164 (proc-macro) (*)
+│   │   │   │   │   ├── serde_json v1.0.99 (*)
+│   │   │   │   │   ├── sha2 v0.10.7 (*)
+│   │   │   │   │   ├── sha3 v0.10.8 (*)
+│   │   │   │   │   ├── solana-frozen-abi v1.14.17 (*)
+│   │   │   │   │   ├── solana-frozen-abi-macro v1.14.17 (proc-macro) (*)
+│   │   │   │   │   ├── solana-logger v1.14.17
+│   │   │   │   │   │   ├── env_logger v0.9.3
+│   │   │   │   │   │   │   ├── atty v0.2.14
+│   │   │   │   │   │   │   │   └── libc v0.2.147
+│   │   │   │   │   │   │   ├── humantime v2.1.0
+│   │   │   │   │   │   │   ├── log v0.4.19
+│   │   │   │   │   │   │   ├── regex v1.8.4 (*)
+│   │   │   │   │   │   │   └── termcolor v1.2.0
+│   │   │   │   │   │   ├── lazy_static v1.4.0
+│   │   │   │   │   │   └── log v0.4.19
+│   │   │   │   │   ├── solana-program v1.14.17 (*)
+│   │   │   │   │   ├── solana-sdk-macro v1.14.17 (proc-macro) (*)
+│   │   │   │   │   ├── thiserror v1.0.40 (*)
+│   │   │   │   │   ├── uriparse v0.6.4
+│   │   │   │   │   │   ├── fnv v1.0.7
+│   │   │   │   │   │   └── lazy_static v1.4.0
+│   │   │   │   │   └── wasm-bindgen v0.2.87 (*)
+│   │   │   │   │   [build-dependencies]
+│   │   │   │   │   └── rustc_version v0.4.0 (*)
+│   │   │   │   ├── subtle v2.4.1
+│   │   │   │   ├── thiserror v1.0.40 (*)
+│   │   │   │   └── zeroize v1.3.0 (*)
+│   │   │   ├── spl-memo v3.0.1
+│   │   │   │   └── solana-program v1.14.17 (*)
+│   │   │   ├── spl-token v3.5.0 (*)
+│   │   │   └── thiserror v1.0.40 (*)
+│   │   └── thiserror v1.0.40 (*)
+│   ├── spl-token v3.5.0 (*)
+│   └── spl-token-2022 v0.6.1 (*)
+├── marinade-cpi v0.3.0
+│   ├── anchor-gen v0.3.1
+│   │   ├── anchor-generate-cpi-crate v0.3.1 (proc-macro)
+│   │   │   ├── anchor-idl v0.3.1
+│   │   │   │   ├── anchor-syn v0.24.2
+│   │   │   │   │   ├── anyhow v1.0.71
+│   │   │   │   │   ├── bs58 v0.3.1
+│   │   │   │   │   ├── heck v0.3.3 (*)
+│   │   │   │   │   ├── proc-macro2 v1.0.63 (*)
+│   │   │   │   │   ├── proc-macro2-diagnostics v0.9.1
+│   │   │   │   │   │   ├── proc-macro2 v1.0.63 (*)
+│   │   │   │   │   │   ├── quote v1.0.28 (*)
+│   │   │   │   │   │   ├── syn v1.0.109 (*)
+│   │   │   │   │   │   └── yansi v0.5.1
+│   │   │   │   │   │   [build-dependencies]
+│   │   │   │   │   │   └── version_check v0.9.4
+│   │   │   │   │   ├── quote v1.0.28 (*)
+│   │   │   │   │   ├── serde v1.0.164 (*)
+│   │   │   │   │   ├── serde_json v1.0.99 (*)
+│   │   │   │   │   ├── sha2 v0.9.9 (*)
+│   │   │   │   │   ├── syn v1.0.109 (*)
+│   │   │   │   │   └── thiserror v1.0.40 (*)
+│   │   │   │   ├── darling v0.14.4
+│   │   │   │   │   ├── darling_core v0.14.4
+│   │   │   │   │   │   ├── fnv v1.0.7
+│   │   │   │   │   │   ├── ident_case v1.0.1
+│   │   │   │   │   │   ├── proc-macro2 v1.0.63 (*)
+│   │   │   │   │   │   ├── quote v1.0.28 (*)
+│   │   │   │   │   │   ├── strsim v0.10.0
+│   │   │   │   │   │   └── syn v1.0.109 (*)
+│   │   │   │   │   └── darling_macro v0.14.4 (proc-macro)
+│   │   │   │   │       ├── darling_core v0.14.4 (*)
+│   │   │   │   │       ├── quote v1.0.28 (*)
+│   │   │   │   │       └── syn v1.0.109 (*)
+│   │   │   │   ├── heck v0.4.1
+│   │   │   │   ├── proc-macro2 v1.0.63 (*)
+│   │   │   │   ├── quote v1.0.28 (*)
+│   │   │   │   ├── serde_json v1.0.99 (*)
+│   │   │   │   └── syn v1.0.109 (*)
+│   │   │   └── syn v1.0.109 (*)
+│   │   └── anchor-generate-cpi-interface v0.3.1 (proc-macro)
+│   │       ├── anchor-idl v0.3.1 (*)
+│   │       ├── darling v0.14.4 (*)
+│   │       └── syn v1.0.109 (*)
+│   └── anchor-lang v0.28.0
+│       ├── anchor-attribute-access-control v0.28.0 (proc-macro)
+│       │   ├── anchor-syn v0.28.0
+│       │   │   ├── anyhow v1.0.71
+│       │   │   ├── bs58 v0.5.0
+│       │   │   ├── heck v0.3.3 (*)
+│       │   │   ├── proc-macro2 v1.0.63 (*)
+│       │   │   ├── quote v1.0.28 (*)
+│       │   │   ├── serde v1.0.164 (*)
+│       │   │   ├── serde_json v1.0.99 (*)
+│       │   │   ├── sha2 v0.10.7 (*)
+│       │   │   ├── syn v1.0.109 (*)
+│       │   │   └── thiserror v1.0.40 (*)
+│       │   ├── anyhow v1.0.71
+│       │   ├── proc-macro2 v1.0.63 (*)
+│       │   ├── quote v1.0.28 (*)
+│       │   ├── regex v1.8.4 (*)
+│       │   └── syn v1.0.109 (*)
+│       ├── anchor-attribute-account v0.28.0 (proc-macro)
+│       │   ├── anchor-syn v0.28.0 (*)
+│       │   ├── anyhow v1.0.71
+│       │   ├── bs58 v0.5.0
+│       │   ├── proc-macro2 v1.0.63 (*)
+│       │   ├── quote v1.0.28 (*)
+│       │   ├── rustversion v1.0.12 (proc-macro)
+│       │   └── syn v1.0.109 (*)
+│       ├── anchor-attribute-constant v0.28.0 (proc-macro)
+│       │   ├── anchor-syn v0.28.0 (*)
+│       │   ├── proc-macro2 v1.0.63 (*)
+│       │   └── syn v1.0.109 (*)
+│       ├── anchor-attribute-error v0.28.0 (proc-macro)
+│       │   ├── anchor-syn v0.28.0 (*)
+│       │   ├── proc-macro2 v1.0.63 (*)
+│       │   ├── quote v1.0.28 (*)
+│       │   └── syn v1.0.109 (*)
+│       ├── anchor-attribute-event v0.28.0 (proc-macro)
+│       │   ├── anchor-syn v0.28.0 (*)
+│       │   ├── anyhow v1.0.71
+│       │   ├── proc-macro2 v1.0.63 (*)
+│       │   ├── quote v1.0.28 (*)
+│       │   └── syn v1.0.109 (*)
+│       ├── anchor-attribute-program v0.28.0 (proc-macro)
+│       │   ├── anchor-syn v0.28.0 (*)
+│       │   ├── anyhow v1.0.71
+│       │   ├── proc-macro2 v1.0.63 (*)
+│       │   ├── quote v1.0.28 (*)
+│       │   └── syn v1.0.109 (*)
+│       ├── anchor-derive-accounts v0.28.0 (proc-macro)
+│       │   ├── anchor-syn v0.28.0 (*)
+│       │   ├── anyhow v1.0.71
+│       │   ├── proc-macro2 v1.0.63 (*)
+│       │   ├── quote v1.0.28 (*)
+│       │   └── syn v1.0.109 (*)
+│       ├── anchor-derive-space v0.28.0 (proc-macro)
+│       │   ├── proc-macro2 v1.0.63 (*)
+│       │   ├── quote v1.0.28 (*)
+│       │   └── syn v1.0.109 (*)
+│       ├── arrayref v0.3.7
+│       ├── base64 v0.13.1
+│       ├── bincode v1.3.3 (*)
+│       ├── borsh v0.9.3 (*)
+│       ├── bytemuck v1.13.1 (*)
+│       ├── getrandom v0.2.10 (*)
+│       ├── solana-program v1.14.17 (*)
+│       └── thiserror v1.0.40 (*)
+└── sunrise_beam v0.1.0 (/Users/daniel/code/sunrise-stake/beam/programs/sunrise_beam)
+    ├── anchor-lang v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728) (*)
+    └── anchor-spl v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728) (*)
+
+marinade-lp-beam v0.1.0 (/Users/daniel/code/sunrise-stake/beam/programs/marinade-lp-beam)
+├── anchor-lang v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728) (*)
+├── anchor-spl v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728) (*)
+├── marinade-cpi v0.3.0 (*)
+└── sunrise_beam v0.1.0 (/Users/daniel/code/sunrise-stake/beam/programs/sunrise_beam) (*)
+
+spl-beam v0.1.0 (/Users/daniel/code/sunrise-stake/beam/programs/spl-beam)
+├── anchor-lang v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728) (*)
+├── anchor-spl v0.28.0 (https://github.com/coral-xyz/anchor#29b8a728) (*)
+├── spl-stake-pool v0.6.4
+│   ├── arrayref v0.3.7
+│   ├── bincode v1.3.3 (*)
+│   ├── borsh v0.9.3 (*)
+│   ├── num-derive v0.3.3 (proc-macro) (*)
+│   ├── num-traits v0.2.15 (*)
+│   ├── num_enum v0.5.11 (*)
+│   ├── serde v1.0.164 (*)
+│   ├── serde_derive v1.0.164 (proc-macro) (*)
+│   ├── solana-program v1.14.17 (*)
+│   ├── spl-math v0.1.0
+│   │   ├── borsh v0.7.2
+│   │   │   └── borsh-derive v0.7.2 (proc-macro)
+│   │   │       ├── borsh-derive-internal v0.7.2
+│   │   │       │   ├── proc-macro2 v1.0.63 (*)
+│   │   │       │   ├── quote v1.0.28 (*)
+│   │   │       │   └── syn v1.0.109 (*)
+│   │   │       ├── borsh-schema-derive-internal v0.7.2
+│   │   │       │   ├── proc-macro2 v1.0.63 (*)
+│   │   │       │   ├── quote v1.0.28 (*)
+│   │   │       │   └── syn v1.0.109 (*)
+│   │   │       ├── proc-macro2 v1.0.63 (*)
+│   │   │       └── syn v1.0.109 (*)
+│   │   ├── borsh-derive v0.8.2 (proc-macro)
+│   │   │   ├── borsh-derive-internal v0.8.2
+│   │   │   │   ├── proc-macro2 v1.0.63 (*)
+│   │   │   │   ├── quote v1.0.28 (*)
+│   │   │   │   └── syn v1.0.109 (*)
+│   │   │   ├── borsh-schema-derive-internal v0.8.2
+│   │   │   │   ├── proc-macro2 v1.0.63 (*)
+│   │   │   │   ├── quote v1.0.28 (*)
+│   │   │   │   └── syn v1.0.109 (*)
+│   │   │   ├── proc-macro-crate v0.1.5 (*)
+│   │   │   ├── proc-macro2 v1.0.63 (*)
+│   │   │   └── syn v1.0.109 (*)
+│   │   ├── num-derive v0.3.3 (proc-macro) (*)
+│   │   ├── num-traits v0.2.15 (*)
+│   │   ├── solana-program v1.14.17 (*)
+│   │   ├── thiserror v1.0.40 (*)
+│   │   └── uint v0.8.5
+│   │       ├── byteorder v1.4.3
+│   │       ├── crunchy v0.2.2
+│   │       ├── rustc-hex v2.1.0
+│   │       └── static_assertions v1.1.0
+│   ├── spl-token v3.5.0 (*)
+│   └── thiserror v1.0.40 (*)
+└── sunrise_beam v0.1.0 (/Users/daniel/code/sunrise-stake/beam/programs/sunrise_beam) (*)
+
+sunrise_beam v0.1.0 (/Users/daniel/code/sunrise-stake/beam/programs/sunrise_beam) (*)
