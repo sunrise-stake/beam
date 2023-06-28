@@ -16,7 +16,7 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.27.0"
-anchor-spl = "0.27.0"
+anchor-lang = '0.28.0'
+anchor-spl = '0.28.0'
 marinade-cpi = "0.3.0"
 sunrise_beam = { path = "../sunrise_beam", features = ["cpi"] }
