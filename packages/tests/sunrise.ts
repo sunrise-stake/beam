@@ -19,8 +19,7 @@ import BN from "bn.js";
 
 const BEAM_DETAILS_LEN: number = 42;
 const provider = AnchorProvider.env();
-const path = process.cwd() + "/client/tests/fixtures/sunrise_state.json";
-const sunrise = createKeypairFromFile(path);
+const sunrise = Keypair.fromSecretKey(Buffer.from(require('./fixtures/sunrise_state.json')));
 let gsolMint: PublicKey;
 
 describe("sunrise-stake", () => {
