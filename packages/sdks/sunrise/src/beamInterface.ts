@@ -41,12 +41,16 @@ interface LiquidUnstake {
 interface OrderUnstake {
   kind: "order-unstake";
 }
+interface StakeWithdrawal {
+  kind: "stake-withdrawal";
+}
 
 export type BeamCapability =
   | SolDeposit
   | StakeDeposit
   | LiquidUnstake
-  | OrderUnstake;
+  | OrderUnstake
+  | StakeWithdrawal;
 
 export const canDepositSol = (cap: BeamCapability): cap is SolDeposit => {
   return "sol-deposit" in cap;
@@ -61,4 +65,9 @@ export const canLiquidUnstake = (cap: BeamCapability): cap is LiquidUnstake => {
 };
 export const canOrderUnstake = (cap: BeamCapability): cap is OrderUnstake => {
   return "order-unstake" in cap;
+};
+export const canWithdrawStake = (
+  cap: BeamCapability
+): cap is StakeWithdrawal => {
+  return "stake-withdrawal" in cap;
 };
