@@ -6,6 +6,3 @@ export const MARINADE_BEAM_PROGRAM_ID = new PublicKey(
 export const MARINADE_FINANCE_PROGRAM_ID = new PublicKey(
   "MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD"
 );
-
-export const STATE_SEED = "sunrise-marinade";
-export const VAULT_AUTHORITY_SEED = "vault-authority";

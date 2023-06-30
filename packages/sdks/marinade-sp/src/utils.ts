@@ -1,25 +1,43 @@
 import { PublicKey } from "@solana/web3.js";
+import { MarinadeState } from "@sunrisestake/marinade-ts-sdk";
 
-export const enum Seeds {
+const enum Seeds {
   STATE = "sunrise-marinade",
   VAULT_AUTHORITY = "vault-authority",
 }
 
 export class Utils {
-  constructor(readonly programId: PublicKey) {}
-
-  public deriveStateAddress(): [PublicKey, number] {
+  public static deriveStateAddress(
+    pid: PublicKey,
+    sunrise: PublicKey
+  ): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [Buffer.from(Seeds.STATE)],
-      this.programId
+      [Buffer.from(Seeds.STATE), sunrise.toBuffer()],
+      pid
     );
   }
 
-  public deriveAuthorityAddress(state?: PublicKey): [PublicKey, number] {
-    let st = state ?? this.deriveStateAddress()[0];
+  public static deriveAuthorityAddress(
+    pid: PublicKey,
+    state: PublicKey
+  ): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [Buffer.from(Seeds.VAULT_AUTHORITY), st.toBuffer()],
-      this.programId
+      [state.toBuffer(), Buffer.from(Seeds.VAULT_AUTHORITY)],
+      pid
     );
   }
+
+  //https://github.com/marinade-finance/marinade-ts-sdk/blob/d4d4060dab261264dbbfaba6ca6596270e46b99c/src/marinade.ts#L534
+  public static getValidatorIndex = async (
+    marinadeState: MarinadeState,
+    voterAddress: PublicKey
+  ): Promise<number> => {
+    const { validatorRecords } = await marinadeState.getValidatorRecords();
+    const validatorLookupIndex = validatorRecords.findIndex(
+      ({ validatorAccount }) => validatorAccount.equals(voterAddress)
+    );
+    return validatorLookupIndex === -1
+      ? marinadeState.state.validatorSystem.validatorList.count
+      : validatorLookupIndex;
+  };
 }
