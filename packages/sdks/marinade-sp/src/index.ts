@@ -1,6 +1,5 @@
 import { type AnchorProvider, Program } from "@coral-xyz/anchor";
 import {
-  ConfirmOptions,
   PublicKey,
   Keypair,
   Transaction,
@@ -8,6 +7,7 @@ import {
   SystemProgram,
   SYSVAR_CLOCK_PUBKEY,
   SYSVAR_RENT_PUBKEY,
+  StakeProgram,
 } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -20,13 +20,15 @@ import { StateAccount } from "./state";
 import {
   MARINADE_BEAM_PROGRAM_ID,
   MARINADE_FINANCE_PROGRAM_ID,
-  STATE_SEED,
-  VAULT_AUTHORITY_SEED,
 } from "./constants";
+import { Utils } from "./utils";
 import {
   Marinade,
   MarinadeConfig,
   MarinadeState,
+  MarinadeUtils,
+  Provider,
+  type Wallet,
 } from "@sunrisestake/marinade-ts-sdk";
 import { BeamInterface, BeamCapability } from "../../sunrise/src/beamInterface";
 import BN from "bn.js";
@@ -67,13 +69,10 @@ export class MarinadeClient implements BeamInterface {
   ) {
     this.program = new Program<MarinadeBeam>(IDL, programId, provider);
     this.state = state;
-    this.vaultAuthority = PublicKey.findProgramAddressSync(
-      [this.state.toBuffer(), Buffer.from(VAULT_AUTHORITY_SEED)],
-      this.program.programId
-    );
+    this.vaultAuthority = Utils.deriveAuthorityAddress(programId, state);
     this.caps = [
       { kind: "sol-deposit" },
-      { kind: "stake-deposit" }, // unimplemented.
+      { kind: "stake-deposit" },
       { kind: "order-unstake" },
       { kind: "liquid-unstake" },
     ];
@@ -88,10 +87,7 @@ export class MarinadeClient implements BeamInterface {
     programId?: PublicKey
   ): Promise<MarinadeClient> {
     let PID = programId ?? MARINADE_BEAM_PROGRAM_ID;
-    const state = PublicKey.findProgramAddressSync(
-      [Buffer.from(STATE_SEED), sunriseState.toBuffer()],
-      PID
-    )[0];
+    const state = Utils.deriveStateAddress(PID, sunriseState)[0];
     const client = await this.get(state, provider, PID, true);
     const msolVaultAuthority = client.vaultAuthority[0];
     const vaultAuthorityBump = client.vaultAuthority[1];
@@ -100,7 +96,7 @@ export class MarinadeClient implements BeamInterface {
       marinadeFinanceProgramId: MARINADE_FINANCE_PROGRAM_ID,
       connection: provider.connection,
       publicKey: provider.publicKey,
-      proxyProgramId: MARINADE_BEAM_PROGRAM_ID /**TODO: Modify marinade fork */,
+      proxyProgramId: MARINADE_BEAM_PROGRAM_ID /**TODO: Modify marinade fork*/,
     });
     const marinade = new Marinade(marinadeConfig);
     const marinadeObj = await marinade.getMarinadeState();
@@ -122,7 +118,7 @@ export class MarinadeClient implements BeamInterface {
       })
       .accounts({
         payer: provider.publicKey,
-        state: state,
+        state,
         msolMint,
         msolVault,
         msolVaultAuthority,
@@ -211,7 +207,7 @@ export class MarinadeClient implements BeamInterface {
     updateParams: {
       [Property in keyof Omit<
         StateAccount,
-        "pretty" | "proxyState"
+        "pretty" | "proxyState" | "address"
       >]: StateAccount[Property];
     } & { marinadeState: PublicKey }
   ): Promise<Transaction> {
@@ -405,6 +401,81 @@ export class MarinadeClient implements BeamInterface {
       .transaction();
   }
 
+  public async depositStake(stakeAccount: PublicKey): Promise<Transaction> {
+    if (!this.sunrise || !this.marinade) {
+      await this.refresh();
+    }
+
+    const stakeOwner = this.provider.publicKey;
+    const { gsolMint, gsolMintAuthority, instructionsSysvar } =
+      this.sunrise.client.mintGsolAccounts(this.state, stakeOwner);
+
+    const transaction = new Transaction();
+    const stakerATA = await this.provider.connection.getAccountInfo(
+      this.sunrise.stakerGsolATA
+    );
+    if (!stakerATA) {
+      transaction.add(
+        this.createTokenAccount(
+          this.sunrise.stakerGsolATA,
+          stakeOwner,
+          gsolMint
+        )
+      );
+    }
+
+    const prov = new Provider(
+      this.provider.connection,
+      this.provider.wallet as Wallet,
+      {}
+    );
+    const stakeAccountInfo = await MarinadeUtils.getParsedStakeAccountInfo(
+      prov,
+      stakeAccount
+    );
+    const voterAddress = stakeAccountInfo.voterAddress;
+    if (!voterAddress) {
+      throw new Error("The stake account must be delegated");
+    }
+
+    let info = this.marinade.state.state;
+    const validatorIndex = await Utils.getValidatorIndex(
+      this.marinade.state,
+      voterAddress
+    );
+
+    const instruction = await this.program.methods
+      .depositStakeAccount(validatorIndex)
+      .accounts({
+        state: this.state,
+        marinadeState: this.account.proxyState,
+        sunriseState: this.account.sunriseState,
+        stakeOwner,
+        stakeAccount,
+        mintGsolTo: this.sunrise.stakerGsolATA,
+        msolMint: this.marinade.msol,
+        msolVault: this.marinade.beamMsolVault,
+        vaultAuthority: this.vaultAuthority[0],
+        gsolMint,
+        gsolMintAuthority,
+        instructionsSysvar,
+        validatorList: info.validatorSystem.validatorList.account,
+        stakeList: info.stakeSystem.stakeList.account,
+        duplicationFlag: await this.marinade.state.validatorDuplicationFlag(
+          voterAddress
+        ),
+        msolMintAuthority: await this.marinade.state.mSolMintAuthority(),
+        stakeProgram: StakeProgram.programId,
+        beamProgram: this.sunrise.client.program.programId,
+        marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .instruction();
+
+    return transaction.add(instruction);
+  }
+
   private createTokenAccount(
     account: PublicKey,
     owner: PublicKey,
@@ -418,12 +489,11 @@ export class MarinadeClient implements BeamInterface {
     );
   }
 
-  static deriveStateAddress = (
+  public static deriveStateAddress = (
     sunrise: PublicKey,
     programId?: PublicKey
-  ): [PublicKey, number] =>
-    PublicKey.findProgramAddressSync(
-      [Buffer.from(STATE_SEED), sunrise.toBuffer()],
-      programId ?? MARINADE_BEAM_PROGRAM_ID
-    );
+  ): [PublicKey, number] => {
+    const PID = programId ?? MARINADE_BEAM_PROGRAM_ID;
+    return Utils.deriveStateAddress(PID, sunrise);
+  };
 }
