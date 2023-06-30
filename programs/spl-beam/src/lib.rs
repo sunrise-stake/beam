@@ -2,6 +2,7 @@
 
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::associated_token::{AssociatedToken, Create};
 use std::ops::Deref;
 
 mod cpi_interface;
@@ -10,7 +11,7 @@ mod utils;
 
 use cpi_interface::spl as spl_interface;
 use cpi_interface::sunrise as sunrise_interface;
-use state::State;
+use state::{State, StateEntry};
 
 // TODO: Use actual CPI crate.
 use sunrise_beam as sunrise_beam_cpi;
@@ -28,13 +29,23 @@ mod constants {
 pub mod spl_beam {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, input: State) -> Result<()> {
-        ctx.accounts.state.set_inner(input);
+    pub fn initialize(ctx: Context<Initialize>, input: StateEntry) -> Result<()> {
+        ctx.accounts.state.set_inner(input.into());
+        let cpi_program = ctx.accounts.associated_token_program.to_account_info();
+        let cpi_accounts = Create {
+            payer: ctx.accounts.payer.to_account_info(),
+            authority: ctx.accounts.vault_authority.to_account_info(),
+            associated_token: ctx.accounts.pool_tokens_vault.to_account_info(),
+            mint: ctx.accounts.pool_mint.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            token_program: ctx.accounts.token_program.to_account_info(),
+        };
+        anchor_spl::associated_token::create(CpiContext::new(cpi_program, cpi_accounts))?;
         Ok(())
     }
 
-    pub fn update(ctx: Context<Update>, update_input: State) -> Result<()> {
-        ctx.accounts.state.set_inner(update_input);
+    pub fn update(ctx: Context<Update>, update_input: StateEntry) -> Result<()> {
+        ctx.accounts.state.set_inner(update_input.into());
         Ok(())
     }
 
@@ -138,7 +149,23 @@ pub struct Initialize<'info> {
         bump
     )]
     pub state: Account<'info, State>,
+    /// CHECK: The pool token mint.
+    pub pool_mint: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: Initialized as token account in handler.
+    pub pool_tokens_vault: UncheckedAccount<'info>,
+    /// CHECK: PDA authority of the pool tokens.
+    #[account(
+        seeds = [
+            state.key().as_ref(),
+            constants::VAULT_AUTHORITY
+        ],
+        bump = input.vault_authority_bump
+    )]
+    pub vault_authority: UncheckedAccount<'info>,
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
@@ -161,7 +188,7 @@ pub struct Deposit<'info> {
         seeds = [constants::STATE, sunrise_state.key().as_ref()],
         bump
     )]
-    pub state: Account<'info, State>,
+    pub state: Box<Account<'info, State>>,
     #[account(mut)]
     /// CHECK: The registered SPL stake pool.
     pub stake_pool: UncheckedAccount<'info>,
@@ -172,16 +199,16 @@ pub struct Deposit<'info> {
     #[account(mut)]
     pub depositor: Signer<'info>,
     #[account(mut,token::mint = gsol_mint,token::authority = depositor)]
-    pub mint_gsol_to: Account<'info, TokenAccount>,
+    pub mint_gsol_to: Box<Account<'info, TokenAccount>>,
 
     #[account(mut)]
-    pub pool_mint: Account<'info, Mint>,
+    pub pool_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
         token::mint = pool_mint,
         token::authority = vault_authority
     )]
-    pub pool_tokens_vault: Account<'info, TokenAccount>,
+    pub pool_tokens_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         seeds = [
             state.key().as_ref(),
@@ -204,7 +231,7 @@ pub struct Deposit<'info> {
 
     #[account(mut)]
     /// Verified in CPI to Sunrise program.
-    pub gsol_mint: Account<'info, Mint>,
+    pub gsol_mint: Box<Account<'info, Mint>>,
     /// CHECK: Checked by CPI to Sunrise.
     pub gsol_mint_authority: UncheckedAccount<'info>,
     /// CHECK: Checked by CPI to Sunrise.
@@ -230,7 +257,7 @@ pub struct DepositStake<'info> {
         seeds = [constants::STATE, sunrise_state.key().as_ref()],
         bump
     )]
-    pub state: Account<'info, State>,
+    pub state: Box<Account<'info, State>>,
     #[account(mut)]
     /// CHECK: The registered SPL stake pool.
     pub stake_pool: UncheckedAccount<'info>,
@@ -244,16 +271,16 @@ pub struct DepositStake<'info> {
     /// CHECK: The stake account to be deposited.
     pub stake_account: UncheckedAccount<'info>,
     #[account(mut,token::mint = gsol_mint,token::authority = stake_owner)]
-    pub mint_gsol_to: Account<'info, TokenAccount>,
+    pub mint_gsol_to: Box<Account<'info, TokenAccount>>,
 
     #[account(mut)]
-    pub pool_mint: Account<'info, Mint>,
+    pub pool_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
         token::mint = pool_mint,
         token::authority = vault_authority
     )]
-    pub pool_tokens_vault: Account<'info, TokenAccount>,
+    pub pool_tokens_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         seeds = [
             state.key().as_ref(),
@@ -289,7 +316,7 @@ pub struct DepositStake<'info> {
 
     #[account(mut)]
     /// Verified in CPI to Sunrise program.
-    pub gsol_mint: Account<'info, Mint>,
+    pub gsol_mint: Box<Account<'info, Mint>>,
     /// CHECK: Checked by CPI to Sunrise.
     pub gsol_mint_authority: UncheckedAccount<'info>,
     /// CHECK: Checked by CPI to Sunrise.
@@ -315,7 +342,7 @@ pub struct Withdraw<'info> {
         seeds = [constants::STATE, sunrise_state.key().as_ref()],
         bump
     )]
-    pub state: Account<'info, State>,
+    pub state: Box<Account<'info, State>>,
     #[account(mut)]
     /// CHECK: The registered Spl stake pool.
     pub stake_pool: UncheckedAccount<'info>,
@@ -326,16 +353,16 @@ pub struct Withdraw<'info> {
     #[account(mut)]
     pub withdrawer: Signer<'info>,
     #[account(mut, token::mint = gsol_mint)]
-    pub gsol_token_account: Account<'info, TokenAccount>,
+    pub gsol_token_account: Box<Account<'info, TokenAccount>>,
 
     #[account(mut)]
-    pub pool_mint: Account<'info, Mint>,
+    pub pool_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
         token::mint = pool_mint,
         token::authority = vault_authority
     )]
-    pub pool_tokens_vault: Account<'info, TokenAccount>,
+    pub pool_tokens_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         seeds = [
             state.key().as_ref(),
@@ -388,7 +415,7 @@ pub struct WithdrawStake<'info> {
         seeds = [constants::STATE, sunrise_state.key().as_ref()],
         bump
     )]
-    pub state: Account<'info, State>,
+    pub state: Box<Account<'info, State>>,
     #[account(mut)]
     /// CHECK: The registered spl stake pool.
     pub stake_pool: UncheckedAccount<'info>,
@@ -399,18 +426,18 @@ pub struct WithdrawStake<'info> {
     #[account(mut)]
     pub withdrawer: Signer<'info>,
     #[account(mut, token::mint = gsol_mint)]
-    pub gsol_token_account: Account<'info, TokenAccount>,
+    pub gsol_token_account: Box<Account<'info, TokenAccount>>,
     /// CHECK: The uninitialized new stake account.
     pub new_stake_account: UncheckedAccount<'info>,
 
     #[account(mut)]
-    pub pool_mint: Account<'info, Mint>,
+    pub pool_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
         token::mint = pool_mint,
         token::authority = vault_authority
     )]
-    pub pool_tokens_vault: Account<'info, TokenAccount>,
+    pub pool_tokens_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         seeds = [
             state.key().as_ref(),
