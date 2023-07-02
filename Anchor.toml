@@ -29,6 +29,11 @@ slots_per_epoch = "32"
 address = "MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD"
 program = "packages/tests/fixtures/marinade/marinade_finance.so"
 
+[[test.genesis]]
+# SPL stake pool program.
+address = "SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy"
+program = "packages/tests/fixtures/spl/spl_stake_pool.so"
+
 # Marinade accounts.
 [[test.validator.account]] #marinade-state
 address = "8szGkuLTAux9XMgZ2vtY39jVSowEcpBfFfD8hXSEqdGC" 
@@ -51,3 +56,20 @@ filename = "packages/tests/fixtures/marinade/lp_mint.json"
 [[test.validator.account]] #reserve-pda
 address = "Du3Ysj1wKbxPKkuPPnvzQLQh8oMSVifs3jGZjJWXFmHN"
 filename = "packages/tests/fixtures/marinade/reserve_pda.json"
+
+# Spl accounts(blaze devnet accounts)
+[[test.validator.account]] #stake-pool
+address = "azFVdHtAJN8BX3sbGAYkXvtdjdrT5U6rj9rovvUFos9"
+filename = "packages/tests/fixtures/spl/pool.json"
+[[test.validator.account]] #pool-token-mint
+address = "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1"
+filename = "packages/tests/fixtures/spl/b_sol_mint_address.json"
+[[test.validator.account]] #validator-list
+address = "aEP3DRe8ssFXDFokXiNMo4UXLhpL7LEPVbneUsfqeaJ"
+filename = "packages/tests/fixtures/spl/validator_list.json"
+[[test.validator.account]] #reserve-account
+address = "aRkys1kVHeysrcn9bJFat9FkvoyyYD8M1kK286X3Aro"
+filename = "packages/tests/fixtures/spl/reserve_account.json"
+[[test.validator.account]] #manager-fee-account
+address = "Dpo148tVGewDPyh2FkGV18gouWctbdX2fHJopJGe9xv1"
+filename = "packages/tests/fixtures/spl/fees_depot.json"
