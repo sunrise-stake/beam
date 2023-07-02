@@ -87,12 +87,12 @@ pub mod spl_beam {
         // Calculate the number of pool tokens needed to be burnt to withdraw `lamports` lamports.
         let pool_tokens_amount =
             utils::pool_tokens_from_lamports(&ctx.accounts.stake_pool, lamports)?;
-        let state_bump = *ctx.bumps.get("state").unwrap();
 
         // CPI: Withdraw SOL from SPL stake pool.
-        spl_interface::withdraw(ctx.accounts.deref(), pool_tokens_amount, state_bump)?;
+        spl_interface::withdraw(ctx.accounts.deref(), pool_tokens_amount)?;
 
         // CPI: Burn GSOL of the same proportion as the lamports withdrawn.
+        let state_bump = *ctx.bumps.get("state").unwrap();
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
@@ -109,11 +109,11 @@ pub mod spl_beam {
         let pool_tokens_amount =
             utils::pool_tokens_from_lamports(&ctx.accounts.stake_pool, lamports)?;
 
-        let state_bump = *ctx.bumps.get("state").unwrap();
         // CPI: Withdraw SOL from SPL stake pool into a stake account.
-        spl_interface::withdraw_stake(ctx.accounts.deref(), pool_tokens_amount, state_bump)?;
+        spl_interface::withdraw_stake(ctx.accounts.deref(), pool_tokens_amount)?;
 
         // CPI: Burn GSOL of the same proportion as the lamports withdrawn.
+        let state_bump = *ctx.bumps.get("state").unwrap();
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
