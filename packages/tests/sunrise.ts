@@ -246,7 +246,6 @@ describe("sunrise-marinade", () => {
   const liquidWithdrawalAmount = 5;
   const delayedWithdrawalAmount = 5;
 
-
   it("can initialize a state", async () => {
     let treasury = Keypair.generate();
     client = await MarinadeClient.initialize(
@@ -268,10 +267,13 @@ describe("sunrise-marinade", () => {
     );
     expect(info.updateAuthority).to.equal(provider.publicKey.toBase58());
 
-    vaultMsolBalance = await tokenAccountBalance(provider, client.marinade.beamMsolVault);
+    vaultMsolBalance = await tokenAccountBalance(
+      provider,
+      client.marinade.beamMsolVault
+    );
   });
 
-  it("Can update a state", async() => {
+  it("Can update a state", async () => {
     const newTreasury = Keypair.generate();
     let updateParams = {
       updateAuthority: client.account.updateAuthority,
@@ -282,12 +284,14 @@ describe("sunrise-marinade", () => {
     };
     await sendAndConfirmTransaction(
       provider,
-      await client.update(provider.publicKey, updateParams), 
+      await client.update(provider.publicKey, updateParams),
       []
     );
 
     await client.refresh();
-    expect(client.account.treasury.toBase58()).to.equal(newTreasury.publicKey.toBase58());
+    expect(client.account.treasury.toBase58()).to.equal(
+      newTreasury.publicKey.toBase58()
+    );
     msolTokenAccount = client.marinade.beamMsolVault;
   });
 
@@ -449,13 +453,15 @@ describe("sunrise-spl", () => {
   let vaultBsolBalance: BN;
   let stakerGsolBalance: BN = new BN(0);
 
-  /** The blaze stake devnet pool address. 
+  /** The blaze stake devnet pool address.
    * Setup as a fixture in `fixtures/blaze/pool.json` */
-  const stakePool: PublicKey = new PublicKey('azFVdHtAJN8BX3sbGAYkXvtdjdrT5U6rj9rovvUFos9');
+  const stakePool: PublicKey = new PublicKey(
+    "azFVdHtAJN8BX3sbGAYkXvtdjdrT5U6rj9rovvUFos9"
+  );
 
   const depositAmount = 10;
   const failedDepositAmount = 5;
-  const withdrawalAmount = 10; 
+  const withdrawalAmount = 10;
 
   it("can initialize a state", async () => {
     let treasury = Keypair.generate();
@@ -477,10 +483,13 @@ describe("sunrise-spl", () => {
     );
     expect(info.updateAuthority).to.equal(provider.publicKey.toBase58());
 
-    vaultBsolBalance = await tokenAccountBalance(provider, client.spl.beamVault);
+    vaultBsolBalance = await tokenAccountBalance(
+      provider,
+      client.spl.beamVault
+    );
   });
 
-  it("Can update a state", async() => {
+  it("Can update a state", async () => {
     const newTreasury = Keypair.generate();
     let updateParams = {
       updateAuthority: client.account.updateAuthority,
@@ -496,22 +505,27 @@ describe("sunrise-spl", () => {
     );
 
     await client.refresh();
-    expect(client.account.treasury.toBase58()).to.equal(newTreasury.publicKey.toBase58());
+    expect(client.account.treasury.toBase58()).to.equal(
+      newTreasury.publicKey.toBase58()
+    );
   });
 
   it("can deposit and mint gsol", async () => {
     await airdropTo(provider, staker.publicKey, 30);
     client = await SplClient.get(client.state, stakerIdentity, stakePool);
-    try{
-    await sendAndConfirmTransaction(
-      stakerIdentity,
-      await client.deposit(new BN(10)),
-      []
-    );} catch(err) { console.log(err) }
+    try {
+      await sendAndConfirmTransaction(
+        stakerIdentity,
+        await client.deposit(new BN(10)),
+        []
+      );
+    } catch (err) {
+      console.log(err);
+    }
 
     const expectedGsol = stakerGsolBalance.addn(depositAmount);
     const expectedBsol = vaultBsolBalance.addn(
-      Math.floor(depositAmount / await client.poolTokenPrice())
+      Math.floor(depositAmount / (await client.poolTokenPrice()))
     );
     await expectAssociatedTokenAccountBalanceB(
       client.provider,
@@ -557,7 +571,7 @@ describe("sunrise-spl", () => {
 
     const expectedGsol = stakerGsolBalance.subn(withdrawalAmount);
     const expectedBsol = vaultBsolBalance.subn(
-      Math.floor(withdrawalAmount / await client.poolTokenPrice())
+      Math.floor(withdrawalAmount / (await client.poolTokenPrice()))
     );
     await expectAssociatedTokenAccountBalanceB(
       client.provider,
@@ -591,9 +605,9 @@ describe("marinade-lp", () => {
 
   const depositAmount = 10;
   const failedDepositAmount = 5;
-  const withdrawalAmount = 5; 
+  const withdrawalAmount = 5;
 
-  it("can initialize a state", async() => {
+  it("can initialize a state", async () => {
     sunriseClient = await SunriseClient.get(sunrise.publicKey, provider);
     await sendAndConfirmTransaction(
       provider,
@@ -607,13 +621,15 @@ describe("marinade-lp", () => {
       provider.publicKey,
       sunrise.publicKey,
       treasury.publicKey,
-      msolTokenAccount,
+      msolTokenAccount
     );
 
     await client.refresh();
     expect(client.account).to.not.be.undefined;
     let info = client.account.pretty();
-    expect(info.proxyState).to.equal(client.lp.marinade.marinadeStateAddress.toBase58());
+    expect(info.proxyState).to.equal(
+      client.lp.marinade.marinadeStateAddress.toBase58()
+    );
     expect(info.sunriseState).to.equal(sunrise.publicKey.toBase58());
     expect(info.vaultAuthorityBump).to.equal(
       client.vaultAuthority[1].toString()
@@ -623,7 +639,7 @@ describe("marinade-lp", () => {
     vaultBalance = await tokenAccountBalance(provider, client.lp.beamVault);
   });
 
-  it("Can update a state", async() => {
+  it("Can update a state", async () => {
     const newTreasury = Keypair.generate();
     let updateParams = {
       updateAuthority: client.account.updateAuthority,
@@ -640,22 +656,27 @@ describe("marinade-lp", () => {
     );
 
     await client.refresh();
-    expect(client.account.treasury.toBase58()).to.equal(newTreasury.publicKey.toBase58());
+    expect(client.account.treasury.toBase58()).to.equal(
+      newTreasury.publicKey.toBase58()
+    );
   });
 
   it("can deposit and mint gsol", async () => {
     await airdropTo(provider, staker.publicKey, 30);
     client = await MarinadeLpClient.get(client.state, stakerIdentity);
-    try{
-    await sendAndConfirmTransaction(
-      stakerIdentity,
-      await client.deposit(new BN(10)),
-      []
-    );} catch(err) { console.log(err) }
+    try {
+      await sendAndConfirmTransaction(
+        stakerIdentity,
+        await client.deposit(new BN(10)),
+        []
+      );
+    } catch (err) {
+      console.log(err);
+    }
 
     const expectedGsol = stakerGsolBalance.addn(depositAmount);
     const expectedLpTokens = vaultBalance.addn(
-      Math.floor(depositAmount / await client.poolTokenPrice())
+      Math.floor(depositAmount / (await client.poolTokenPrice()))
     );
     await expectAssociatedTokenAccountBalanceB(
       client.provider,
@@ -701,7 +722,7 @@ describe("marinade-lp", () => {
 
     const expectedGsol = stakerGsolBalance.subn(withdrawalAmount);
     const expectedBsol = vaultBalance.subn(
-      Math.floor(withdrawalAmount / await client.poolTokenPrice())
+      Math.floor(withdrawalAmount / (await client.poolTokenPrice()))
     );
     await expectAssociatedTokenAccountBalanceB(
       client.provider,
