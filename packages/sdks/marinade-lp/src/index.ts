@@ -49,7 +49,7 @@ export class MarinadeLpClient implements BeamInterface {
 
   sunrise:
     | {
-        client: SunriseClient; 
+        client: SunriseClient;
         gsol: PublicKey;
         stakerGsolATA: PublicKey;
       }
@@ -73,7 +73,7 @@ export class MarinadeLpClient implements BeamInterface {
     sunriseState: PublicKey,
     treasury: PublicKey,
     msolTokenAccount: PublicKey,
-    programId?: PublicKey,
+    programId?: PublicKey
   ): Promise<MarinadeLpClient> {
     let PID = programId ?? MARINADE_BEAM_PROGRAM_ID;
     const state = Utils.deriveStateAddress(PID, sunriseState)[0];
@@ -334,17 +334,17 @@ export class MarinadeLpClient implements BeamInterface {
     const lpSolLegBalance = await this.provider.connection.getBalance(lpSolLeg);
     const rentExemptReserveForTokenAccount = 2039280;
     const solBalance = lpSolLegBalance - rentExemptReserveForTokenAccount;
-  
+
     const lpMsolLeg = this.lp.marinade.mSolLeg;
     const lpMsolLegBalance =
       await this.provider.connection.getTokenAccountBalance(lpMsolLeg);
-  
+
     const msolPrice = this.lp.marinade.mSolPrice;
-  
+
     const msolValue = Number(lpMsolLegBalance.value.amount) * msolPrice;
-  
+
     const lpPrice = (solBalance + msolValue) / Number(lpSupply);
-  
+
     return lpPrice;
   };
 }

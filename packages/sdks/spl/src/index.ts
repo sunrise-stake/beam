@@ -89,7 +89,7 @@ export class SplClient implements BeamInterface {
     sunriseState: PublicKey,
     treasury: PublicKey,
     splStakePool?: PublicKey,
-    programId?: PublicKey,
+    programId?: PublicKey
   ): Promise<SplClient> {
     let PID = programId ?? SPL_BEAM_PROGRAM_ID;
     const state = Utils.deriveStateAddress(PID, sunriseState)[0];
@@ -224,7 +224,7 @@ export class SplClient implements BeamInterface {
       await this.refresh();
     }
     const depositor = this.provider.publicKey;
-    
+
     const { gsolMint, gsolMintAuthority, instructionsSysvar } =
       this.sunrise.client.mintGsolAccounts(this.state, depositor);
 
@@ -439,10 +439,9 @@ export class SplClient implements BeamInterface {
     if (!this.spl) {
       await this.refresh();
     }
-  
+
     const pool = this.spl.state;
-    const price =
-      Number(pool.totalLamports) / Number(pool.poolTokenSupply);
+    const price = Number(pool.totalLamports) / Number(pool.poolTokenSupply);
     return price;
   };
 
