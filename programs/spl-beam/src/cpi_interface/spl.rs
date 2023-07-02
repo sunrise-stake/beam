@@ -92,10 +92,7 @@ pub fn deposit_stake(accounts: &crate::DepositStake) -> Result<()> {
     Ok(())
 }
 
-pub fn withdraw(
-    accounts: &crate::Withdraw,
-    pool_token_lamports: u64,
-) -> Result<()> {
+pub fn withdraw(accounts: &crate::Withdraw, pool_token_lamports: u64) -> Result<()> {
     let bump = &[accounts.state.vault_authority_bump][..];
     let state_address = accounts.state.key();
     let seeds = &[
@@ -139,10 +136,7 @@ pub fn withdraw(
     Ok(())
 }
 
-pub fn withdraw_stake(
-    accounts: &crate::WithdrawStake,
-    lamports: u64,
-) -> Result<()> {
+pub fn withdraw_stake(accounts: &crate::WithdrawStake, lamports: u64) -> Result<()> {
     let bump = &[accounts.state.vault_authority_bump][..];
     let state_address = accounts.state.key();
     let seeds = &[

@@ -1,8 +1,8 @@
 #![allow(clippy::result_large_err)]
 
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount};
 use anchor_spl::associated_token::{AssociatedToken, Create};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 use std::ops::Deref;
 
 mod cpi_interface;
