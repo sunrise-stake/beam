@@ -95,10 +95,14 @@ pub fn deposit_stake(accounts: &crate::DepositStake) -> Result<()> {
 pub fn withdraw(
     accounts: &crate::Withdraw,
     pool_token_lamports: u64,
-    state_bump: u8,
 ) -> Result<()> {
-    let seeds = [crate::constants::STATE, &[state_bump]];
-    let signer = &[&seeds[..]];
+    let bump = &[accounts.state.vault_authority_bump][..];
+    let state_address = accounts.state.key();
+    let seeds = &[
+        state_address.as_ref(),
+        crate::constants::VAULT_AUTHORITY,
+        bump,
+    ][..];
 
     invoke_signed(
         &spl_stake_pool::instruction::withdraw_sol(
@@ -129,7 +133,7 @@ pub fn withdraw(
             accounts.native_stake_program.to_account_info(),
             accounts.token_program.to_account_info(),
         ],
-        signer,
+        &[seeds],
     )?;
 
     Ok(())
@@ -138,11 +142,16 @@ pub fn withdraw(
 pub fn withdraw_stake(
     accounts: &crate::WithdrawStake,
     lamports: u64,
-    state_bump: u8,
 ) -> Result<()> {
+    let bump = &[accounts.state.vault_authority_bump][..];
+    let state_address = accounts.state.key();
+    let seeds = &[
+        state_address.as_ref(),
+        crate::constants::VAULT_AUTHORITY,
+        bump,
+    ][..];
+
     let pool_tokens = crate::utils::pool_tokens_from_lamports(&accounts.stake_pool, lamports)?;
-    let seeds = [crate::constants::STATE, &[state_bump]];
-    let signer = &[&seeds[..]];
 
     invoke_signed(
         &spl_stake_pool::instruction::withdraw_stake(
@@ -176,7 +185,7 @@ pub fn withdraw_stake(
             accounts.token_program.to_account_info(),
             accounts.native_stake_program.to_account_info(),
         ],
-        signer,
+        &[seeds],
     )?;
 
     Ok(())
