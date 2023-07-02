@@ -1,5 +1,4 @@
 import {
-  Connection,
   PublicKey,
   Keypair,
   Transaction,
@@ -29,7 +28,7 @@ export const deriveATA = (owner: PublicKey, mint: PublicKey) =>
     ASSOCIATED_TOKEN_PROGRAM_ID
   )[0];
 
-const tokenAccountBalance = async (
+export const tokenAccountBalance = async (
   provider: AnchorProvider,
   address: PublicKey
 ): Promise<BN> =>
