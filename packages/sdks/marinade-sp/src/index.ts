@@ -134,7 +134,7 @@ export class MarinadeClient implements BeamInterface {
     return client;
   }
 
-  /** Get a new MarinadeBeamClient instance*/
+  /** Get a new MarinadeClient instance*/
   public static async get(
     state: PublicKey,
     provider: AnchorProvider,
@@ -490,10 +490,10 @@ export class MarinadeClient implements BeamInterface {
   }
 
   public static deriveStateAddress = (
-    sunrise: PublicKey,
+    sunriseState: PublicKey,
     programId?: PublicKey
   ): [PublicKey, number] => {
     const PID = programId ?? MARINADE_BEAM_PROGRAM_ID;
-    return Utils.deriveStateAddress(PID, sunrise);
+    return Utils.deriveStateAddress(PID, sunriseState);
   };
 }
