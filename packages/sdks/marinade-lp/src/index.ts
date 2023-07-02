@@ -49,7 +49,7 @@ export class MarinadeLpClient implements BeamInterface {
 
   sunrise:
     | {
-        client: SunriseClient;
+        client: SunriseClient; 
         gsol: PublicKey;
         stakerGsolATA: PublicKey;
       }
@@ -74,7 +74,6 @@ export class MarinadeLpClient implements BeamInterface {
     treasury: PublicKey,
     msolTokenAccount: PublicKey,
     programId?: PublicKey,
-    marinadeStateAddress?: PublicKey
   ): Promise<MarinadeLpClient> {
     let PID = programId ?? MARINADE_BEAM_PROGRAM_ID;
     const state = Utils.deriveStateAddress(PID, sunriseState)[0];
@@ -86,7 +85,6 @@ export class MarinadeLpClient implements BeamInterface {
       marinadeFinanceProgramId: MARINADE_FINANCE_PROGRAM_ID,
       connection: provider.connection,
       publicKey: provider.publicKey,
-      marinadeStateAddress,
       proxyProgramId: MARINADE_BEAM_PROGRAM_ID /**TODO: Modify marinade fork */,
     });
     const marinade = new Marinade(marinadeConfig);
@@ -327,5 +325,26 @@ export class MarinadeLpClient implements BeamInterface {
   ): [PublicKey, number] => {
     const PID = programId ?? MARINADE_BEAM_PROGRAM_ID;
     return Utils.deriveStateAddress(PID, sunrise);
+  };
+
+  public poolTokenPrice = async () => {
+    const lpMintInfo = await this.lp.marinade.lpMint.mintInfo();
+    const lpSupply = lpMintInfo.supply;
+    const lpSolLeg = await this.lp.marinade.solLeg();
+    const lpSolLegBalance = await this.provider.connection.getBalance(lpSolLeg);
+    const rentExemptReserveForTokenAccount = 2039280;
+    const solBalance = lpSolLegBalance - rentExemptReserveForTokenAccount;
+  
+    const lpMsolLeg = this.lp.marinade.mSolLeg;
+    const lpMsolLegBalance =
+      await this.provider.connection.getTokenAccountBalance(lpMsolLeg);
+  
+    const msolPrice = this.lp.marinade.mSolPrice;
+  
+    const msolValue = Number(lpMsolLegBalance.value.amount) * msolPrice;
+  
+    const lpPrice = (solBalance + msolValue) / Number(lpSupply);
+  
+    return lpPrice;
   };
 }

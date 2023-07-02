@@ -33,7 +33,7 @@ import {
   type Wallet,
 } from "@sunrisestake/marinade-ts-sdk";
 
-/** The marinade beam client */
+/** The SPL beam client */
 export class SplClient implements BeamInterface {
   public readonly caps: BeamCapability[];
   /** Anchor program instance. */
@@ -68,7 +68,7 @@ export class SplClient implements BeamInterface {
     readonly provider: AnchorProvider,
     state: PublicKey,
     programId: PublicKey,
-    stakePool?: PublicKey
+    stakePool: PublicKey
   ) {
     this.program = new Program<SplBeam>(IDL, programId, provider);
     this.state = state;
@@ -79,7 +79,7 @@ export class SplClient implements BeamInterface {
       { kind: "liquid-unstake" },
       { kind: "stake-withdrawal" },
     ];
-    this.stakePool = stakePool ?? BLAZE_STAKE_POOL;
+    this.stakePool = stakePool;
   }
 
   /** Registers a new state.*/
@@ -88,13 +88,13 @@ export class SplClient implements BeamInterface {
     updateAuthority: PublicKey,
     sunriseState: PublicKey,
     treasury: PublicKey,
+    splStakePool?: PublicKey,
     programId?: PublicKey,
-    splStakePool?: PublicKey
   ): Promise<SplClient> {
     let PID = programId ?? SPL_BEAM_PROGRAM_ID;
     const state = Utils.deriveStateAddress(PID, sunriseState)[0];
 
-    const client = await this.get(state, provider, PID, splStakePool, true);
+    const client = await this.get(state, provider, splStakePool, PID, true);
     const vaultAuthority = client.vaultAuthority[0];
     const vaultAuthorityBump = client.vaultAuthority[1];
 
@@ -133,19 +133,19 @@ export class SplClient implements BeamInterface {
     return client;
   }
 
-  /** Get a new MarinadeBeamClient instance*/
+  /** Get a new SplClient instance*/
   public static async get(
     state: PublicKey,
     provider: AnchorProvider,
-    programId?: PublicKey,
     stakePool?: PublicKey,
+    programId?: PublicKey,
     refreshOverride?: boolean
   ): Promise<SplClient> {
     const client = new SplClient(
       provider,
       state,
-      programId ?? SPL_STAKE_POOL_PROGRAM_ID,
-      stakePool
+      programId ?? SPL_BEAM_PROGRAM_ID,
+      stakePool ?? BLAZE_STAKE_POOL
     );
     if (refreshOverride === undefined || refreshOverride === false) {
       await client.refresh();
@@ -162,14 +162,15 @@ export class SplClient implements BeamInterface {
       this.provider.connection,
       this.stakePool
     );
+    const beamVault = getAssociatedTokenAddressSync(
+      state.poolMint,
+      this.vaultAuthority[0],
+      true
+    );
     this.spl = {
       state,
       poolMint: state.poolMint,
-      beamVault: getAssociatedTokenAddressSync(
-        state.poolMint,
-        this.vaultAuthority[0],
-        true
-      ),
+      beamVault,
       withdrawAuthority: PublicKey.findProgramAddressSync(
         [this.stakePool.toBuffer(), Buffer.from("withdraw")],
         SPL_STAKE_POOL_PROGRAM_ID
@@ -223,6 +224,7 @@ export class SplClient implements BeamInterface {
       await this.refresh();
     }
     const depositor = this.provider.publicKey;
+    
     const { gsolMint, gsolMintAuthority, instructionsSysvar } =
       this.sunrise.client.mintGsolAccounts(this.state, depositor);
 
@@ -241,7 +243,7 @@ export class SplClient implements BeamInterface {
       .accounts({
         state: this.state,
         stakePool: this.stakePool,
-        sunriseState: this.account.proxyState,
+        sunriseState: this.account.sunriseState,
         depositor,
         mintGsolTo: this.sunrise.stakerGsolATA,
         poolMint: this.spl.poolMint,
@@ -433,6 +435,17 @@ export class SplClient implements BeamInterface {
     throw new Error("Delayed withdrawals are unimplemented for Spl beams");
   }
 
+  public poolTokenPrice = async (): Promise<number> => {
+    if (!this.spl) {
+      await this.refresh();
+    }
+  
+    const pool = this.spl.state;
+    const price =
+      Number(pool.totalLamports) / Number(pool.poolTokenSupply);
+    return price;
+  };
+
   private createTokenAccount(
     account: PublicKey,
     owner: PublicKey,
@@ -447,10 +460,11 @@ export class SplClient implements BeamInterface {
   }
 
   public static deriveStateAddress = (
-    sunrise: PublicKey,
+    sunriseState: PublicKey,
     programId?: PublicKey
   ): [PublicKey, number] => {
-    const PID = programId ?? SPL_STAKE_POOL_PROGRAM_ID;
-    return Utils.deriveStateAddress(PID, sunrise);
+    //const PID = programId ?? SPL_STAKE_POOL_PROGRAM_ID;
+    const PID = programId ?? SPL_BEAM_PROGRAM_ID;
+    return Utils.deriveStateAddress(PID, sunriseState);
   };
 }
