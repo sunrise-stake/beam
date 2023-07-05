@@ -2,6 +2,7 @@ import { type PublicKey } from "@solana/web3.js";
 import { type IdlAccounts, type BN } from "@coral-xyz/anchor";
 import { type SunriseBeam } from "../../types/sunrise_beam";
 
+/** The deserialized state for the on-chain beam account.*/
 export class StateAccount {
   public readonly address: PublicKey;
   public readonly updateAuthority: PublicKey;

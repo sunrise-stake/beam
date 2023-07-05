@@ -15,7 +15,9 @@ import { IDL, type SunriseBeam } from "../../types/sunrise_beam";
 import { StateAccount } from "./state";
 import { GSOL_AUTHORITY_SEED, SUNRISE_PROGRAM_ID } from "./constants";
 
-/** An instance of the Sunrise beam program.*/
+/** An instance of the Sunrise program that checks the validity of other
+ * beams and regulates the minting and burning of GSOL.
+ * */
 export class SunriseClient {
   // The sunrise program.
   readonly program: Program<SunriseBeam>;
@@ -33,7 +35,7 @@ export class SunriseClient {
     this.state = state;
   }
 
-  /** Get a new MarinadeBeamClient instance*/
+  /** Fetch an instance for an existing state account.*/
   public static async get(
     state: PublicKey,
     provider: AnchorProvider,
@@ -57,7 +59,7 @@ export class SunriseClient {
     this.account = StateAccount.fromIdlAccount(idlState, this.state);
   }
 
-  /** Registers a new state.*/
+  /** Register a new state.*/
   public static async register(
     provider: AnchorProvider,
     state: Keypair,
@@ -84,7 +86,7 @@ export class SunriseClient {
     return client;
   }
 
-  /** Returns a transaction to register a new beam to the state. */
+  /** Return a transaction to register a new beam to the state. */
   public registerBeam(newBeam: PublicKey): Promise<Transaction> {
     return this.program.methods
       .registerBeam()
@@ -97,7 +99,7 @@ export class SunriseClient {
       .transaction();
   }
 
-  /** Returns a transaction to update beam allocations for a state.*/
+  /** Return a transaction to update beam allocations for a state.*/
   public updateAllocations(
     newAllocations: Array<{
       beam: PublicKey;
@@ -113,7 +115,7 @@ export class SunriseClient {
       .transaction();
   }
 
-  /** Returns a transaction to remove a beam from the state. */
+  /** Return a transaction to remove a beam from the state. */
   public removeBeam(beam: PublicKey): Promise<Transaction> {
     return this.program.methods
       .removeBeam(beam)
@@ -124,6 +126,7 @@ export class SunriseClient {
       .transaction();
   }
 
+  /** Return a transaction to update parameters for the state. */
   public updateState(
     newUpdateAuthority: PublicKey | null,
     newYieldAccount: PublicKey | null,
@@ -144,7 +147,9 @@ export class SunriseClient {
       .transaction();
   }
 
-  /** Resize the state so it can accept `additional` more beam-details. */
+  /** Return a transaction to resize the state so it can accept `additional`
+   * more beam-details.
+   * */
   public resizeAllocations(additional: number): Promise<Transaction> {
     return this.program.methods
       .resizeAllocations(additional)
@@ -157,7 +162,7 @@ export class SunriseClient {
       .transaction();
   }
 
-  /** Required accounts for mint-gsol CPI. */
+  /** Return the required accounts for mint-gsol CPI. */
   public mintGsolAccounts(
     beam: PublicKey,
     tokenAccountOwner: PublicKey,
@@ -183,7 +188,7 @@ export class SunriseClient {
     };
   }
 
-  /** Required accounts for burn-gsol CPI. */
+  /** Return the required accounts for burn-gsol CPI. */
   public burnGsolAccounts(
     beam: PublicKey,
     tokenAccountOwner: PublicKey,
@@ -209,12 +214,14 @@ export class SunriseClient {
     };
   }
 
+  /** Get the address of the gsol mint authority. */
   gsolMintAuthority = (): [PublicKey, number] =>
     PublicKey.findProgramAddressSync(
       [this.state.toBuffer(), Buffer.from(GSOL_AUTHORITY_SEED)],
       this.program.programId
     );
 
+  /** Derive the gsol ATA for a particular owner. */
   gsolAssociatedTokenAccount = (owner: PublicKey): PublicKey =>
     PublicKey.findProgramAddressSync(
       [
