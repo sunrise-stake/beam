@@ -34,8 +34,11 @@ import { BeamInterface, BeamCapability } from "../../sunrise/src/beamInterface";
 import BN from "bn.js";
 import { SunriseClient } from "../../sunrise/src";
 
-/** The marinade beam client */
+/** An instance of the Sunrise program that acts as a proxy to
+ * marinade-compatible stake-pools.
+ */
 export class MarinadeClient implements BeamInterface {
+  /** A list of actions supported by this beam. */
   public readonly caps: BeamCapability[];
   /** Anchor program instance. */
   readonly program: Program<MarinadeBeam>;
@@ -46,18 +49,26 @@ export class MarinadeClient implements BeamInterface {
   /** The address of the authority of this beam's token vaults*/
   vaultAuthority: [PublicKey, number];
 
+  /** Fields that depend on the stake-pool state. */
   marinade:
     | {
+        /** The marinade state. */
         state: MarinadeState;
+        /** The mint address of the marinade stake-pool's token. */
         msol: PublicKey;
+        /** The sunrise vault that holds the marinade pool's tokens. */
         beamMsolVault: PublicKey;
       }
     | undefined;
 
+  /** Fields that depend on the sunrise "token-regulator" state. */
   sunrise:
     | {
+        /** The sunrise client instance. */
         client: SunriseClient;
+        /** The sunrise GSOL mint. */
         gsol: PublicKey;
+        /** The derived GSOL ATA for the active provider. */
         stakerGsolATA: PublicKey;
       }
     | undefined;
@@ -78,7 +89,7 @@ export class MarinadeClient implements BeamInterface {
     ];
   }
 
-  /** Registers a new state.*/
+  /** Register a new state.*/
   public static async initialize(
     provider: AnchorProvider,
     updateAuthority: PublicKey,
@@ -134,7 +145,7 @@ export class MarinadeClient implements BeamInterface {
     return client;
   }
 
-  /** Get a new MarinadeClient instance*/
+  /** Fetch an existing state account. */
   public static async get(
     state: PublicKey,
     provider: AnchorProvider,
@@ -182,6 +193,7 @@ export class MarinadeClient implements BeamInterface {
     };
   }
 
+  /** Fetch the marinade client for this beam. */
   private async getMarinade(): Promise<MarinadeState> {
     if (this.account === undefined) {
       throw new Error("refresh() not called");
@@ -195,6 +207,7 @@ export class MarinadeClient implements BeamInterface {
     return marinade.getMarinadeState();
   }
 
+  /** Fetch the sunrise client. */
   private async getSunrise(): Promise<SunriseClient> {
     if (this.account === undefined) {
       throw new Error("refresh() not called");
@@ -202,6 +215,7 @@ export class MarinadeClient implements BeamInterface {
     return SunriseClient.get(this.account.sunriseState, this.provider);
   }
 
+  /** Return a transaction to update this beam's parameters. */
   public update(
     currentUpdateAuthority: PublicKey,
     updateParams: {
@@ -220,6 +234,7 @@ export class MarinadeClient implements BeamInterface {
       .transaction();
   }
 
+  /** Return a transaction to deposit to a marinade stake pool. */
   public async deposit(amount: BN): Promise<Transaction> {
     if (!this.sunrise || !this.marinade) {
       await this.refresh();
@@ -267,6 +282,7 @@ export class MarinadeClient implements BeamInterface {
     return transaction.add(instruction);
   }
 
+  /** Return a transaction to withdraw from a marinade stake-pool. */
   public async withdraw(
     amount: BN,
     gsolTokenAccount?: PublicKey
@@ -308,6 +324,9 @@ export class MarinadeClient implements BeamInterface {
     return new Transaction().add(instruction);
   }
 
+  /**
+   * Return a transaction to order a delayed withdrawal from a marinade pool.
+   */
   public async orderWithdraw(
     amount: BN,
     gsolTokenAccount?: PublicKey
@@ -377,6 +396,9 @@ export class MarinadeClient implements BeamInterface {
     };
   }
 
+  /**
+   * Return a transaction to redeem a ticket gotten from ordering a withdrawal.
+   */
   public async redeemTicket(ticketAccount: PublicKey): Promise<Transaction> {
     if (!this.sunrise || !this.marinade) {
       await this.refresh();
@@ -401,6 +423,7 @@ export class MarinadeClient implements BeamInterface {
       .transaction();
   }
 
+  /** Returns a transaction to deposit a stake account to a marinade stake-pool. */
   public async depositStake(stakeAccount: PublicKey): Promise<Transaction> {
     if (!this.sunrise || !this.marinade) {
       await this.refresh();
@@ -476,6 +499,9 @@ export class MarinadeClient implements BeamInterface {
     return transaction.add(instruction);
   }
 
+  /**
+   * Utility method to create a token account.
+   */
   private createTokenAccount(
     account: PublicKey,
     owner: PublicKey,
@@ -489,6 +515,7 @@ export class MarinadeClient implements BeamInterface {
     );
   }
 
+  /** Utility method to derive the SPL-beam address from its sunrise state and program ID. */
   public static deriveStateAddress = (
     sunriseState: PublicKey,
     programId?: PublicKey
