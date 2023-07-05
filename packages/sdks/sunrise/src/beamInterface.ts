@@ -1,8 +1,13 @@
 import { type PublicKey } from "@solana/web3.js";
 
-/** TODO: The blanket client instance and beam manager.*/
+/** TODO: The main sunrise stake client instance that directs user actions to the
+ *  required beam handler.
+ */
 export class SunriseStake {}
 
+/**
+ * Represents a common interface for sunrise beams that act as stake-pool proxies.
+ */
 export interface BeamInterface {
   caps: BeamCapability[];
 
@@ -14,6 +19,9 @@ export interface BeamInterface {
   redeemTicket(...args: any[]): any;
 }
 
+/**
+ * Represents common fields in the stored on-chain state of beam state accounts.
+ */
 export interface BeamState {
   /** The address of the beam */
   address: PublicKey;
@@ -29,22 +37,28 @@ export interface BeamState {
   treasury: PublicKey;
 }
 
+/** @type {BeamCapability}: supports sol deposits.*/
 interface SolDeposit {
   kind: "sol-deposit";
 }
+/** @type {BeamCapability}: supports stake deposits.*/
 interface StakeDeposit {
   kind: "stake-deposit";
 }
+/** @type {BeamCapability}: supports liquid unstakes.*/
 interface LiquidUnstake {
   kind: "liquid-unstake";
 }
+/** @type {BeamCapability}: supports delayed unstakes.*/
 interface OrderUnstake {
   kind: "order-unstake";
 }
+/** @type {BeamCapability}: supports stake withdrawal.*/
 interface StakeWithdrawal {
   kind: "stake-withdrawal";
 }
 
+/** A discriminated union of possible actions that can be performed on sunrise beams. */
 export type BeamCapability =
   | SolDeposit
   | StakeDeposit
@@ -52,20 +66,25 @@ export type BeamCapability =
   | OrderUnstake
   | StakeWithdrawal;
 
+/** @type {BeamCapability} variant is sol deposit.*/
 export const canDepositSol = (cap: BeamCapability): cap is SolDeposit => {
   return "sol-deposit" in cap;
 };
+/** @type {BeamCapability} variant is stake account deposit.*/
 export const canDepositStakeAccount = (
   cap: BeamCapability
 ): cap is StakeDeposit => {
   return "stake-deposit" in cap;
 };
+/** @type {BeamCapability} variant is liquid/immediate unstake/withdrawal.*/
 export const canLiquidUnstake = (cap: BeamCapability): cap is LiquidUnstake => {
   return "liquid-unstake" in cap;
 };
+/** @type {BeamCapability} variant is delayed/ordered unstake/withdrawal.*/
 export const canOrderUnstake = (cap: BeamCapability): cap is OrderUnstake => {
   return "order-unstake" in cap;
 };
+/** @type {BeamCapability} variant is withdrawal to a stake account.*/
 export const canWithdrawStake = (
   cap: BeamCapability
 ): cap is StakeWithdrawal => {
