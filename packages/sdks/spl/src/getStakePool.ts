@@ -93,6 +93,7 @@ export const StakePoolLayout = struct<StakePool>([
   u64("lastEpochTotalLamports"),
 ]);
 
+/** Fetch and decode a stake-pool account from its state address. */
 export async function getStakePoolAccount(
   connection: Connection,
   stakePoolAddress: PublicKey
