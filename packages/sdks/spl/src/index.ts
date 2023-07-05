@@ -33,8 +33,11 @@ import {
   type Wallet,
 } from "@sunrisestake/marinade-ts-sdk";
 
-/** The SPL beam client */
+/** An instance of the Sunrise program that acts as a proxy to SPL-compatible
+ * stake-pools.
+ */
 export class SplClient implements BeamInterface {
+  /** A list of actions supported by this beam. */
   public readonly caps: BeamCapability[];
   /** Anchor program instance. */
   readonly program: Program<SplBeam>;
@@ -46,20 +49,30 @@ export class SplClient implements BeamInterface {
   vaultAuthority: [PublicKey, number];
   stakePool: PublicKey;
 
+  /** Fields that depend on the stake-pool state. */
   spl:
     | {
+        /** The deserialized stake-pool state. */
         state: StakePool;
+        /** The mint of the stake pool's token. */
         poolMint: PublicKey;
+        /** The sunrise vault for holding the pool tokens. */
         beamVault: PublicKey;
+        /** The stake pool's withdraw authority PDA. */
         withdrawAuthority: PublicKey;
+        /** The stake pool's deposit authority PDA. */
         depositAuthority: PublicKey;
       }
     | undefined;
 
+  /** Fields that depend on the sunrise "token-regulator" state. */
   sunrise:
     | {
+        /** The client of the sunrise program. */
         client: SunriseClient;
+        /** The GSOL mint. */
         gsol: PublicKey;
+        /** The derived GSOL ATA for the active provider. */
         stakerGsolATA: PublicKey;
       }
     | undefined;
@@ -82,7 +95,29 @@ export class SplClient implements BeamInterface {
     this.stakePool = stakePool;
   }
 
-  /** Registers a new state.*/
+  /** Fetch an instance for an existing state account.*/
+  public static async get(
+    state: PublicKey,
+    provider: AnchorProvider,
+    stakePool?: PublicKey,
+    programId?: PublicKey,
+    refreshOverride?: boolean
+  ): Promise<SplClient> {
+    const client = new SplClient(
+      provider,
+      state,
+      programId ?? SPL_BEAM_PROGRAM_ID,
+      stakePool ?? BLAZE_STAKE_POOL
+    );
+    if (refreshOverride === undefined || refreshOverride === false) {
+      await client.refresh();
+    }
+    return client;
+  }
+
+  /**
+   * Register a new state.
+   */
   public static async initialize(
     provider: AnchorProvider,
     updateAuthority: PublicKey,
@@ -133,27 +168,30 @@ export class SplClient implements BeamInterface {
     return client;
   }
 
-  /** Get a new SplClient instance*/
-  public static async get(
-    state: PublicKey,
-    provider: AnchorProvider,
-    stakePool?: PublicKey,
-    programId?: PublicKey,
-    refreshOverride?: boolean
-  ): Promise<SplClient> {
-    const client = new SplClient(
-      provider,
-      state,
-      programId ?? SPL_BEAM_PROGRAM_ID,
-      stakePool ?? BLAZE_STAKE_POOL
-    );
-    if (refreshOverride === undefined || refreshOverride === false) {
-      await client.refresh();
-    }
-    return client;
+  /**
+   * Return a transaction to update the parameters for this state.
+   */
+  public update(
+    currentUpdateAuthority: PublicKey,
+    updateParams: {
+      [Property in keyof Omit<
+        StateAccount,
+        "pretty" | "proxyState" | "address"
+      >]: StateAccount[Property];
+    } & { stakePool: PublicKey }
+  ): Promise<Transaction> {
+    return this.program.methods
+      .update(updateParams)
+      .accounts({
+        updateAuthority: currentUpdateAuthority,
+        state: this.state,
+      })
+      .transaction();
   }
 
-  /** Query on-chain data for the most recent account state. */
+  /**
+   * Query on-chain data for the most recent account state.
+   */
   public async refresh(): Promise<void> {
     const idlState = await this.program.account.state.fetch(this.state);
     this.account = StateAccount.fromIdlAccount(idlState, this.state);
@@ -194,6 +232,9 @@ export class SplClient implements BeamInterface {
     };
   }
 
+  /**
+   * Fetch the sunrise state for this beam.
+   */
   private async getSunrise(): Promise<SunriseClient> {
     if (this.account === undefined) {
       throw new Error("refresh() not called");
@@ -201,24 +242,9 @@ export class SplClient implements BeamInterface {
     return SunriseClient.get(this.account.sunriseState, this.provider);
   }
 
-  public update(
-    currentUpdateAuthority: PublicKey,
-    updateParams: {
-      [Property in keyof Omit<
-        StateAccount,
-        "pretty" | "proxyState" | "address"
-      >]: StateAccount[Property];
-    } & { stakePool: PublicKey }
-  ): Promise<Transaction> {
-    return this.program.methods
-      .update(updateParams)
-      .accounts({
-        updateAuthority: currentUpdateAuthority,
-        state: this.state,
-      })
-      .transaction();
-  }
-
+  /** Return a transaction to deposit to an SPL stake-pool.
+   * @param amount: Deposit amount in lamports.
+   */
   public async deposit(amount: BN): Promise<Transaction> {
     if (!this.sunrise || !this.spl) {
       await this.refresh();
@@ -265,6 +291,9 @@ export class SplClient implements BeamInterface {
     return transaction.add(instruction);
   }
 
+  /**
+   * Return a transaction to withdraw from an SPL stake-pool.
+   */
   public async withdraw(
     amount: BN,
     gsolTokenAccount?: PublicKey
@@ -309,6 +338,9 @@ export class SplClient implements BeamInterface {
     return new Transaction().add(instruction);
   }
 
+  /**
+   * Returns a transaction to deposit a stake account to an SPL stake-pool.
+   */
   public async depositStake(stakeAccount: PublicKey): Promise<Transaction> {
     if (!this.sunrise || !this.spl) {
       await this.refresh();
@@ -380,6 +412,9 @@ export class SplClient implements BeamInterface {
     return transaction.add(instruction);
   }
 
+  /**
+   * Returns a transaction to withdraw from an SPL stake-pool into a new stake account
+   */
   public async withdrawStake(
     amount: BN,
     newStakeAccount: PublicKey,
@@ -427,14 +462,26 @@ export class SplClient implements BeamInterface {
     return new Transaction().add(instruction);
   }
 
+  /**
+   * Return a transaction to order a withdrawal from a spl stake-pool..
+   * This is not a supported feature for SPL beams and will throw an error.
+   */
   public orderWithdraw(amount: BN) {
     throw new Error("Delayed withdrawals are unimplemented for Spl beams");
   }
 
+  /**
+   * Return a transaction to redeem a ticket received from ordering a withdrawal.
+   * This is not a supported feature for SPL beams and will throw an error.
+   */
   public redeemTicket() {
     throw new Error("Delayed withdrawals are unimplemented for Spl beams");
   }
 
+  /**
+   * A convenience method for calculating the price of the stake-pool's token.
+   * NOTE: This might not give the current price is refresh() isn't called first.
+   */
   public poolTokenPrice = async (): Promise<number> => {
     if (!this.spl) {
       await this.refresh();
@@ -445,6 +492,7 @@ export class SplClient implements BeamInterface {
     return price;
   };
 
+  /** Utility method to create a token account. */
   private createTokenAccount(
     account: PublicKey,
     owner: PublicKey,
@@ -458,11 +506,11 @@ export class SplClient implements BeamInterface {
     );
   }
 
+  /** Utility method to derive the SPL-beam address from its sunrise state and program ID. */
   public static deriveStateAddress = (
     sunriseState: PublicKey,
     programId?: PublicKey
   ): [PublicKey, number] => {
-    //const PID = programId ?? SPL_STAKE_POOL_PROGRAM_ID;
     const PID = programId ?? SPL_BEAM_PROGRAM_ID;
     return Utils.deriveStateAddress(PID, sunriseState);
   };
