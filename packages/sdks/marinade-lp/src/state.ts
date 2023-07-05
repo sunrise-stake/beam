@@ -3,6 +3,7 @@ import { type IdlAccounts, type BN } from "@coral-xyz/anchor";
 import { type MarinadeLpBeam } from "../../types/marinade_lp_beam";
 import { type BeamState } from "../../sunrise/src/beamInterface";
 
+/** The deserialized state for the on-chain Marinade-LP-beam account. */
 export class StateAccount implements BeamState {
   public readonly address: PublicKey;
   public readonly updateAuthority: PublicKey;
