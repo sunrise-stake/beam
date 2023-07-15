@@ -17,7 +17,7 @@ import { GSOL_AUTHORITY_SEED, SUNRISE_PROGRAM_ID } from "./constants";
 
 /** An instance of the Sunrise program that checks the validity of other
  * beams and regulates the minting and burning of GSOL.
- * */
+ */
 export class SunriseClient {
   // The sunrise program.
   readonly program: Program<SunriseBeam>;
@@ -149,7 +149,7 @@ export class SunriseClient {
 
   /** Return a transaction to resize the state so it can accept `additional`
    * more beam-details.
-   * */
+   */
   public resizeAllocations(additional: number): Promise<Transaction> {
     return this.program.methods
       .resizeAllocations(additional)

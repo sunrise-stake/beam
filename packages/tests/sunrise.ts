@@ -369,7 +369,7 @@ describe("sunrise-marinade", () => {
   });
 
   it("can order a withdrawal and burn gsol", async () => {
-    let { tx, sunriseTicket, marinadeTicket } = await client.orderWithdraw(
+    let { tx, sunriseTicket, proxyTicket: marinadeTicket } = await client.orderWithdraw(
       new BN(delayedWithdrawalAmount)
     );
     await sendAndConfirmTransaction(stakerIdentity, tx, [

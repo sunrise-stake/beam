@@ -16,7 +16,32 @@ export type MarinadeLpBeam = {
           isSigner: false;
         },
         {
+          name: "liqPoolMint";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "liqPoolVault";
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: "vaultAuthority";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "tokenProgram";
+          isMut: false;
+          isSigner: false;
+        },
+        {
           name: "systemProgram";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "associatedTokenProgram";
           isMut: false;
           isSigner: false;
         }
@@ -25,7 +50,7 @@ export type MarinadeLpBeam = {
         {
           name: "input";
           type: {
-            defined: "State";
+            defined: "StateEntry";
           };
         }
       ];
@@ -48,7 +73,7 @@ export type MarinadeLpBeam = {
         {
           name: "updateInput";
           type: {
-            defined: "State";
+            defined: "StateEntry";
           };
         }
       ];
@@ -318,6 +343,40 @@ export type MarinadeLpBeam = {
       };
     }
   ];
+  types: [
+    {
+      name: "StateEntry";
+      type: {
+        kind: "struct";
+        fields: [
+          {
+            name: "updateAuthority";
+            type: "publicKey";
+          },
+          {
+            name: "marinadeState";
+            type: "publicKey";
+          },
+          {
+            name: "sunriseState";
+            type: "publicKey";
+          },
+          {
+            name: "vaultAuthorityBump";
+            type: "u8";
+          },
+          {
+            name: "treasury";
+            type: "publicKey";
+          },
+          {
+            name: "msolTokenAccount";
+            type: "publicKey";
+          }
+        ];
+      };
+    }
+  ];
   errors: [
     {
       code: 6000;
@@ -350,7 +409,32 @@ export const IDL: MarinadeLpBeam = {
           isSigner: false,
         },
         {
+          name: "liqPoolMint",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "liqPoolVault",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "vaultAuthority",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "tokenProgram",
+          isMut: false,
+          isSigner: false,
+        },
+        {
           name: "systemProgram",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "associatedTokenProgram",
           isMut: false,
           isSigner: false,
         },
@@ -359,7 +443,7 @@ export const IDL: MarinadeLpBeam = {
         {
           name: "input",
           type: {
-            defined: "State",
+            defined: "StateEntry",
           },
         },
       ],
@@ -382,7 +466,7 @@ export const IDL: MarinadeLpBeam = {
         {
           name: "updateInput",
           type: {
-            defined: "State",
+            defined: "StateEntry",
           },
         },
       ],
@@ -646,6 +730,40 @@ export const IDL: MarinadeLpBeam = {
             docs: [
               "The token-account that receives msol when withdrawing liquidity.",
             ],
+            type: "publicKey",
+          },
+        ],
+      },
+    },
+  ],
+  types: [
+    {
+      name: "StateEntry",
+      type: {
+        kind: "struct",
+        fields: [
+          {
+            name: "updateAuthority",
+            type: "publicKey",
+          },
+          {
+            name: "marinadeState",
+            type: "publicKey",
+          },
+          {
+            name: "sunriseState",
+            type: "publicKey",
+          },
+          {
+            name: "vaultAuthorityBump",
+            type: "u8",
+          },
+          {
+            name: "treasury",
+            type: "publicKey",
+          },
+          {
+            name: "msolTokenAccount",
             type: "publicKey",
           },
         ],
