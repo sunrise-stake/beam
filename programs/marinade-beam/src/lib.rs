@@ -226,7 +226,7 @@ pub struct Deposit<'info> {
 
     #[account(mut)]
     pub depositor: Signer<'info>,
-    #[account(mut,token::mint = gsol_mint,token::authority = depositor)]
+    #[account(mut,token::mint = gsol_mint)]
     pub mint_gsol_to: Box<Account<'info, TokenAccount>>,
 
     #[account(mut)]
@@ -303,7 +303,7 @@ pub struct DepositStake<'info> {
     #[account(mut)]
     /// CHECK: The stake account to be deposited.
     pub stake_account: UncheckedAccount<'info>,
-    #[account(mut,token::mint = gsol_mint,token::authority = stake_owner)]
+    #[account(mut,token::mint = gsol_mint)]
     pub mint_gsol_to: Box<Account<'info, TokenAccount>>,
 
     #[account(mut)]
