@@ -1,5 +1,6 @@
 import { type AnchorProvider, Program } from "@coral-xyz/anchor";
 import {
+  Keypair,
   PublicKey,
   Transaction,
   type TransactionInstruction,
@@ -23,7 +24,7 @@ import {
 } from "./constants";
 import { Utils } from "./utils";
 import { getStakePoolAccount, StakePool } from "./getStakePool";
-import { BeamInterface, BeamCapability } from "../../sunrise/src/beamInterface";
+import { BeamInterface, BeamCapability, canDepositSol } from "../../sunrise-stake-client/src/beamInterface";
 import BN from "bn.js";
 import { SunriseClient } from "../../sunrise/src";
 
@@ -36,7 +37,7 @@ import {
 /** An instance of the Sunrise program that acts as a proxy to SPL-compatible
  * stake-pools.
  */
-export class SplClient implements BeamInterface {
+export class SplClient extends BeamInterface {
   /** A list of actions supported by this beam. */
   public readonly caps: BeamCapability[];
   /** Anchor program instance. */
@@ -83,6 +84,7 @@ export class SplClient implements BeamInterface {
     programId: PublicKey,
     stakePool: PublicKey
   ) {
+    super();
     this.program = new Program<SplBeam>(IDL, programId, provider);
     this.state = state;
     this.vaultAuthority = Utils.deriveAuthorityAddress(programId, state);
@@ -192,7 +194,7 @@ export class SplClient implements BeamInterface {
   /**
    * Query on-chain data for the most recent account state.
    */
-  public async refresh(): Promise<void> {
+  public async refresh(sunrise?: SunriseClient): Promise<void> {
     const idlState = await this.program.account.state.fetch(this.state);
     this.account = StateAccount.fromIdlAccount(idlState, this.state);
 
@@ -219,7 +221,11 @@ export class SplClient implements BeamInterface {
       )[0],
     };
 
-    const sunriseClient = await this.getSunrise();
+    // Fetch the sunrise client only if it's not provided.
+    const sunriseClient = sunrise ?? await this.getSunrise();
+    if (sunriseClient.state !== this.account.sunriseState) {
+      throw new Error("Invalid sunrise client instance");
+    }
     const gsolMint = sunriseClient.account.gsolMint;
     this.sunrise = {
       client: sunriseClient,
@@ -466,16 +472,18 @@ export class SplClient implements BeamInterface {
    * Return a transaction to order a withdrawal from a spl stake-pool..
    * This is not a supported feature for SPL beams and will throw an error.
    */
-  public orderWithdraw(amount: BN) {
-    throw new Error("Delayed withdrawals are unimplemented for Spl beams");
+  public orderWithdraw(lamports: BN): Promise<{
+    tx: Transaction, sunriseTicket: Keypair, proxyTicket: Keypair
+  }>{
+    throw new Error("Delayed withdrawals are unimplemented for SPL beam");
   }
 
   /**
    * Return a transaction to redeem a ticket received from ordering a withdrawal.
    * This is not a supported feature for SPL beams and will throw an error.
    */
-  public redeemTicket() {
-    throw new Error("Delayed withdrawals are unimplemented for Spl beams");
+  public redeemTicket(sunriseTicket: PublicKey): Promise<Transaction> {
+    throw new Error("Delayed withdrawals are unimplemented for SPL beam");
   }
 
   /**

@@ -30,14 +30,14 @@ import {
   Provider,
   type Wallet,
 } from "@sunrisestake/marinade-ts-sdk";
-import { BeamInterface, BeamCapability } from "../../sunrise/src/beamInterface";
+import { BeamInterface, BeamCapability } from "../../sunrise-stake-client/src/beamInterface";
 import BN from "bn.js";
 import { SunriseClient } from "../../sunrise/src";
 
 /** An instance of the Sunrise program that acts as a proxy to
  * marinade-compatible stake-pools.
  */
-export class MarinadeClient implements BeamInterface {
+export class MarinadeClient extends BeamInterface {
   /** A list of actions supported by this beam. */
   public readonly caps: BeamCapability[];
   /** Anchor program instance. */
@@ -78,6 +78,7 @@ export class MarinadeClient implements BeamInterface {
     state: PublicKey,
     programId: PublicKey
   ) {
+    super();
     this.program = new Program<MarinadeBeam>(IDL, programId, provider);
     this.state = state;
     this.vaultAuthority = Utils.deriveAuthorityAddress(programId, state);
@@ -164,7 +165,7 @@ export class MarinadeClient implements BeamInterface {
   }
 
   /** Query on-chain data for the most recent account state. */
-  public async refresh(): Promise<void> {
+  public async refresh(sunrise?: SunriseClient): Promise<void> {
     const idlState = await this.program.account.state.fetch(this.state);
     this.account = StateAccount.fromIdlAccount(idlState, this.state);
 
@@ -180,7 +181,11 @@ export class MarinadeClient implements BeamInterface {
       ),
     };
 
-    const sunriseClient = await this.getSunrise();
+    // Fetch the sunrise client only if it's not provided.
+    const sunriseClient = sunrise ?? await this.getSunrise();
+    if (sunriseClient.state !== this.account.sunriseState) {
+      throw new Error("Invalid sunrise client instance");
+    }
     const gsolMint = sunriseClient.account.gsolMint;
     this.sunrise = {
       client: sunriseClient,
@@ -328,12 +333,12 @@ export class MarinadeClient implements BeamInterface {
    * Return a transaction to order a delayed withdrawal from a marinade pool.
    */
   public async orderWithdraw(
-    amount: BN,
+    lamports: BN,
     gsolTokenAccount?: PublicKey
   ): Promise<{
     tx: Transaction;
     sunriseTicket: Keypair;
-    marinadeTicket: Keypair;
+    proxyTicket: Keypair;
   }> {
     if (!this.sunrise || !this.marinade) {
       await this.refresh();
@@ -365,7 +370,7 @@ export class MarinadeClient implements BeamInterface {
     });
 
     const instruction = await this.program.methods
-      .orderWithdrawal(amount)
+      .orderWithdrawal(lamports)
       .accounts({
         state: this.state,
         marinadeState: this.account.proxyState,
@@ -392,7 +397,7 @@ export class MarinadeClient implements BeamInterface {
     return {
       tx: new Transaction().add(initMarinadeTicket, instruction),
       sunriseTicket,
-      marinadeTicket,
+      proxyTicket: marinadeTicket,
     };
   }
 

@@ -1,22 +1,38 @@
-import { type PublicKey } from "@solana/web3.js";
-
-/** TODO: The main sunrise stake client instance that directs user actions to the
- *  required beam handler.
- */
-export class SunriseStake {}
+import { Keypair, type PublicKey, Transaction } from "@solana/web3.js";
+import BN from "bn.js";
 
 /**
  * Represents a common interface for sunrise beams that act as stake-pool proxies.
  */
-export interface BeamInterface {
+export abstract class BeamInterface {
   caps: BeamCapability[];
+  state: PublicKey;
 
-  refresh(...args: any[]): any;
-  update(...args: any[]): any;
-  deposit(...args: any[]): any;
-  withdraw(...args: any[]): any;
-  orderWithdraw(...args: any[]): any;
-  redeemTicket(...args: any[]): any;
+  abstract refresh(...args: any[]): Promise<void>;
+  abstract update(...args: any[]): Promise<Transaction>;
+  abstract deposit(lamports: BN, recipient?: PublicKey): Promise<Transaction>;
+  abstract depositStake(stakeAccount: PublicKey, recipient?: PublicKey): Promise<Transaction>;
+  abstract withdraw(...args: any[]): Promise<Transaction>;
+  abstract orderWithdraw(lamports: BN): Promise<{
+    tx: Transaction, sunriseTicket: Keypair, proxyTicket: Keypair
+  }>;
+  abstract redeemTicket(sunriseTicket: PublicKey): Promise<Transaction>;
+
+  public supportsSolDeposit(): boolean {
+    return this.caps.find((cap) => canDepositSol(cap)) !== undefined;
+  }
+  public supportsStakeDeposit(): boolean {
+    return this.caps.find((cap) => canDepositStake(cap)) !== undefined;
+  }
+  public supportsLiquidUnstake(): boolean {
+    return this.caps.find((cap) => canLiquidUnstake(cap)) !== undefined;
+  }
+  public supportsOrderUnstake(): boolean {
+    return this.caps.find((cap) => canOrderUnstake(cap)) !== undefined;
+  }
+  public supportsWithdrawStake(): boolean {
+    return this.caps.find((cap) => canWithdrawStake(cap)) !== undefined;
+  }
 }
 
 /**
@@ -71,7 +87,7 @@ export const canDepositSol = (cap: BeamCapability): cap is SolDeposit => {
   return "sol-deposit" in cap;
 };
 /** @type {BeamCapability} variant is stake account deposit.*/
-export const canDepositStakeAccount = (
+export const canDepositStake = (
   cap: BeamCapability
 ): cap is StakeDeposit => {
   return "stake-deposit" in cap;

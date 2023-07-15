@@ -16,7 +16,32 @@ export type SplBeam = {
           isSigner: false;
         },
         {
+          name: "poolMint";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "poolTokensVault";
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: "vaultAuthority";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "tokenProgram";
+          isMut: false;
+          isSigner: false;
+        },
+        {
           name: "systemProgram";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "associatedTokenProgram";
           isMut: false;
           isSigner: false;
         }
@@ -25,7 +50,7 @@ export type SplBeam = {
         {
           name: "input";
           type: {
-            defined: "State";
+            defined: "StateEntry";
           };
         }
       ];
@@ -48,7 +73,7 @@ export type SplBeam = {
         {
           name: "updateInput";
           type: {
-            defined: "State";
+            defined: "StateEntry";
           };
         }
       ];
@@ -570,6 +595,36 @@ export type SplBeam = {
       };
     }
   ];
+  types: [
+    {
+      name: "StateEntry";
+      type: {
+        kind: "struct";
+        fields: [
+          {
+            name: "updateAuthority";
+            type: "publicKey";
+          },
+          {
+            name: "stakePool";
+            type: "publicKey";
+          },
+          {
+            name: "sunriseState";
+            type: "publicKey";
+          },
+          {
+            name: "vaultAuthorityBump";
+            type: "u8";
+          },
+          {
+            name: "treasury";
+            type: "publicKey";
+          }
+        ];
+      };
+    }
+  ];
   errors: [
     {
       code: 6000;
@@ -607,7 +662,32 @@ export const IDL: SplBeam = {
           isSigner: false,
         },
         {
+          name: "poolMint",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "poolTokensVault",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "vaultAuthority",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "tokenProgram",
+          isMut: false,
+          isSigner: false,
+        },
+        {
           name: "systemProgram",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "associatedTokenProgram",
           isMut: false,
           isSigner: false,
         },
@@ -616,7 +696,7 @@ export const IDL: SplBeam = {
         {
           name: "input",
           type: {
-            defined: "State",
+            defined: "StateEntry",
           },
         },
       ],
@@ -639,7 +719,7 @@ export const IDL: SplBeam = {
         {
           name: "updateInput",
           type: {
-            defined: "State",
+            defined: "StateEntry",
           },
         },
       ],
@@ -1155,6 +1235,36 @@ export const IDL: SplBeam = {
           {
             name: "treasury",
             docs: ["This state's SOL vault."],
+            type: "publicKey",
+          },
+        ],
+      },
+    },
+  ],
+  types: [
+    {
+      name: "StateEntry",
+      type: {
+        kind: "struct",
+        fields: [
+          {
+            name: "updateAuthority",
+            type: "publicKey",
+          },
+          {
+            name: "stakePool",
+            type: "publicKey",
+          },
+          {
+            name: "sunriseState",
+            type: "publicKey",
+          },
+          {
+            name: "vaultAuthorityBump",
+            type: "u8",
+          },
+          {
+            name: "treasury",
             type: "publicKey",
           },
         ],
