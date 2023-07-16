@@ -251,7 +251,7 @@ export class SplClient extends BeamInterface {
   /** Return a transaction to deposit to an SPL stake-pool.
    * @param amount: Deposit amount in lamports.
    */
-  public async deposit(amount: BN): Promise<Transaction> {
+  public async deposit(amount: BN, recipient?: PublicKey): Promise<Transaction> {
     if (!this.sunrise || !this.spl) {
       await this.refresh();
     }
@@ -261,12 +261,12 @@ export class SplClient extends BeamInterface {
       this.sunrise.client.mintGsolAccounts(this.state, depositor);
 
     const transaction = new Transaction();
-    const stakerATA = await this.provider.connection.getAccountInfo(
-      this.sunrise.stakerGsolATA
-    );
-    if (!stakerATA) {
+    const gsolOwner = recipient ?? depositor;
+    const gsolATA = getAssociatedTokenAddressSync(gsolMint, gsolOwner);
+    const account = await this.provider.connection.getAccountInfo(gsolATA);
+    if (!account) {
       transaction.add(
-        this.createTokenAccount(this.sunrise.stakerGsolATA, depositor, gsolMint)
+        this.createTokenAccount(gsolATA, gsolOwner, gsolMint)
       );
     }
 
@@ -277,7 +277,7 @@ export class SplClient extends BeamInterface {
         stakePool: this.stakePool,
         sunriseState: this.account.sunriseState,
         depositor,
-        mintGsolTo: this.sunrise.stakerGsolATA,
+        mintGsolTo: gsolATA,
         poolMint: this.spl.poolMint,
         poolTokensVault: this.spl.beamVault,
         vaultAuthority: this.vaultAuthority[0],
@@ -347,7 +347,7 @@ export class SplClient extends BeamInterface {
   /**
    * Returns a transaction to deposit a stake account to an SPL stake-pool.
    */
-  public async depositStake(stakeAccount: PublicKey): Promise<Transaction> {
+  public async depositStake(stakeAccount: PublicKey, recipient?: PublicKey): Promise<Transaction> {
     if (!this.sunrise || !this.spl) {
       await this.refresh();
     }
@@ -371,16 +371,12 @@ export class SplClient extends BeamInterface {
     }
 
     const transaction = new Transaction();
-    const stakerATA = await this.provider.connection.getAccountInfo(
-      this.sunrise.stakerGsolATA
-    );
-    if (!stakerATA) {
+    const gsolOwner = recipient ?? stakeOwner;
+    const gsolATA = getAssociatedTokenAddressSync(gsolMint, gsolOwner);
+    const account = await this.provider.connection.getAccountInfo(gsolATA);
+    if (!account) {
       transaction.add(
-        this.createTokenAccount(
-          this.sunrise.stakerGsolATA,
-          stakeOwner,
-          gsolMint
-        )
+        this.createTokenAccount(gsolATA, gsolOwner, gsolMint)
       );
     }
 
@@ -392,7 +388,7 @@ export class SplClient extends BeamInterface {
         sunriseState: this.account.sunriseState,
         stakeOwner,
         stakeAccount,
-        mintGsolTo: this.sunrise.stakerGsolATA,
+        mintGsolTo: gsolATA,
         poolMint: this.spl.poolMint,
         poolTokensVault: this.spl.beamVault,
         vaultAuthority: this.vaultAuthority[0],
