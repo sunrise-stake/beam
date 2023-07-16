@@ -235,7 +235,7 @@ export class MarinadeLpClient extends BeamInterface {
   }
 
   /** Return a transaction to deposit to a marinade liquidity pool. */
-  public async deposit(amount: BN): Promise<Transaction> {
+  public async deposit(amount: BN, recipient?: PublicKey): Promise<Transaction> {
     if (!this.sunrise || !this.lp) {
       await this.refresh();
     }
@@ -244,12 +244,12 @@ export class MarinadeLpClient extends BeamInterface {
       this.sunrise.client.mintGsolAccounts(this.state, depositor);
 
     const transaction = new Transaction();
-    const stakerATA = await this.provider.connection.getAccountInfo(
-      this.sunrise.stakerGsolATA
-    );
-    if (!stakerATA) {
+    const gsolOwner = recipient ?? depositor;
+    const gsolATA = getAssociatedTokenAddressSync(gsolMint, gsolOwner);
+    const account = await this.provider.connection.getAccountInfo(gsolATA);
+    if (!account) {
       transaction.add(
-        this.createTokenAccount(this.sunrise.stakerGsolATA, depositor, gsolMint)
+        this.createTokenAccount(gsolATA, gsolOwner, gsolMint)
       );
     }
 
@@ -260,7 +260,7 @@ export class MarinadeLpClient extends BeamInterface {
         marinadeState: this.account.proxyState,
         sunriseState: this.account.sunriseState,
         depositor,
-        mintGsolTo: this.sunrise.stakerGsolATA,
+        mintGsolTo: gsolATA,
         liqPoolMint: this.lp.liqPoolMint,
         liqPoolTokenVault: this.lp.beamVault,
         vaultAuthority: this.vaultAuthority[0],

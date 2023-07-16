@@ -240,7 +240,7 @@ export class MarinadeClient extends BeamInterface {
   }
 
   /** Return a transaction to deposit to a marinade stake pool. */
-  public async deposit(amount: BN): Promise<Transaction> {
+  public async deposit(amount: BN, recipient?: PublicKey): Promise<Transaction> {
     if (!this.sunrise || !this.marinade) {
       await this.refresh();
     }
@@ -249,12 +249,12 @@ export class MarinadeClient extends BeamInterface {
       this.sunrise.client.mintGsolAccounts(this.state, depositor);
 
     const transaction = new Transaction();
-    const stakerATA = await this.provider.connection.getAccountInfo(
-      this.sunrise.stakerGsolATA
-    );
-    if (!stakerATA) {
+    const gsolOwner = recipient ?? depositor;
+    const gsolATA = getAssociatedTokenAddressSync(gsolMint, gsolOwner);
+    const account = await this.provider.connection.getAccountInfo(gsolATA);
+    if (!account) {
       transaction.add(
-        this.createTokenAccount(this.sunrise.stakerGsolATA, depositor, gsolMint)
+        this.createTokenAccount(gsolATA, gsolOwner, gsolMint)
       );
     }
 
@@ -265,7 +265,7 @@ export class MarinadeClient extends BeamInterface {
         marinadeState: this.account.proxyState,
         sunriseState: this.account.sunriseState,
         depositor,
-        mintGsolTo: this.sunrise.stakerGsolATA,
+        mintGsolTo: gsolATA,
         msolMint: this.marinade.msol,
         msolVault: this.marinade.beamMsolVault,
         vaultAuthority: this.vaultAuthority[0],
@@ -429,26 +429,21 @@ export class MarinadeClient extends BeamInterface {
   }
 
   /** Returns a transaction to deposit a stake account to a marinade stake-pool. */
-  public async depositStake(stakeAccount: PublicKey): Promise<Transaction> {
+  public async depositStake(stakeAccount: PublicKey, recipient?: PublicKey): Promise<Transaction> {
     if (!this.sunrise || !this.marinade) {
       await this.refresh();
     }
-
     const stakeOwner = this.provider.publicKey;
     const { gsolMint, gsolMintAuthority, instructionsSysvar } =
       this.sunrise.client.mintGsolAccounts(this.state, stakeOwner);
 
     const transaction = new Transaction();
-    const stakerATA = await this.provider.connection.getAccountInfo(
-      this.sunrise.stakerGsolATA
-    );
-    if (!stakerATA) {
+    const gsolOwner = recipient ?? stakeOwner;
+    const gsolATA = getAssociatedTokenAddressSync(gsolMint, gsolOwner);
+    const account = await this.provider.connection.getAccountInfo(gsolATA);
+    if (!account) {
       transaction.add(
-        this.createTokenAccount(
-          this.sunrise.stakerGsolATA,
-          stakeOwner,
-          gsolMint
-        )
+        this.createTokenAccount(gsolATA, gsolOwner, gsolMint)
       );
     }
 
@@ -480,7 +475,7 @@ export class MarinadeClient extends BeamInterface {
         sunriseState: this.account.sunriseState,
         stakeOwner,
         stakeAccount,
-        mintGsolTo: this.sunrise.stakerGsolATA,
+        mintGsolTo: gsolATA,
         msolMint: this.marinade.msol,
         msolVault: this.marinade.beamMsolVault,
         vaultAuthority: this.vaultAuthority[0],
