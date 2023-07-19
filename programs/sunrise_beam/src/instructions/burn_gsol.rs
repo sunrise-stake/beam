@@ -14,11 +14,12 @@ pub fn handler(ctx: Context<BurnGsol>, amount_in_lamports: u64) -> Result<()> {
         .get_mut_beam_details(&ctx.accounts.beam.key())
         .ok_or(BeamError::UnidentifiedBeam)?;
 
-    if details.minted < amount {
+    // Can't burn more gsol than this beam is responsible for.
+    if details.partial_gsol_supply < amount {
         return Err(BeamError::BurnWindowExceeded.into());
     }
 
-    details.minted = details.minted.checked_sub(amount).unwrap();
+    details.partial_gsol_supply = details.partial_gsol_supply.checked_sub(amount).unwrap();
     token::burn(
         amount,
         &ctx.accounts.gsol_mint.to_account_info(),

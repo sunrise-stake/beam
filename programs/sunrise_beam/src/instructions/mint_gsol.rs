@@ -29,11 +29,12 @@ pub fn handler(ctx: Context<MintGsol>, amount_in_lamports: u64) -> Result<()> {
         amount
     };
 
-    if details.minted > mint_window {
+    if details.partial_gsol_supply > mint_window {
         return Err(BeamError::MintWindowExceeded.into());
     }
 
-    details.minted = details.minted.checked_add(amount).unwrap();
+    // Increase the partial circulating gsol supply for the beam.
+    details.partial_gsol_supply = details.partial_gsol_supply.checked_add(amount).unwrap();
     token::mint_to(
         amount,
         &ctx.accounts.gsol_mint.to_account_info(),

@@ -34,8 +34,8 @@ pub struct BeamDetails {
     /// This beam's allocation expressed as a percentage.
     pub allocation: u8,
 
-    /// The total amount of gSol this beam has minted.
-    pub minted: u64,
+    /// The total amount of circulating gsol this beam is responsible for.
+    pub partial_gsol_supply: u64,
 
     /// A beam in drain accepts withdrawals but not deposits.
     pub draining_mode: bool,
@@ -53,7 +53,7 @@ impl BeamDetails {
         BeamDetails {
             key,
             allocation,
-            minted: 0,
+            partial_gsol_supply: 0,
             draining_mode: false, // initially set draining_mode to false.
         }
     }
@@ -216,7 +216,7 @@ pub struct AllocationUpdate {
 
 #[cfg(test)]
 mod internal_tests {
-    use crate::*;
+    use super::*;
 
     #[test]
     fn test_register_beam() {
