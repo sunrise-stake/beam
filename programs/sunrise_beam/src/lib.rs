@@ -10,7 +10,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::sysvar;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use instructions::*;
-use state::*;
+pub use state::{AllocationUpdate, RegisterStateInput, State, UpdateStateInput};
 
 pub const GSOL_AUTHORITY: &[u8] = b"gsol_mint_authority";
 
@@ -121,9 +121,6 @@ pub struct RegisterBeam<'info> {
         has_one = update_authority
     )]
     pub state: Account<'info, State>,
-
-    #[account(mut)]
-    pub payer: Signer<'info>,
 
     pub update_authority: Signer<'info>,
 
