@@ -20,6 +20,13 @@ pub struct State {
 
     /// The token-account that receives msol when withdrawing liquidity.
     pub msol_token_account: Pubkey,
+
+    /// The amount of the current gsol supply this beam is responsible for.
+    /// This field is also tracked in the matching beam-details struct in the
+    /// sunrise program's state and is expected to match that value.
+    // TODO: Consider removing this and always use the value from the sunrise
+    // state instead.
+    pub partial_gsol_supply: u64,
 }
 
 impl State {
@@ -29,7 +36,8 @@ impl State {
         32 + /*sunrise_state*/
         1  + /*vault_authority_bump*/
         32 + /*treasury*/
-        32; /*msol-token-account*/
+        32 + /*msol_token_account*/
+        8; /*partial_gsol_supply*/
 }
 
 // Anchor-ts only deserializes for instruction arguments types that explicitly derive
@@ -53,6 +61,7 @@ impl From<StateEntry> for State {
             vault_authority_bump: se.vault_authority_bump,
             treasury: se.treasury,
             msol_token_account: se.msol_token_account,
+            partial_gsol_supply: 0,
         }
     }
 }
