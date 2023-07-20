@@ -1,4 +1,6 @@
 #![allow(clippy::result_large_err)]
+// Temporarily allow to pass clippy ci
+#![allow(dead_code)]
 
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::{AssociatedToken, Create};

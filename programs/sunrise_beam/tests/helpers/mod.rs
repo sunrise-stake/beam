@@ -32,4 +32,3 @@ pub enum SunriseContextError {
     #[error("Tried to fetch a non-existent account")]
     AccountNotFound,
 }
-
