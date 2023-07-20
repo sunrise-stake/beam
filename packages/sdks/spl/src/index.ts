@@ -24,7 +24,11 @@ import {
 } from "./constants";
 import { Utils } from "./utils";
 import { getStakePoolAccount, StakePool } from "./getStakePool";
-import { BeamInterface, BeamCapability, canDepositSol } from "../../sunrise-stake-client/src/beamInterface";
+import {
+  BeamInterface,
+  BeamCapability,
+  canDepositSol,
+} from "../../sunrise-stake-client/src/beamInterface";
 import BN from "bn.js";
 import { SunriseClient } from "../../sunrise/src";
 
@@ -222,7 +226,7 @@ export class SplClient extends BeamInterface {
     };
 
     // Fetch the sunrise client only if it's not provided.
-    const sunriseClient = sunrise ?? await this.getSunrise();
+    const sunriseClient = sunrise ?? (await this.getSunrise());
     if (sunriseClient.state !== this.account.sunriseState) {
       throw new Error("Invalid sunrise client instance");
     }
@@ -251,7 +255,10 @@ export class SplClient extends BeamInterface {
   /** Return a transaction to deposit to an SPL stake-pool.
    * @param amount: Deposit amount in lamports.
    */
-  public async deposit(amount: BN, recipient?: PublicKey): Promise<Transaction> {
+  public async deposit(
+    amount: BN,
+    recipient?: PublicKey
+  ): Promise<Transaction> {
     if (!this.sunrise || !this.spl) {
       await this.refresh();
     }
@@ -265,9 +272,7 @@ export class SplClient extends BeamInterface {
     const gsolATA = getAssociatedTokenAddressSync(gsolMint, gsolOwner);
     const account = await this.provider.connection.getAccountInfo(gsolATA);
     if (!account) {
-      transaction.add(
-        this.createTokenAccount(gsolATA, gsolOwner, gsolMint)
-      );
+      transaction.add(this.createTokenAccount(gsolATA, gsolOwner, gsolMint));
     }
 
     const instruction = await this.program.methods
@@ -347,7 +352,10 @@ export class SplClient extends BeamInterface {
   /**
    * Returns a transaction to deposit a stake account to an SPL stake-pool.
    */
-  public async depositStake(stakeAccount: PublicKey, recipient?: PublicKey): Promise<Transaction> {
+  public async depositStake(
+    stakeAccount: PublicKey,
+    recipient?: PublicKey
+  ): Promise<Transaction> {
     if (!this.sunrise || !this.spl) {
       await this.refresh();
     }
@@ -375,9 +383,7 @@ export class SplClient extends BeamInterface {
     const gsolATA = getAssociatedTokenAddressSync(gsolMint, gsolOwner);
     const account = await this.provider.connection.getAccountInfo(gsolATA);
     if (!account) {
-      transaction.add(
-        this.createTokenAccount(gsolATA, gsolOwner, gsolMint)
-      );
+      transaction.add(this.createTokenAccount(gsolATA, gsolOwner, gsolMint));
     }
 
     const instruction = await this.program.methods
@@ -469,8 +475,10 @@ export class SplClient extends BeamInterface {
    * This is not a supported feature for SPL beams and will throw an error.
    */
   public orderWithdraw(lamports: BN): Promise<{
-    tx: Transaction, sunriseTicket: Keypair, proxyTicket: Keypair
-  }>{
+    tx: Transaction;
+    sunriseTicket: Keypair;
+    proxyTicket: Keypair;
+  }> {
     throw new Error("Delayed withdrawals are unimplemented for SPL beam");
   }
 
