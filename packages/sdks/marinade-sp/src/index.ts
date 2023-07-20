@@ -30,7 +30,10 @@ import {
   Provider,
   type Wallet,
 } from "@sunrisestake/marinade-ts-sdk";
-import { BeamInterface, BeamCapability } from "../../sunrise-stake-client/src/beamInterface";
+import {
+  BeamInterface,
+  BeamCapability,
+} from "../../sunrise-stake-client/src/beamInterface";
 import BN from "bn.js";
 import { SunriseClient } from "../../sunrise/src";
 
@@ -182,7 +185,7 @@ export class MarinadeClient extends BeamInterface {
     };
 
     // Fetch the sunrise client only if it's not provided.
-    const sunriseClient = sunrise ?? await this.getSunrise();
+    const sunriseClient = sunrise ?? (await this.getSunrise());
     if (sunriseClient.state !== this.account.sunriseState) {
       throw new Error("Invalid sunrise client instance");
     }
@@ -240,7 +243,10 @@ export class MarinadeClient extends BeamInterface {
   }
 
   /** Return a transaction to deposit to a marinade stake pool. */
-  public async deposit(amount: BN, recipient?: PublicKey): Promise<Transaction> {
+  public async deposit(
+    amount: BN,
+    recipient?: PublicKey
+  ): Promise<Transaction> {
     if (!this.sunrise || !this.marinade) {
       await this.refresh();
     }
@@ -253,9 +259,7 @@ export class MarinadeClient extends BeamInterface {
     const gsolATA = getAssociatedTokenAddressSync(gsolMint, gsolOwner);
     const account = await this.provider.connection.getAccountInfo(gsolATA);
     if (!account) {
-      transaction.add(
-        this.createTokenAccount(gsolATA, gsolOwner, gsolMint)
-      );
+      transaction.add(this.createTokenAccount(gsolATA, gsolOwner, gsolMint));
     }
 
     const instruction = await this.program.methods
@@ -429,7 +433,10 @@ export class MarinadeClient extends BeamInterface {
   }
 
   /** Returns a transaction to deposit a stake account to a marinade stake-pool. */
-  public async depositStake(stakeAccount: PublicKey, recipient?: PublicKey): Promise<Transaction> {
+  public async depositStake(
+    stakeAccount: PublicKey,
+    recipient?: PublicKey
+  ): Promise<Transaction> {
     if (!this.sunrise || !this.marinade) {
       await this.refresh();
     }
@@ -442,9 +449,7 @@ export class MarinadeClient extends BeamInterface {
     const gsolATA = getAssociatedTokenAddressSync(gsolMint, gsolOwner);
     const account = await this.provider.connection.getAccountInfo(gsolATA);
     if (!account) {
-      transaction.add(
-        this.createTokenAccount(gsolATA, gsolOwner, gsolMint)
-      );
+      transaction.add(this.createTokenAccount(gsolATA, gsolOwner, gsolMint));
     }
 
     const prov = new Provider(

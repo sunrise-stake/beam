@@ -24,7 +24,10 @@ import {
   MarinadeConfig,
   MarinadeState,
 } from "@sunrisestake/marinade-ts-sdk";
-import { BeamInterface, BeamCapability } from "../../sunrise-stake-client/src/beamInterface";
+import {
+  BeamInterface,
+  BeamCapability,
+} from "../../sunrise-stake-client/src/beamInterface";
 import BN from "bn.js";
 import { SunriseClient } from "../../sunrise/src";
 
@@ -177,7 +180,7 @@ export class MarinadeLpClient extends BeamInterface {
     };
 
     // Fetch the sunrise client only if it's not provided.
-    const sunriseClient = sunrise ?? await this.getSunrise();
+    const sunriseClient = sunrise ?? (await this.getSunrise());
     if (sunriseClient.state !== this.account.sunriseState) {
       throw new Error("Invalid sunrise client instance");
     }
@@ -235,7 +238,10 @@ export class MarinadeLpClient extends BeamInterface {
   }
 
   /** Return a transaction to deposit to a marinade liquidity pool. */
-  public async deposit(amount: BN, recipient?: PublicKey): Promise<Transaction> {
+  public async deposit(
+    amount: BN,
+    recipient?: PublicKey
+  ): Promise<Transaction> {
     if (!this.sunrise || !this.lp) {
       await this.refresh();
     }
@@ -248,9 +254,7 @@ export class MarinadeLpClient extends BeamInterface {
     const gsolATA = getAssociatedTokenAddressSync(gsolMint, gsolOwner);
     const account = await this.provider.connection.getAccountInfo(gsolATA);
     if (!account) {
-      transaction.add(
-        this.createTokenAccount(gsolATA, gsolOwner, gsolMint)
-      );
+      transaction.add(this.createTokenAccount(gsolATA, gsolOwner, gsolMint));
     }
 
     const instruction = await this.program.methods
@@ -281,8 +285,13 @@ export class MarinadeLpClient extends BeamInterface {
     return transaction.add(instruction);
   }
 
-  public depositStake(stakeAccount: PublicKey, recipient?: PublicKey): Promise<Transaction> {
-    throw new Error("Deposit-stake-account is unimplemented for marinade-lp beam.");
+  public depositStake(
+    stakeAccount: PublicKey,
+    recipient?: PublicKey
+  ): Promise<Transaction> {
+    throw new Error(
+      "Deposit-stake-account is unimplemented for marinade-lp beam."
+    );
   }
 
   /** Return a transaction to withdraw from a marinade liquidity-pool. */
@@ -332,8 +341,14 @@ export class MarinadeLpClient extends BeamInterface {
    * Return a transaction to order a delayed withdrawal from a marinade liquidity-pool.
    * NOTE: This is not a supported feature for Marinade Lps and will throw an error.
    */
-  public orderWithdraw(lamports: BN): Promise<{ tx: Transaction; sunriseTicket: Keypair; proxyTicket: Keypair; }> {
-    throw new Error("Delayed withdrawals are unimplemented for Marinade-lp beam");
+  public orderWithdraw(lamports: BN): Promise<{
+    tx: Transaction;
+    sunriseTicket: Keypair;
+    proxyTicket: Keypair;
+  }> {
+    throw new Error(
+      "Delayed withdrawals are unimplemented for Marinade-lp beam"
+    );
   }
 
   /**
@@ -341,7 +356,9 @@ export class MarinadeLpClient extends BeamInterface {
    * NOTE: This is not a supported feature for Marinade Lps and will throw an error.
    */
   public redeemTicket(): Promise<Transaction> {
-    throw new Error("Delayed withdrawals are unimplemented for Marinade-lp beams");
+    throw new Error(
+      "Delayed withdrawals are unimplemented for Marinade-lp beams"
+    );
   }
 
   /**

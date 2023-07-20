@@ -10,11 +10,19 @@ export abstract class BeamInterface {
 
   abstract refresh(...args: any[]): Promise<void>;
   abstract update(...args: any[]): Promise<Transaction>;
-  abstract deposit(lamports: BN, recipient: PublicKey | undefined): Promise<Transaction>;
-  abstract depositStake(stakeAccount: PublicKey, recipient: PublicKey | undefined): Promise<Transaction>;
+  abstract deposit(
+    lamports: BN,
+    recipient: PublicKey | undefined
+  ): Promise<Transaction>;
+  abstract depositStake(
+    stakeAccount: PublicKey,
+    recipient: PublicKey | undefined
+  ): Promise<Transaction>;
   abstract withdraw(lamports: BN): Promise<Transaction>;
   abstract orderWithdraw(lamports: BN): Promise<{
-    tx: Transaction, sunriseTicket: Keypair, proxyTicket: Keypair
+    tx: Transaction;
+    sunriseTicket: Keypair;
+    proxyTicket: Keypair;
   }>;
   abstract redeemTicket(sunriseTicket: PublicKey): Promise<Transaction>;
 
@@ -87,9 +95,7 @@ export const canDepositSol = (cap: BeamCapability): cap is SolDeposit => {
   return "sol-deposit" in cap;
 };
 /** @type {BeamCapability} variant is stake account deposit.*/
-export const canDepositStake = (
-  cap: BeamCapability
-): cap is StakeDeposit => {
+export const canDepositStake = (cap: BeamCapability): cap is StakeDeposit => {
   return "stake-deposit" in cap;
 };
 /** @type {BeamCapability} variant is liquid/immediate unstake/withdrawal.*/
