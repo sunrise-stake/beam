@@ -12,7 +12,7 @@ export abstract class BeamInterface {
   abstract update(...args: any[]): Promise<Transaction>;
   abstract deposit(lamports: BN, recipient: PublicKey | undefined): Promise<Transaction>;
   abstract depositStake(stakeAccount: PublicKey, recipient: PublicKey | undefined): Promise<Transaction>;
-  abstract withdraw(...args: any[]): Promise<Transaction>;
+  abstract withdraw(lamports: BN): Promise<Transaction>;
   abstract orderWithdraw(lamports: BN): Promise<{
     tx: Transaction, sunriseTicket: Keypair, proxyTicket: Keypair
   }>;

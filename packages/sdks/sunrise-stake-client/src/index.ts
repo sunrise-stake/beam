@@ -20,7 +20,7 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token
 import { DEFAULT_ENVIRONMENT_CONFIG, EnvironmentConfig } from "./constants";
 
 
-interface SunriseStakeInfo {
+interface SunriseStakeDetails {
   effectiveGsolSupply: BN;
 }
 
@@ -34,7 +34,7 @@ export class SunriseStake {
   // TODO: Is this needed?
   readonly stakerGsolATA: PublicKey;
 
-  details: SunriseStakeInfo | undefined;
+  details: SunriseStakeDetails | undefined;
   
   private constructor(
     readonly provider: AnchorProvider,
@@ -95,10 +95,16 @@ export class SunriseStake {
     let results = new Array<[BeamInterface, BN]>;
     let { effectiveGsolSupply} = await this.fetchDetails();
 
+    // If effective Gsol supply equals 0, any beam can fully cover the deposit.
+    if (effectiveGsolSupply.eqn(0)) {
+      return [[options[0], lamports]];
+    }
+
     for (let option of options) {
       let allocation = this.sunriseClient.account.beams.find((a) => a.key === option.state).allocation;
       let window = effectiveGsolSupply.muln(allocation).divn(100);
 
+      // TODO: Consider edge case where total allocation doesn't cover lamports deposit.
       if (window >= unallocated) {
         results.push([option, unallocated]);
         unallocated = unallocated.sub(unallocated);
@@ -112,7 +118,7 @@ export class SunriseStake {
     return results;
   }
 
-  private async fetchDetails(): Promise<SunriseStakeInfo> {
+  private async fetchDetails(): Promise<SunriseStakeDetails> {
     let currentGsolCirculation = await this.provider.connection.getTokenSupply(this.sunriseClient.account.gsolMint).then((response) => response.value);
     let preGsolCirculation = this.sunriseClient.account.preSupply;
     let effectiveGsolSupply = new BN(currentGsolCirculation.amount).add(preGsolCirculation);
@@ -150,18 +156,18 @@ export class SunriseStake {
   public async calculateExtractableYield() {}
 
   private solDepositBeams(): BeamInterface[] {
-    return this.beams.filter((beam) => beam.supportsSolDeposit() === true)
+    return this.beams.filter((beam) => beam.supportsSolDeposit())
   }
   private stakeDepositBeams(): BeamInterface[] {
-    return this.beams.filter((beam) => beam.supportsStakeDeposit() === true)
+    return this.beams.filter((beam) => beam.supportsStakeDeposit())
   }
   private liquidUnstakeBeams(): BeamInterface[] {
-    return this.beams.filter((beam) => beam.supportsLiquidUnstake() === true)
+    return this.beams.filter((beam) => beam.supportsLiquidUnstake())
   }
   private orderUnstakeBeams(): BeamInterface[] {
-    return this.beams.filter((beam) => beam.supportsOrderUnstake() === true)
+    return this.beams.filter((beam) => beam.supportsOrderUnstake())
   }
   private withdrawStakeAccountBeams(): BeamInterface[] {
-    return this.beams.filter((beam) => beam.supportsWithdrawStake() === true)
+    return this.beams.filter((beam) => beam.supportsWithdrawStake())
   }
 }
