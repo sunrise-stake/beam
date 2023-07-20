@@ -45,7 +45,7 @@ pub async fn send_and_confirm_tx(
         &ix,
         Some(&ctx.payer.pubkey()),
         &signers,
-        ctx.last_blockhash
+        ctx.last_blockhash,
     );
 
     ctx.banks_client.process_transaction(tx).await?;
