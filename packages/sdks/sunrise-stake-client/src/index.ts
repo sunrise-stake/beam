@@ -75,7 +75,6 @@ export class SunriseStake {
     return new SunriseStake(provider, beams, sunrise);
   }
 
-  // TODO: Relax constraints in smart-contract to allow minting to token account not owned by staker.
   public async deposit(
     lamports: BN,
     recipient?: PublicKey
@@ -100,30 +99,45 @@ export class SunriseStake {
     lamports: BN,
     options: BeamInterface[]
   ): Promise<[BeamInterface, BN][]> {
-    let unallocated = lamports;
-    let results = new Array<[BeamInterface, BN]>();
-    let { effectiveGsolSupply } = await this.fetchDetails();
-
+    const { effectiveGsolSupply } = await this.fetchDetails();
     // If effective Gsol supply equals 0, any beam can fully cover the deposit.
     if (effectiveGsolSupply.eqn(0)) {
       return [[options[0], lamports]];
     }
 
-    for (let option of options) {
-      let allocation = this.sunriseClient.account.beams.find(
-        (a) => a.key === option.state
-      ).allocation;
-      let window = effectiveGsolSupply.muln(allocation).divn(100);
+    let unassigned = lamports;
+    let results = new Array<[BeamInterface, BN]>();
 
-      // TODO: Consider edge case where total allocation doesn't cover lamports deposit.
-      if (window >= unallocated) {
-        results.push([option, unallocated]);
-        unallocated = unallocated.sub(unallocated);
+    for (let i = 0; i < options.length; ++i) {
+      if (unassigned.eqn(0) === true) {
         break;
-      } else {
-        results.push([option, window]);
-        unallocated = unallocated.sub(window);
       }
+
+      const allocation = this.sunriseClient.account.beams.find(
+        (a) => a.key === options[i].state
+      ).allocation;
+      const window = effectiveGsolSupply.muln(allocation).divn(100);
+
+      // Assumes no overflow for `toNumber()`
+      let singleDeposit = new BN(
+        Math.min(window.toNumber(), unassigned.toNumber())
+      );
+      unassigned = unassigned.sub(singleDeposit);
+
+      // We know for certain that the beams can't fully cover the deposit.
+      if (i === options.length - 1 && unassigned.gten(0) === true) {
+        break;
+      }
+
+      results.push([options[i], singleDeposit]);
+    }
+
+    // Reachable if the client is initialized with some beams missing.
+    if (unassigned.eqn(0) === false) {
+      throw new Error(
+        `Presently available beams are inadequate for deposit, 
+        missing ${unassigned.toString()} lamports. `
+      );
     }
 
     return results;
@@ -134,7 +148,7 @@ export class SunriseStake {
       .getTokenSupply(this.sunriseClient.account.gsolMint)
       .then((response) => response.value);
     let preGsolCirculation = this.sunriseClient.account.preSupply;
-    let effectiveGsolSupply = new BN(currentGsolCirculation.amount).add(
+    let effectiveGsolSupply = new BN(currentGsolCirculation.amount).sub(
       preGsolCirculation
     );
 
@@ -143,7 +157,6 @@ export class SunriseStake {
     };
   }
 
-  // TODO: cc `deposit` method above.
   public async depositStake(
     stakeAccount: PublicKey,
     recipient?: PublicKey
@@ -153,7 +166,7 @@ export class SunriseStake {
       throw new Error("No available beam(s) for stake deposit.");
     }
 
-    // TODO: Needs research.
+    // TODO: Possible to split stake accounts on the client before depositing?
     return [];
   }
 
