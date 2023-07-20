@@ -8,11 +8,12 @@ use std::ops::Deref;
 
 mod cpi_interface;
 mod state;
-mod utils;
+mod system;
 
 use cpi_interface::marinade_lp as marinade_lp_interface;
 use cpi_interface::sunrise as sunrise_interface;
 use state::{State, StateEntry};
+use system::utils;
 
 // TODO: Use actual CPI crate.
 use sunrise_beam as sunrise_beam_cpi;
@@ -46,7 +47,10 @@ pub mod marinade_lp_beam {
     }
 
     pub fn update(ctx: Context<Update>, update_input: StateEntry) -> Result<()> {
-        ctx.accounts.state.set_inner(update_input.into());
+        let mut updated_state: State = update_input.into();
+        // Make sure the partial gsol supply remains consistent.
+        updated_state.partial_gsol_supply = ctx.accounts.state.partial_gsol_supply;
+        ctx.accounts.state.set_inner(updated_state);
         Ok(())
     }
 
@@ -64,6 +68,13 @@ pub mod marinade_lp_beam {
             state_bump,
             lamports,
         )?;
+
+        // Update the partial gsol supply for this beam.
+        let state_account = &mut ctx.accounts.state;
+        state_account.partial_gsol_supply = state_account
+            .partial_gsol_supply
+            .checked_add(lamports)
+            .unwrap();
 
         Ok(())
     }
@@ -89,8 +100,17 @@ pub mod marinade_lp_beam {
             state_bump,
             lamports,
         )?;
+
+        // Update the partial gsol supply for this beam.
+        let state_account = &mut ctx.accounts.state;
+        state_account.partial_gsol_supply = state_account
+            .partial_gsol_supply
+            .checked_sub(lamports)
+            .unwrap();
         Ok(())
     }
+
+    // pub fn extract_yield() {}
 
     pub fn order_withdrawal(_ctx: Context<Noop>) -> Result<()> {
         // Marinade liq_pool only supports immediate withdrawals.
