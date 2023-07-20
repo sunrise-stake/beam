@@ -1,23 +1,12 @@
-use super::instructions::*;
+use super::{instructions::*, Result, SunriseContextError};
 use anchor_lang::prelude::*;
-use solana_program_test::{processor, BanksClientError, ProgramTest, ProgramTestContext};
-use solana_sdk::{
-    instruction::Instruction,
-    pubkey::Pubkey,
-    signature::{Keypair, Signer},
-    transaction::Transaction,
-};
+use solana_program_test::ProgramTestContext;
+use solana_sdk::account::Account;
+use solana_sdk::instruction::Instruction;
+use solana_sdk::pubkey::Pubkey;
+use solana_sdk::signature::{Keypair, Signer};
 use std::cell::RefCell;
-use std::result::Result as StdResult;
 use sunrise_beam::State as StateAccount;
-
-fn program_test() -> ProgramTest {
-    ProgramTest::new(
-        "sunrise-beam",
-        sunrise_beam::id(),
-        processor!(sunrise_beam::entry),
-    )
-}
 
 pub struct SunriseContext {
     pub ctx: RefCell<ProgramTestContext>,
@@ -28,13 +17,13 @@ pub struct SunriseContext {
 
 impl SunriseContext {
     pub async fn init(
+        ctx: ProgramTestContext,
         state: &Keypair,
         gsol_mint: &Keypair,
         update_authority: &Pubkey,
         yield_account: &Pubkey,
         initial_capacity: u8,
-    ) -> StdResult<(), BanksClientError> {
-        let ctx = program_test().start_with_context().await;
+    ) -> Result<Self> {
         let gsol_mint_authority = Self::find_gsol_mint_authority_pda(&state.pubkey());
 
         let (_, instruction) = register_state(
@@ -49,14 +38,16 @@ impl SunriseContext {
 
         let sunrise = SunriseContext {
             ctx: RefCell::new(ctx),
-            state: Pubkey::default(),
+            state: state.pubkey(),
             gsol_mint_authority: Some(gsol_mint_authority),
             update_authority: Keypair::new(),
         };
 
         sunrise
-            .send_and_confirm_tx(vec![instruction], Some(vec![state, gsol_mint]))
-            .await
+            .send_and_confirm_tx(vec![instruction], Some(vec![state]))
+            .await?;
+
+        Ok(sunrise)
     }
 
     pub fn set_update_authority(&mut self, auth: Keypair) {
@@ -67,25 +58,9 @@ impl SunriseContext {
         &self,
         ix: Vec<Instruction>,
         signers: Option<Vec<&Keypair>>,
-    ) -> StdResult<(), BanksClientError> {
-        let tx = match signers {
-            Some(signer_keypairs) => {
-                let last_blockhash = self.ctx.borrow().last_blockhash;
-                Transaction::new_signed_with_payer(
-                    &ix,
-                    Some(&self.ctx.borrow().payer.pubkey()),
-                    &signer_keypairs,
-                    last_blockhash,
-                )
-            }
-            None => Transaction::new_with_payer(&ix, Some(&self.ctx.borrow().payer.pubkey())),
-        };
-
-        self.ctx
-            .borrow_mut()
-            .banks_client
-            .process_transaction(tx)
-            .await
+    ) -> Result<()> {
+        super::utils::send_and_confirm_tx(&mut self.ctx.borrow_mut(), ix, signers).await?;
+        Ok(())
     }
 
     pub async fn update_state(
@@ -94,7 +69,7 @@ impl SunriseContext {
         new_yield_account: Option<&Pubkey>,
         new_gsol_mint: Option<&Pubkey>,
         new_gsol_mint_authority_bump: Option<u8>,
-    ) -> StdResult<(), BanksClientError> {
+    ) -> Result<()> {
         let (_, instruction) = update_state(
             &self.update_authority.pubkey(),
             &self.state,
@@ -108,17 +83,14 @@ impl SunriseContext {
             .await
     }
 
-    pub async fn register_beam(&self, new_beam: &Pubkey) -> StdResult<(), BanksClientError> {
+    pub async fn register_beam(&self, new_beam: &Pubkey) -> Result<()> {
         let (_, instruction) =
             register_beam(&self.update_authority.pubkey(), &self.state, new_beam);
         self.send_and_confirm_tx(vec![instruction], Some(vec![&self.update_authority]))
             .await
     }
 
-    pub async fn resize_allocations(
-        &self,
-        additional_beams: u8,
-    ) -> StdResult<(), BanksClientError> {
+    pub async fn resize_allocations(&self, additional_beams: u8) -> Result<()> {
         let (_, instruction) = resize_allocations(
             &self.update_authority.pubkey(),
             &self.ctx.borrow().payer.pubkey(),
@@ -133,7 +105,7 @@ impl SunriseContext {
     pub async fn update_allocations(
         &self,
         new_allocations: Vec<sunrise_beam::AllocationUpdate>,
-    ) -> StdResult<(), BanksClientError> {
+    ) -> Result<()> {
         let (_, instruction) = update_allocations(
             &self.update_authority.pubkey(),
             &self.state,
@@ -144,25 +116,16 @@ impl SunriseContext {
             .await
     }
 
-    pub async fn remove_beam(&self, beam: &Pubkey) -> StdResult<(), BanksClientError> {
+    pub async fn remove_beam(&self, beam: &Pubkey) -> Result<()> {
         let (_, instruction) = remove_beam(&self.update_authority.pubkey(), &self.state, beam);
 
         self.send_and_confirm_tx(vec![instruction], Some(vec![&self.update_authority]))
             .await
     }
 
-    pub async fn export_mint_authority(
-        &self,
-        new_authority: &Pubkey,
-    ) -> StdResult<(), BanksClientError> {
-        let state_account = self
-            .ctx
-            .borrow_mut()
-            .banks_client
-            .get_account(self.state)
-            .await?
-            .unwrap();
-        let state = StateAccount::try_deserialize(&mut state_account.data.as_ref()).unwrap();
+    pub async fn export_mint_authority(&self, new_authority: &Pubkey) -> Result<()> {
+        let state_account = self.get_account(&self.state).await?;
+        let state = StateAccount::try_deserialize(&mut state_account.data.as_ref())?;
         let (_, instruction) = export_mint_authority(
             &self.update_authority.pubkey(),
             &self.state,
@@ -176,13 +139,32 @@ impl SunriseContext {
             .await
     }
 
+    pub async fn get_account(&self, address: &Pubkey) -> Result<Account> {
+        let account = self
+            .ctx
+            .borrow_mut()
+            .banks_client
+            .get_account(*address)
+            .await?
+            .ok_or(SunriseContextError::AccountNotFound)?;
+
+        Ok(account)
+    }
+
+    pub async fn fetch_decoded_state(&self) -> Result<StateAccount> {
+        let account = &self.get_account(&self.state).await?;
+        let decoded = StateAccount::try_deserialize(&mut account.data.as_ref())?;
+
+        Ok(decoded)
+    }
+
     fn gsol_mint_authority(&self) -> Pubkey {
         self.gsol_mint_authority
             .map(|a| a.0)
             .unwrap_or(Self::find_gsol_mint_authority_pda(&self.state).0)
     }
 
-    fn find_gsol_mint_authority_pda(state: &Pubkey) -> (Pubkey, u8) {
+    pub fn find_gsol_mint_authority_pda(state: &Pubkey) -> (Pubkey, u8) {
         let seeds = &[state.as_ref(), sunrise_beam::GSOL_AUTHORITY];
         Pubkey::find_program_address(seeds, &sunrise_beam::id())
     }
