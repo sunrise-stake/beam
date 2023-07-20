@@ -45,7 +45,10 @@ pub mod spl_beam {
     }
 
     pub fn update(ctx: Context<Update>, update_input: StateEntry) -> Result<()> {
-        ctx.accounts.state.set_inner(update_input.into());
+        let mut updated_state: State = update_input.into();
+        // Make sure the partial gsol supply remains consistent.
+        updated_state.partial_gsol_supply = ctx.accounts.state.partial_gsol_supply;
+        ctx.accounts.state.set_inner(updated_state);
         Ok(())
     }
 
@@ -62,12 +65,19 @@ pub mod spl_beam {
             state_bump,
             lamports,
         )?;
+
+        // Update the partial gsol supply for this beam.
+        let state_account = &mut ctx.accounts.state;
+        state_account.partial_gsol_supply = state_account
+            .partial_gsol_supply
+            .checked_add(lamports)
+            .unwrap();
         Ok(())
     }
 
     pub fn deposit_stake(ctx: Context<DepositStake>) -> Result<()> {
         // Get the stake value in lamports of the stake account.
-        let amount = utils::get_delegated_stake_amount(&ctx.accounts.stake_account)?;
+        let lamports = utils::get_delegated_stake_amount(&ctx.accounts.stake_account)?;
         // CPI: Deposit staked SOL to SPL stake pool.
         spl_interface::deposit_stake(ctx.accounts)?;
 
@@ -78,8 +88,15 @@ pub mod spl_beam {
             ctx.accounts.beam_program.to_account_info(),
             ctx.accounts.sunrise_state.key(),
             state_bump,
-            amount,
+            lamports,
         )?;
+
+        // Update the partial gsol supply for this beam.
+        let state_account = &mut ctx.accounts.state;
+        state_account.partial_gsol_supply = state_account
+            .partial_gsol_supply
+            .checked_add(lamports)
+            .unwrap();
         Ok(())
     }
 
@@ -100,6 +117,13 @@ pub mod spl_beam {
             state_bump,
             lamports,
         )?;
+
+        // Update the partial gsol supply for this beam.
+        let state_account = &mut ctx.accounts.state;
+        state_account.partial_gsol_supply = state_account
+            .partial_gsol_supply
+            .checked_sub(lamports)
+            .unwrap();
 
         Ok(())
     }
@@ -122,16 +146,23 @@ pub mod spl_beam {
             lamports,
         )?;
 
+        // Update the partial gsol supply for this beam.
+        let state_account = &mut ctx.accounts.state;
+        state_account.partial_gsol_supply = state_account
+            .partial_gsol_supply
+            .checked_sub(lamports)
+            .unwrap();
+
         Ok(())
     }
 
     pub fn order_withdrawal(_ctx: Context<Noop>) -> Result<()> {
-        // Spl stake pools only support immediate withdrawals.
+        // spl stake pools only support immediate withdrawals.
         Err(SplBeamError::Unimplemented.into())
     }
 
     pub fn redeem_ticket(_ctx: Context<Noop>) -> Result<()> {
-        // Spl stake pools only support immediate withdrawals.
+        // spl stake pools only support immediate withdrawals.
         Err(SplBeamError::Unimplemented.into())
     }
 }
@@ -298,7 +329,6 @@ pub struct DepositStake<'info> {
     pub stake_pool_deposit_authority: UncheckedAccount<'info>,
     /// CHECK: Checked by CPI to SPL StakePool program.
     pub stake_pool_withdraw_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked by CPI to SPL StakePool program.
     #[account(mut)]
     /// CHECK: Checked by CPI to SPL StakePool program.
     pub reserve_stake_account: UncheckedAccount<'info>,
