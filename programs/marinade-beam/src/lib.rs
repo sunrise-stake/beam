@@ -1,4 +1,6 @@
 #![allow(clippy::result_large_err)]
+// Temporarily allow to pass clippy ci
+#![allow(dead_code)]
 
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::{program::invoke_signed, system_instruction};
@@ -9,11 +11,13 @@ use std::ops::Deref;
 
 mod cpi_interface;
 mod state;
-mod utils;
+mod system;
 
 use cpi_interface::marinade as marinade_interface;
 use cpi_interface::sunrise as sunrise_interface;
-use state::{ProxyTicketAccount, State, StateEntry};
+use state::{State, StateEntry};
+use system::accounts::{EpochReport, ProxyTicket};
+use system::utils;
 
 // TODO: Use actual CPI crate.
 use sunrise_beam as sunrise_beam_cpi;
@@ -25,6 +29,12 @@ mod constants {
     pub const VAULT_AUTHORITY: &[u8] = b"vault-authority";
     /// Seed of this program's state address.
     pub const STATE: &[u8] = b"sunrise-marinade";
+    /// Seed of the epoch report account.
+    pub const EPOCH_REPORT: &[u8] = b"marinade-epoch-report";
+    // TODO: RECOVERED_MARGIN is needed because, for some reason, the claim tickets have a couple of lamports less than they should,
+    // probably due to a rounding error converting to and from marinade.
+    // Figure this out and then remove this margin
+    const RECOVERED_MARGIN: u64 = 10;
 }
 
 #[program]
@@ -47,7 +57,10 @@ pub mod marinade_beam {
     }
 
     pub fn update(ctx: Context<Update>, update_input: StateEntry) -> Result<()> {
-        ctx.accounts.state.set_inner(update_input.into());
+        let mut updated_state: State = update_input.into();
+        // Make sure the partial gsol supply remains consistent.
+        updated_state.partial_gsol_supply = ctx.accounts.state.partial_gsol_supply;
+        ctx.accounts.state.set_inner(updated_state);
         Ok(())
     }
 
@@ -65,6 +78,13 @@ pub mod marinade_beam {
             bump,
             lamports,
         )?;
+
+        // Update the partial gsol supply for this beam.
+        let state_account = &mut ctx.accounts.state;
+        state_account.partial_gsol_supply = state_account
+            .partial_gsol_supply
+            .checked_add(lamports)
+            .unwrap();
 
         Ok(())
     }
@@ -85,6 +105,13 @@ pub mod marinade_beam {
             bump,
             lamports,
         )?;
+
+        // Update the partial gsol supply for this beam.
+        let state_account = &mut ctx.accounts.state;
+        state_account.partial_gsol_supply = state_account
+            .partial_gsol_supply
+            .checked_add(lamports)
+            .unwrap();
 
         Ok(())
     }
@@ -107,6 +134,13 @@ pub mod marinade_beam {
             lamports,
         )?;
 
+        // Update the partial gsol supply for this beam.
+        let state_account = &mut ctx.accounts.state;
+        state_account.partial_gsol_supply = state_account
+            .partial_gsol_supply
+            .checked_sub(lamports)
+            .unwrap();
+
         Ok(())
     }
 
@@ -119,7 +153,7 @@ pub mod marinade_beam {
 
         // Create a program-owned account mapping the Marinade ticket to the beneficiary that ordered it.
         let ticket_account = &mut ctx.accounts.proxy_ticket_account;
-        ticket_account.state_address = ctx.accounts.state.key();
+        ticket_account.state = ctx.accounts.state.key();
         ticket_account.marinade_ticket_account = ctx.accounts.new_ticket_account.key();
         ticket_account.beneficiary = ctx.accounts.withdrawer.key();
 
@@ -132,6 +166,13 @@ pub mod marinade_beam {
             bump,
             lamports,
         )?;
+
+        // Update the partial gsol supply for this beam.
+        let state_account = &mut ctx.accounts.state;
+        state_account.partial_gsol_supply = state_account
+            .partial_gsol_supply
+            .checked_sub(lamports)
+            .unwrap();
 
         Ok(())
     }
@@ -162,10 +203,84 @@ pub mod marinade_beam {
 
         Ok(())
     }
+
+    pub fn init_epoch_report(ctx: Context<InitEpochReport>, extracted_yield: u64) -> Result<()> {
+        let extractable_yield = utils::extractable_yield(
+            &ctx.accounts.state,
+            &ctx.accounts.marinade_state,
+            &ctx.accounts.msol_vault,
+        )?;
+        let mut epoch_report = EpochReport {
+            state: ctx.accounts.state.key(),
+            epoch: ctx.accounts.clock.epoch,
+            tickets: 0,
+            total_ordered_lamports: 0,
+            extractable_yield,
+            extracted_yield: 0, // modified below with remarks
+            partial_gsol_supply: ctx.accounts.state.partial_gsol_supply,
+            bump: *ctx.bumps.get("epoch_report_account").unwrap(),
+        };
+        // we have to trust that the extracted amount is accurate,
+        // as extracted yield is no longer managed by the program.
+        // This is why this instruction is only callable by the update authority
+        epoch_report.extracted_yield = extracted_yield;
+
+        ctx.accounts.epoch_report_account.set_inner(epoch_report);
+        Ok(())
+    }
+
+    pub fn update_epoch_report(ctx: Context<UpdateEpochReport>) -> Result<()> {
+        // we can update the epoch report if either
+        // a) the account is at the current epoch or
+        // b) the account is at the previous epoch and there are no open tickets
+
+        let current_epoch = ctx.accounts.clock.epoch;
+        let is_previous_epoch = ctx.accounts.epoch_report_account.epoch == current_epoch - 1;
+        let is_current_epoch = ctx.accounts.epoch_report_account.epoch == current_epoch;
+        let is_previous_epoch_and_no_open_tickets =
+            is_previous_epoch && ctx.accounts.epoch_report_account.tickets == 0;
+
+        require!(
+            is_current_epoch || is_previous_epoch_and_no_open_tickets,
+            MarinadeBeamError::RemainingUnclaimableTicketAmount
+        );
+
+        ctx.accounts.epoch_report_account.epoch = ctx.accounts.clock.epoch;
+        ctx.accounts.epoch_report_account.partial_gsol_supply =
+            ctx.accounts.state.partial_gsol_supply;
+
+        let extractable_yield = utils::extractable_yield(
+            &ctx.accounts.state,
+            &ctx.accounts.marinade_state,
+            &ctx.accounts.msol_vault,
+        )?;
+        msg!("Extractable yield: {}", extractable_yield);
+        ctx.accounts.epoch_report_account.extractable_yield = extractable_yield;
+        Ok(())
+    }
+
+    pub fn extract_yield(ctx: Context<ExtractToTreasury>) -> Result<()> {
+        let yield_lamports = utils::extractable_yield(
+            &ctx.accounts.state,
+            &ctx.accounts.marinade_state,
+            &ctx.accounts.msol_vault,
+        )?;
+        ctx.accounts
+            .epoch_report_account
+            .add_extracted_yield(yield_lamports);
+        let yield_msol =
+            utils::calc_msol_from_lamports(&ctx.accounts.marinade_state, yield_lamports)?;
+
+        // TODO: Change to use delayed unstake so as not to incur fees.
+        msg!("Withdrawing {} msol to treasury", yield_msol);
+        // TODO: Legacy code uses liquid-unstake but leaves the note above.
+        // Move to delayed-unstakes here?
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
-#[instruction(input: State)]
+#[instruction(input: StateEntry)]
 pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -478,10 +593,10 @@ pub struct OrderWithdrawal<'info> {
     pub new_ticket_account: UncheckedAccount<'info>,
     #[account(
         init,
-        space = ProxyTicketAccount::SPACE,
+        space = ProxyTicket::SPACE,
         payer = withdrawer
     )]
-    pub proxy_ticket_account: Box<Account<'info, ProxyTicketAccount>>,
+    pub proxy_ticket_account: Box<Account<'info, ProxyTicket>>,
 
     #[account(address = sunrise_beam_cpi::ID)]
     /// CHECK: The Sunrise Program ID.
@@ -511,7 +626,7 @@ pub struct RedeemTicket<'info> {
         has_one = beneficiary,
         close = beneficiary,
     )]
-    pub sunrise_ticket_account: Account<'info, ProxyTicketAccount>,
+    pub sunrise_ticket_account: Account<'info, ProxyTicket>,
     #[account(mut)]
     pub marinade_ticket_account: Account<'info, MarinadeTicketAccount>,
 
@@ -537,10 +652,145 @@ pub struct RedeemTicket<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts, Clone)]
+pub struct ExtractToTreasury<'info> {
+    #[account(has_one = marinade_state)]
+    pub state: Box<Account<'info, State>>,
+    #[account(mut)]
+    pub marinade_state: Box<Account<'info, MarinadeState>>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    #[account(mut)]
+    // Checked by Marinade CPI.
+    pub msol_mint: Box<Account<'info, Mint>>,
+    #[account(
+        mut,
+        token::mint = msol_mint,
+        token::authority = vault_authority,
+    )]
+    pub msol_vault: Box<Account<'info, TokenAccount>>,
+    /// CHECK: Seeds of the MSOL vault authority.
+    #[account(
+        seeds = [
+            state.key().as_ref(),
+            constants::VAULT_AUTHORITY
+        ],
+        bump = state.vault_authority_bump
+    )]
+    pub vault_authority: UncheckedAccount<'info>,
+
+    #[account(mut,constraint = treasury.key() == state.treasury)]
+    /// CHECK: Matches the treasury key stored in the state.
+    pub treasury: UncheckedAccount<'info>,
+
+    #[account(
+    mut,
+    seeds = [state.key().as_ref(), constants::EPOCH_REPORT],
+    bump = epoch_report_account.bump,
+    constraint = epoch_report_account.epoch == clock.epoch @ MarinadeBeamError::InvalidEpochReportAccount
+    )]
+    pub epoch_report_account: Box<Account<'info, EpochReport>>,
+
+    pub clock: Sysvar<'info, Clock>,
+    //pub system_program: Program<'info, System>,
+    //pub token_program: Program<'info, Token>,
+    //pub marinade_program: Program<'info, MarinadeFinance>,
+}
+
+#[derive(Accounts, Clone)]
+pub struct InitEpochReport<'info> {
+    #[account(has_one = marinade_state, has_one = update_authority)]
+    pub state: Box<Account<'info, State>>,
+    #[account(has_one = msol_mint)]
+    pub marinade_state: Box<Account<'info, MarinadeState>>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub update_authority: Signer<'info>,
+
+    #[account(
+        init,
+        space = EpochReport::SPACE,
+        payer = payer,
+        seeds = [state.key().as_ref(), constants::EPOCH_REPORT],
+        bump,
+    )]
+    pub epoch_report_account: Box<Account<'info, EpochReport>>,
+
+    #[account(mut)]
+    pub msol_mint: Box<Account<'info, Mint>>,
+    #[account(
+        mut,
+        token::mint = msol_mint,
+        token::authority = vault_authority,
+    )]
+    pub msol_vault: Box<Account<'info, TokenAccount>>,
+    /// CHECK: Seeds of the MSOL vault authority.
+    #[account(
+        seeds = [
+            state.key().as_ref(),
+            constants::VAULT_AUTHORITY
+        ],
+        bump = state.vault_authority_bump
+    )]
+    pub vault_authority: UncheckedAccount<'info>,
+
+    pub clock: Sysvar<'info, Clock>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateEpochReport<'info> {
+    #[account(has_one = marinade_state)]
+    pub state: Box<Account<'info, State>>,
+    #[account(has_one = msol_mint)]
+    pub marinade_state: Box<Account<'info, MarinadeState>>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [state.key().as_ref(), constants::EPOCH_REPORT],
+        bump = epoch_report_account.bump,
+    )]
+    pub epoch_report_account: Box<Account<'info, EpochReport>>,
+
+    #[account(mut)]
+    pub msol_mint: Box<Account<'info, Mint>>,
+    #[account(
+        mut,
+        token::mint = msol_mint,
+        token::authority = vault_authority,
+    )]
+    pub msol_vault: Box<Account<'info, TokenAccount>>,
+    /// CHECK: Seeds of the MSOL vault authority.
+    #[account(
+        seeds = [
+            state.key().as_ref(),
+            constants::VAULT_AUTHORITY
+        ],
+        bump = state.vault_authority_bump
+    )]
+    pub vault_authority: UncheckedAccount<'info>,
+
+    pub clock: Sysvar<'info, Clock>,
+}
+
 #[error_code]
 pub enum MarinadeBeamError {
     #[msg("No delegation for stake account deposit")]
     NotDelegated,
     #[msg("An error occurred during calculation")]
     CalculationFailure,
+    #[msg("The epoch report account has not been updated to the current epoch yet")]
+    InvalidEpochReportAccount,
+    #[msg("The total ordered ticket amount exceeds the amount in all found tickets")]
+    RemainingUnclaimableTicketAmount,
+    #[msg("Delayed unstake tickets for the current epoch can not yet be claimed")]
+    DelayedUnstakeTicketsNotYetClaimable,
+    #[msg("The amount of delayed unstake tickets requested to be recovered exceeds the amount in the report")]
+    TooManyTicketsClaimed,
 }
