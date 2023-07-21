@@ -412,8 +412,9 @@ export class MarinadeClient extends BeamInterface {
     if (!this.sunrise || !this.marinade) {
       await this.refresh();
     }
-    const ticketAccountInfo =
-      await this.program.account.proxyTicketAccount.fetch(ticketAccount);
+    const ticketAccountInfo = await this.program.account.proxyTicket.fetch(
+      ticketAccount
+    );
 
     return this.program.methods
       .redeemTicket()
