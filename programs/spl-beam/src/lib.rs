@@ -168,7 +168,7 @@ pub mod spl_beam {
 }
 
 #[derive(Accounts)]
-#[instruction(input: State)]
+#[instruction(input: StateEntry)]
 pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
