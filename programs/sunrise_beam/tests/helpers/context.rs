@@ -50,6 +50,7 @@ impl SunriseContext {
         Ok(sunrise)
     }
 
+    #[allow(dead_code)]
     pub fn set_update_authority(&mut self, auth: Keypair) {
         self.update_authority = auth;
     }
@@ -63,6 +64,7 @@ impl SunriseContext {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn update_state(
         &self,
         new_update_authority: Option<&Pubkey>,
@@ -83,6 +85,7 @@ impl SunriseContext {
             .await
     }
 
+    #[allow(dead_code)]
     pub async fn register_beam(&self, new_beam: &Pubkey) -> Result<()> {
         let (_, instruction) =
             register_beam(&self.update_authority.pubkey(), &self.state, new_beam);
@@ -90,6 +93,7 @@ impl SunriseContext {
             .await
     }
 
+    #[allow(dead_code)]
     pub async fn resize_allocations(&self, additional_beams: u8) -> Result<()> {
         let (_, instruction) = resize_allocations(
             &self.update_authority.pubkey(),
@@ -102,6 +106,7 @@ impl SunriseContext {
             .await
     }
 
+    #[allow(dead_code)]
     pub async fn update_allocations(
         &self,
         new_allocations: Vec<sunrise_beam::AllocationUpdate>,
@@ -116,6 +121,7 @@ impl SunriseContext {
             .await
     }
 
+    #[allow(dead_code)]
     pub async fn remove_beam(&self, beam: &Pubkey) -> Result<()> {
         let (_, instruction) = remove_beam(&self.update_authority.pubkey(), &self.state, beam);
 
@@ -123,6 +129,7 @@ impl SunriseContext {
             .await
     }
 
+    #[allow(dead_code)]
     pub async fn export_mint_authority(&self, new_authority: &Pubkey) -> Result<()> {
         let state_account = self.get_account(&self.state).await?;
         let state = StateAccount::try_deserialize(&mut state_account.data.as_ref())?;
@@ -158,6 +165,7 @@ impl SunriseContext {
         Ok(decoded)
     }
 
+    #[allow(dead_code)]
     fn gsol_mint_authority(&self) -> Pubkey {
         self.gsol_mint_authority
             .map(|a| a.0)
