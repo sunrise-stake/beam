@@ -104,7 +104,7 @@ describe("sunrise-stake", () => {
     let account = client.account.pretty();
     for (let beam of account.beams) {
       expect(beam.allocation).to.equal("0");
-      expect(beam.minted).to.equal("0");
+      expect(beam.partialGsolSupply).to.equal("0");
     }
     expect(account.beams[0].key).to.equal(mState.toBase58());
     expect(account.beams[1].key).to.equal(splState.toBase58());
@@ -248,12 +248,16 @@ describe("sunrise-marinade", () => {
 
   it("can initialize a state", async () => {
     let treasury = Keypair.generate();
-    client = await MarinadeClient.initialize(
-      provider,
-      provider.publicKey,
-      sunrise.publicKey,
-      treasury.publicKey
-    );
+    try {
+      client = await MarinadeClient.initialize(
+        provider,
+        provider.publicKey,
+        sunrise.publicKey,
+        treasury.publicKey
+      );
+    } catch (err) {
+      console.log(err);
+    }
 
     await client.refresh();
     expect(client.account).to.not.be.undefined;
@@ -379,7 +383,7 @@ describe("sunrise-marinade", () => {
       marinadeTicket,
     ]);
 
-    let ticketAccount = await client.program.account.proxyTicketAccount.fetch(
+    let ticketAccount = await client.program.account.proxyTicket.fetch(
       sunriseTicket.publicKey
     );
     expect(ticketAccount.beneficiary.toBase58()).to.equal(
@@ -388,9 +392,7 @@ describe("sunrise-marinade", () => {
     expect(ticketAccount.marinadeTicketAccount.toBase58()).to.equal(
       marinadeTicket.publicKey.toBase58()
     );
-    expect(ticketAccount.stateAddress.toBase58()).to.equal(
-      client.state.toBase58()
-    );
+    expect(ticketAccount.state.toBase58()).to.equal(client.state.toBase58());
 
     const expectedGsol = stakerGsolBalance.subn(delayedWithdrawalAmount);
     const expectedMsol = vaultMsolBalance.subn(
@@ -467,13 +469,17 @@ describe("sunrise-spl", () => {
 
   it("can initialize a state", async () => {
     let treasury = Keypair.generate();
-    client = await SplClient.initialize(
-      provider,
-      provider.publicKey,
-      sunrise.publicKey,
-      treasury.publicKey,
-      stakePool
-    );
+    try {
+      client = await SplClient.initialize(
+        provider,
+        provider.publicKey,
+        sunrise.publicKey,
+        treasury.publicKey,
+        stakePool
+      );
+    } catch (err) {
+      console.log(err);
+    }
 
     await client.refresh();
     expect(client.account).to.not.be.undefined;

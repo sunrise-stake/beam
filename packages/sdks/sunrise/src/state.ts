@@ -54,7 +54,7 @@ export class StateAccount {
 export type BeamDetails = {
   key: PublicKey;
   allocation: number;
-  minted: BN;
+  partialGsolSupply: BN;
   drainingMode: boolean;
 };
 
@@ -64,7 +64,7 @@ const printBeamDetails = (raw: BeamDetails): BeamDetailsPretty => {
   return {
     key: raw.key.toBase58(),
     allocation: raw.allocation.toString(),
-    minted: raw.minted.toString(),
+    partialGsolSupply: raw.partialGsolSupply.toString(),
     drainingMode: raw.drainingMode.toString(),
   };
 };
