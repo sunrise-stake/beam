@@ -6,7 +6,6 @@ pub use context::*;
 
 use solana_program_test::{processor, BanksClientError, ProgramTest};
 use solana_sdk::program_error::ProgramError;
-use solana_sdk::signature::Keypair;
 use thiserror::Error;
 
 type Result<T> = std::result::Result<T, SunriseContextError>;
