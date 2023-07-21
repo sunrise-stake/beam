@@ -1,6 +1,19 @@
+use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::{borsh::try_from_slice_unchecked, stake::state::StakeState};
+use anchor_spl::token::TokenAccount;
 use marinade_cpi::state::State as MarinadeState;
+
+/// Calculates the amount that can be extracted as yield, in lamports.
+pub fn extractable_yield(
+    state: &State,
+    marinade_state: &MarinadeState,
+    msol_vault: &TokenAccount,
+) -> Result<u64> {
+    let staked_value =
+        super::utils::calc_lamports_from_msol_amount(marinade_state, msol_vault.amount)?;
+    Ok(staked_value.saturating_sub(state.partial_gsol_supply))
+}
 
 /// calculate amount*numerator/denominator
 /// as value  = shares * share_price where share_price=total_value/total_shares
@@ -27,6 +40,17 @@ pub fn calc_msol_from_lamports(marinade_state: &MarinadeState, stake_lamports: u
         stake_lamports,
         marinade_state.msol_supply,
         total_virtual_staked_lamports(marinade_state),
+    )
+}
+
+pub fn calc_lamports_from_msol_amount(
+    marinade_state: &MarinadeState,
+    msol_amount: u64,
+) -> Result<u64> {
+    proportional(
+        msol_amount,
+        total_virtual_staked_lamports(marinade_state),
+        marinade_state.msol_supply,
     )
 }
 
