@@ -122,13 +122,8 @@ export class SunriseStake {
       let singleDeposit = new BN(
         Math.min(window.toNumber(), unassigned.toNumber())
       );
+
       unassigned = unassigned.sub(singleDeposit);
-
-      // We know for certain that the beams can't fully cover the deposit.
-      if (i === options.length - 1 && unassigned.gten(0) === true) {
-        break;
-      }
-
       results.push([options[i], singleDeposit]);
     }
 
