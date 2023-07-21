@@ -40,8 +40,9 @@ impl State {
         8; /*partial_gsol_supply*/
 }
 
-// Anchor-ts only deserializes for instruction arguments types that explicitly derive
-// AnchorSerialize & AnchorDeserialize.
+// Anchor-ts only supports deserialization(in instruction arguments) for types
+// that explicitly derive AnchorSerialize & AnchorDeserialize.
+// https://github.com/coral-xyz/anchor/issues/2545
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct StateEntry {
     pub update_authority: Pubkey,
