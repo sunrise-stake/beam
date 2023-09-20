@@ -1,6 +1,6 @@
 use crate::state::State;
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{borsh::try_from_slice_unchecked, stake::state::StakeState};
+use anchor_lang::solana_program::{borsh0_10::try_from_slice_unchecked, stake::state::StakeState};
 use anchor_spl::token::TokenAccount;
 use marinade_cpi::state::State as MarinadeState;
 

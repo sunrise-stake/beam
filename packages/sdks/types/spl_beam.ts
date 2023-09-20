@@ -590,6 +590,15 @@ export type SplBeam = {
             name: "treasury";
             docs: ["This state's SOL vault."];
             type: "publicKey";
+          },
+          {
+            name: "partialGsolSupply";
+            docs: [
+              "The amount of the current gsol supply this beam is responsible for.",
+              "This field is also tracked in the matching beam-details struct in the",
+              "sunrise program's state and is expected to match that value."
+            ];
+            type: "u64";
           }
         ];
       };
@@ -1236,6 +1245,15 @@ export const IDL: SplBeam = {
             name: "treasury",
             docs: ["This state's SOL vault."],
             type: "publicKey",
+          },
+          {
+            name: "partialGsolSupply",
+            docs: [
+              "The amount of the current gsol supply this beam is responsible for.",
+              "This field is also tracked in the matching beam-details struct in the",
+              "sunrise program's state and is expected to match that value.",
+            ],
+            type: "u64",
           },
         ],
       },
