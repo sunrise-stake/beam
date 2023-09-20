@@ -338,6 +338,15 @@ export type MarinadeLpBeam = {
               "The token-account that receives msol when withdrawing liquidity."
             ];
             type: "publicKey";
+          },
+          {
+            name: "partialGsolSupply";
+            docs: [
+              "The amount of the current gsol supply this beam is responsible for.",
+              "This field is also tracked in the matching beam-details struct in the",
+              "sunrise program's state and is expected to match that value."
+            ];
+            type: "u64";
           }
         ];
       };
@@ -731,6 +740,15 @@ export const IDL: MarinadeLpBeam = {
               "The token-account that receives msol when withdrawing liquidity.",
             ],
             type: "publicKey",
+          },
+          {
+            name: "partialGsolSupply",
+            docs: [
+              "The amount of the current gsol supply this beam is responsible for.",
+              "This field is also tracked in the matching beam-details struct in the",
+              "sunrise program's state and is expected to match that value.",
+            ],
+            type: "u64",
           },
         ],
       },

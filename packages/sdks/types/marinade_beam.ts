@@ -570,6 +570,164 @@ export type MarinadeBeam = {
         }
       ];
       args: [];
+    },
+    {
+      name: "initEpochReport";
+      accounts: [
+        {
+          name: "state";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "marinadeState";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "payer";
+          isMut: true;
+          isSigner: true;
+        },
+        {
+          name: "updateAuthority";
+          isMut: false;
+          isSigner: true;
+        },
+        {
+          name: "epochReportAccount";
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: "msolMint";
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: "msolVault";
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: "vaultAuthority";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "clock";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "systemProgram";
+          isMut: false;
+          isSigner: false;
+        }
+      ];
+      args: [
+        {
+          name: "extractedYield";
+          type: "u64";
+        }
+      ];
+    },
+    {
+      name: "updateEpochReport";
+      accounts: [
+        {
+          name: "state";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "marinadeState";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "payer";
+          isMut: true;
+          isSigner: true;
+        },
+        {
+          name: "epochReportAccount";
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: "msolMint";
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: "msolVault";
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: "vaultAuthority";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "clock";
+          isMut: false;
+          isSigner: false;
+        }
+      ];
+      args: [];
+    },
+    {
+      name: "extractYield";
+      accounts: [
+        {
+          name: "state";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "marinadeState";
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: "payer";
+          isMut: true;
+          isSigner: true;
+        },
+        {
+          name: "msolMint";
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: "msolVault";
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: "vaultAuthority";
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: "treasury";
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: "epochReportAccount";
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: "clock";
+          isMut: false;
+          isSigner: false;
+        }
+      ];
+      args: [];
     }
   ];
   accounts: [
@@ -602,18 +760,27 @@ export type MarinadeBeam = {
             name: "treasury";
             docs: ["This state's SOL vault."];
             type: "publicKey";
+          },
+          {
+            name: "partialGsolSupply";
+            docs: [
+              "The amount of the current gsol supply this beam is responsible for.",
+              "This field is also tracked in the matching beam-details struct in the",
+              "sunrise program's state and is expected to match that value."
+            ];
+            type: "u64";
           }
         ];
       };
     },
     {
-      name: "proxyTicketAccount";
+      name: "proxyTicket";
       docs: ["Maps a Marinade ticket account to a GSOL token holder"];
       type: {
         kind: "struct";
         fields: [
           {
-            name: "stateAddress";
+            name: "state";
             type: "publicKey";
           },
           {
@@ -623,6 +790,46 @@ export type MarinadeBeam = {
           {
             name: "beneficiary";
             type: "publicKey";
+          }
+        ];
+      };
+    },
+    {
+      name: "epochReport";
+      type: {
+        kind: "struct";
+        fields: [
+          {
+            name: "state";
+            type: "publicKey";
+          },
+          {
+            name: "epoch";
+            type: "u64";
+          },
+          {
+            name: "tickets";
+            type: "u64";
+          },
+          {
+            name: "totalOrderedLamports";
+            type: "u64";
+          },
+          {
+            name: "extractableYield";
+            type: "u64";
+          },
+          {
+            name: "extractedYield";
+            type: "u64";
+          },
+          {
+            name: "partialGsolSupply";
+            type: "u64";
+          },
+          {
+            name: "bump";
+            type: "u8";
           }
         ];
       };
@@ -668,6 +875,26 @@ export type MarinadeBeam = {
       code: 6001;
       name: "CalculationFailure";
       msg: "An error occurred during calculation";
+    },
+    {
+      code: 6002;
+      name: "InvalidEpochReportAccount";
+      msg: "The epoch report account has not been updated to the current epoch yet";
+    },
+    {
+      code: 6003;
+      name: "RemainingUnclaimableTicketAmount";
+      msg: "The total ordered ticket amount exceeds the amount in all found tickets";
+    },
+    {
+      code: 6004;
+      name: "DelayedUnstakeTicketsNotYetClaimable";
+      msg: "Delayed unstake tickets for the current epoch can not yet be claimed";
+    },
+    {
+      code: 6005;
+      name: "TooManyTicketsClaimed";
+      msg: "The amount of delayed unstake tickets requested to be recovered exceeds the amount in the report";
     }
   ];
 };
@@ -1245,6 +1472,164 @@ export const IDL: MarinadeBeam = {
       ],
       args: [],
     },
+    {
+      name: "initEpochReport",
+      accounts: [
+        {
+          name: "state",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "marinadeState",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "payer",
+          isMut: true,
+          isSigner: true,
+        },
+        {
+          name: "updateAuthority",
+          isMut: false,
+          isSigner: true,
+        },
+        {
+          name: "epochReportAccount",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "msolMint",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "msolVault",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "vaultAuthority",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "clock",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "systemProgram",
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [
+        {
+          name: "extractedYield",
+          type: "u64",
+        },
+      ],
+    },
+    {
+      name: "updateEpochReport",
+      accounts: [
+        {
+          name: "state",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "marinadeState",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "payer",
+          isMut: true,
+          isSigner: true,
+        },
+        {
+          name: "epochReportAccount",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "msolMint",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "msolVault",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "vaultAuthority",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "clock",
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [],
+    },
+    {
+      name: "extractYield",
+      accounts: [
+        {
+          name: "state",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "marinadeState",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "payer",
+          isMut: true,
+          isSigner: true,
+        },
+        {
+          name: "msolMint",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "msolVault",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "vaultAuthority",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "treasury",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "epochReportAccount",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "clock",
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [],
+    },
   ],
   accounts: [
     {
@@ -1277,17 +1662,26 @@ export const IDL: MarinadeBeam = {
             docs: ["This state's SOL vault."],
             type: "publicKey",
           },
+          {
+            name: "partialGsolSupply",
+            docs: [
+              "The amount of the current gsol supply this beam is responsible for.",
+              "This field is also tracked in the matching beam-details struct in the",
+              "sunrise program's state and is expected to match that value.",
+            ],
+            type: "u64",
+          },
         ],
       },
     },
     {
-      name: "proxyTicketAccount",
+      name: "proxyTicket",
       docs: ["Maps a Marinade ticket account to a GSOL token holder"],
       type: {
         kind: "struct",
         fields: [
           {
-            name: "stateAddress",
+            name: "state",
             type: "publicKey",
           },
           {
@@ -1297,6 +1691,46 @@ export const IDL: MarinadeBeam = {
           {
             name: "beneficiary",
             type: "publicKey",
+          },
+        ],
+      },
+    },
+    {
+      name: "epochReport",
+      type: {
+        kind: "struct",
+        fields: [
+          {
+            name: "state",
+            type: "publicKey",
+          },
+          {
+            name: "epoch",
+            type: "u64",
+          },
+          {
+            name: "tickets",
+            type: "u64",
+          },
+          {
+            name: "totalOrderedLamports",
+            type: "u64",
+          },
+          {
+            name: "extractableYield",
+            type: "u64",
+          },
+          {
+            name: "extractedYield",
+            type: "u64",
+          },
+          {
+            name: "partialGsolSupply",
+            type: "u64",
+          },
+          {
+            name: "bump",
+            type: "u8",
           },
         ],
       },
@@ -1342,6 +1776,26 @@ export const IDL: MarinadeBeam = {
       code: 6001,
       name: "CalculationFailure",
       msg: "An error occurred during calculation",
+    },
+    {
+      code: 6002,
+      name: "InvalidEpochReportAccount",
+      msg: "The epoch report account has not been updated to the current epoch yet",
+    },
+    {
+      code: 6003,
+      name: "RemainingUnclaimableTicketAmount",
+      msg: "The total ordered ticket amount exceeds the amount in all found tickets",
+    },
+    {
+      code: 6004,
+      name: "DelayedUnstakeTicketsNotYetClaimable",
+      msg: "Delayed unstake tickets for the current epoch can not yet be claimed",
+    },
+    {
+      code: 6005,
+      name: "TooManyTicketsClaimed",
+      msg: "The amount of delayed unstake tickets requested to be recovered exceeds the amount in the report",
     },
   ],
 };

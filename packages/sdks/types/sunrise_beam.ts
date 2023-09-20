@@ -87,11 +87,6 @@ export type SunriseBeam = {
           isSigner: false;
         },
         {
-          name: "payer";
-          isMut: true;
-          isSigner: true;
-        },
-        {
           name: "updateAuthority";
           isMut: false;
           isSigner: true;
@@ -402,8 +397,10 @@ export type SunriseBeam = {
             type: "u8";
           },
           {
-            name: "minted";
-            docs: ["The total amount of gSol this beam has minted."];
+            name: "partialGsolSupply";
+            docs: [
+              "The total amount of circulating gsol this beam is responsible for."
+            ];
             type: "u64";
           },
           {
@@ -622,11 +619,6 @@ export const IDL: SunriseBeam = {
           name: "state",
           isMut: true,
           isSigner: false,
-        },
-        {
-          name: "payer",
-          isMut: true,
-          isSigner: true,
         },
         {
           name: "updateAuthority",
@@ -939,8 +931,10 @@ export const IDL: SunriseBeam = {
             type: "u8",
           },
           {
-            name: "minted",
-            docs: ["The total amount of gSol this beam has minted."],
+            name: "partialGsolSupply",
+            docs: [
+              "The total amount of circulating gsol this beam is responsible for.",
+            ],
             type: "u64",
           },
           {
