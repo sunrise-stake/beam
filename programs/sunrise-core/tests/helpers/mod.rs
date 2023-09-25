@@ -12,9 +12,9 @@ type Result<T> = std::result::Result<T, SunriseContextError>;
 
 pub fn program_test() -> ProgramTest {
     let mut program_test = ProgramTest::new(
-        "sunrise-beam",
-        sunrise_beam::id(),
-        processor!(sunrise_beam::entry),
+        "sunrise_core",
+        sunrise_core::id(),
+        processor!(sunrise_core::entry),
     );
     program_test.prefer_bpf(false);
     program_test

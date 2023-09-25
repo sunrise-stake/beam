@@ -3,24 +3,13 @@ on:
   push:
   pull_request:
 
-env:
-  solana_version: v1.16.13
-  anchor_version: 0.28.0
-
 jobs:
   install:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions/cache@v3
-        name: cache solana cli
-        id: cache-solana
-        with:
-          path: |
-            ~/.cache/solana/
-            ~/.local/share/solana/
-          key: solana-${{ runner.os }}-v0000-${{ env.solana_version }}
+      - uses: ./.github/actions/cache-solana
 
       - uses: actions/setup-node@v3
         with:
@@ -33,9 +22,7 @@ jobs:
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
 
       - name: install node_modules
-        run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          yarn --frozen-lockfile --network-concurrency 2
+        run: yarn --frozen-lockfile --network-concurrency 2
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -49,13 +36,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y pkg-config build-essential libudev-dev
 
-      - name: install solana
-        if: steps.cache-solana.outputs.cache-hit != 'true'
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/${{ env.solana_version }}/install)"
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          solana --version
-
   clippy-lint:
     needs: install
     runs-on: ubuntu-latest
@@ -68,6 +48,44 @@ jobs:
         run: cargo fmt -- --check
       - name: Run clippy
         run: cargo clippy -- --deny=warnings
+
+  cargo-build:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cache rust
+        uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/cache-solana
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
+      - name: Build all programs
+        run: cargo build-sbf
+
+  cargo-test:
+    needs: cargo-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cache rust
+        uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/cache-solana
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
+      - name: Run tests
+        run: |
+          cargo test-sbf
 
   yarn-lint:
     needs: install
@@ -88,8 +106,8 @@ jobs:
       - name: Run lint
         run: yarn lint
 
-  test:
-    needs: [clippy-lint, yarn-lint]
+  functional-test:
+    needs: [clippy-lint, yarn-lint, cargo-build]
     runs-on: ubuntu-latest
 
     steps:
@@ -105,32 +123,20 @@ jobs:
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
-      - name: install node_modules
-        run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          yarn --frozen-lockfile
 
+      - name: install node_modules
+        run: yarn --frozen-lockfile
+
+      - uses: ./.github/actions/cache-solana
       - uses: actions/cache@v3
-        name: cache solana cli
-        id: cache-solana
         with:
           path: |
-            ~/.cache/solana/
-            ~/.local/share/solana/
-          key: solana-${{ runner.os }}-v0000-${{ env.solana_version }}
-
-      - name: setup solana
-        run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          solana --version
-          solana-keygen new --silent --no-bip39-passphrase
-
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
       - name: run tests
-        run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          ls node_modules/.bin
-          npm i -g @coral-xyz/anchor-cli@${{ env.anchor_version }} ts-mocha typescript
-          anchor test && cargo test
+        run: yarn test
 
       - uses: actions/upload-artifact@v3
         if: always()

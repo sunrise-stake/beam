@@ -6,7 +6,7 @@ use solana_sdk::instruction::Instruction;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
 use std::cell::RefCell;
-use sunrise_beam::State as StateAccount;
+use sunrise_core::State as StateAccount;
 
 pub struct SunriseContext {
     pub ctx: RefCell<ProgramTestContext>,
@@ -109,7 +109,7 @@ impl SunriseContext {
     #[allow(dead_code)]
     pub async fn update_allocations(
         &self,
-        new_allocations: Vec<sunrise_beam::AllocationUpdate>,
+        new_allocations: Vec<sunrise_core::AllocationUpdate>,
     ) -> Result<()> {
         let (_, instruction) = update_allocations(
             &self.update_authority.pubkey(),
@@ -173,7 +173,7 @@ impl SunriseContext {
     }
 
     pub fn find_gsol_mint_authority_pda(state: &Pubkey) -> (Pubkey, u8) {
-        let seeds = &[state.as_ref(), sunrise_beam::GSOL_AUTHORITY];
-        Pubkey::find_program_address(seeds, &sunrise_beam::id())
+        let seeds = &[state.as_ref(), sunrise_core::GSOL_AUTHORITY];
+        Pubkey::find_program_address(seeds, &sunrise_core::id())
     }
 }

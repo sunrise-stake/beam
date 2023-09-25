@@ -19,4 +19,4 @@ default = []
 anchor-lang = '0.28.0'
 anchor-spl = '0.28.0'
 spl-stake-pool = { git = "https://github.com/solana-labs/solana-program-library", features = ["no-entrypoint"] }
-sunrise_beam = { path = "../sunrise_beam", features = ["cpi"] }
+sunrise-core = { path = "../sunrise-core", features = ["cpi"] }

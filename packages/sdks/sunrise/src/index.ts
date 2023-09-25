@@ -11,7 +11,7 @@ import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { IDL, type SunriseBeam } from "../../types/sunrise_beam";
+import { IDL, type SunriseCore } from "../../types/sunrise_core";
 import { StateAccount } from "./state";
 import { GSOL_AUTHORITY_SEED, SUNRISE_PROGRAM_ID } from "./constants";
 
@@ -20,7 +20,7 @@ import { GSOL_AUTHORITY_SEED, SUNRISE_PROGRAM_ID } from "./constants";
  */
 export class SunriseClient {
   // The sunrise program.
-  readonly program: Program<SunriseBeam>;
+  readonly program: Program<SunriseCore>;
   // The state address.
   readonly state: PublicKey;
   // The deserialized on-chain account for this sunrise state.
@@ -31,7 +31,7 @@ export class SunriseClient {
     state: PublicKey,
     programId: PublicKey
   ) {
-    this.program = new Program<SunriseBeam>(IDL, programId, provider);
+    this.program = new Program<SunriseCore>(IDL, programId, provider);
     this.state = state;
   }
 
@@ -92,7 +92,6 @@ export class SunriseClient {
       .registerBeam()
       .accounts({
         state: this.state,
-        payer: this.provider.publicKey,
         updateAuthority: this.account.updateAuthority,
         beamAccount: newBeam,
       })

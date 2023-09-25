@@ -18,7 +18,7 @@ use state::{State, StateEntry};
 use system::utils;
 
 // TODO: Use actual CPI crate.
-use sunrise_beam as sunrise_beam_cpi;
+use sunrise_core as sunrise_core_cpi;
 
 declare_id!("9Xek4q2hsdPm4yaRt4giQnVTTgRGwGhXQ1HBXbinuPTP");
 
@@ -230,7 +230,7 @@ pub struct Deposit<'info> {
     /// CHECK: Checked by Marinade CPI.
     pub token_program: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam_cpi::ID)]
+    #[account(address = sunrise_core_cpi::ID)]
     /// CHECK: The Sunrise ProgramID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = marinade_cpi::ID)]
@@ -299,7 +299,7 @@ pub struct Withdraw<'info> {
     /// CHECK: Checked by Sunrise CPI.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam_cpi::ID)]
+    #[account(address = sunrise_core_cpi::ID)]
     /// CHECK: The Sunrise program ID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = marinade_cpi::ID)]

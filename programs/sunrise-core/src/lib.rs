@@ -14,10 +14,10 @@ pub use state::{AllocationUpdate, RegisterStateInput, State, UpdateStateInput};
 
 pub const GSOL_AUTHORITY: &[u8] = b"gsol_mint_authority";
 
-declare_id!("Ed4u8JNwKGJJcMucgG7nF4DNXsvmXhunB7ULL8mHGFrf");
+declare_id!("suncPB4RR39bMwnRhCym6ZLKqMfnFG83vjzVVuXNhCq");
 
 #[program]
-pub mod sunrise_beam {
+pub mod sunrise_core {
     use super::*;
 
     /// Initializes a [State], setting its initial parameters.
@@ -66,7 +66,7 @@ pub mod sunrise_beam {
 
     /// CPI request from a beam program to burn gSol.
     ///
-    /// Same invariants as for [minting][sunrise_beam::mint_gsol()].
+    /// Same invariants as for [minting][sunrise_core::mint_gsol()].
     pub fn burn_gsol(ctx: Context<BurnGsol>, amount: u64) -> Result<()> {
         burn_gsol::handler(ctx, amount)
     }

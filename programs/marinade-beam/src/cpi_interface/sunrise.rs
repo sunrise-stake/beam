@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 // TODO: Use actual CPI crate.
-use sunrise_beam as sunrise_beam_cpi;
-use sunrise_beam_cpi::cpi::{
+use sunrise_core as sunrise_core_cpi;
+use sunrise_core_cpi::cpi::{
     accounts::{BurnGsol, MintGsol},
     burn_gsol as cpi_burn_gsol, mint_gsol as cpi_mint_gsol,
 };

@@ -14,7 +14,7 @@ use cpi_interface::sunrise as sunrise_interface;
 use state::{State, StateEntry};
 
 // TODO: Use actual CPI crate.
-use sunrise_beam as sunrise_beam_cpi;
+use sunrise_core as sunrise_core_cpi;
 
 declare_id!("EUZfY4LePXSZVMvRuiVzbxazw9yBDYU99DpGJKCthxbS");
 
@@ -268,7 +268,7 @@ pub struct Deposit<'info> {
     /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam_cpi::ID)]
+    #[account(address = sunrise_core_cpi::ID)]
     /// CHECK: The Sunrise ProgramID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = spl_stake_pool::ID)]
@@ -352,7 +352,7 @@ pub struct DepositStake<'info> {
     /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam_cpi::ID)]
+    #[account(address = sunrise_core_cpi::ID)]
     /// CHECK: The Sunrise ProgramID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = spl_stake_pool::ID)]
@@ -425,7 +425,7 @@ pub struct Withdraw<'info> {
     /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam_cpi::ID)]
+    #[account(address = sunrise_core_cpi::ID)]
     /// CHECK: The Sunrise program ID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = spl_stake_pool::ID)]
@@ -506,7 +506,7 @@ pub struct WithdrawStake<'info> {
     /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam_cpi::ID)]
+    #[account(address = sunrise_core_cpi::ID)]
     /// CHECK: The Sunrise ProgramID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = spl_stake_pool::ID)]

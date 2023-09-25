@@ -6,7 +6,7 @@ seeds = false
 skip-lint = false
 [programs.localnet]
 spl_beam = "EUZfY4LePXSZVMvRuiVzbxazw9yBDYU99DpGJKCthxbS"
-sunrise_beam = "Ed4u8JNwKGJJcMucgG7nF4DNXsvmXhunB7ULL8mHGFrf"
+sunrise_core = "suncPB4RR39bMwnRhCym6ZLKqMfnFG83vjzVVuXNhCq"
 marinade_beam = "G9nMA5HvMa1HLXy1DBA3biH445Zxb2dkqsG4eDfcvgjm"
 marinade_lp_beam = "9Xek4q2hsdPm4yaRt4giQnVTTgRGwGhXQ1HBXbinuPTP"
 
