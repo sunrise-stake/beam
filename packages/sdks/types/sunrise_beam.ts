@@ -1,6 +1,6 @@
 export type SunriseBeam = {
   "version": "0.1.0",
-  "name": "sunrise_beam",
+  "name": "sunrise_core",
   "instructions": [
     {
       "name": "registerState",
@@ -225,7 +225,7 @@ export type SunriseBeam = {
       "docs": [
         "CPI request from a beam program to burn gSol.",
         "",
-        "Same invariants as for [minting][sunrise_beam::mint_gsol()]."
+        "Same invariants as for [minting][sunrise_core::mint_gsol()]."
       ],
       "accounts": [
         {
@@ -566,7 +566,7 @@ export type SunriseBeam = {
 
 export const IDL: SunriseBeam = {
   "version": "0.1.0",
-  "name": "sunrise_beam",
+  "name": "sunrise_core",
   "instructions": [
     {
       "name": "registerState",
@@ -791,7 +791,7 @@ export const IDL: SunriseBeam = {
       "docs": [
         "CPI request from a beam program to burn gSol.",
         "",
-        "Same invariants as for [minting][sunrise_beam::mint_gsol()]."
+        "Same invariants as for [minting][sunrise_core::mint_gsol()]."
       ],
       "accounts": [
         {

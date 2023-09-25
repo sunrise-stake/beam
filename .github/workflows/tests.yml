@@ -57,12 +57,12 @@ jobs:
       - name: Cache rust
         uses: Swatinem/rust-cache@v2
       - uses: ./.github/actions/cache-solana
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            # target # Removed due to build dependency caching conflicts
+            target
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
       - name: Build all programs
         run: cargo build-sbf
@@ -76,12 +76,12 @@ jobs:
       - name: Cache rust
         uses: Swatinem/rust-cache@v2
       - uses: ./.github/actions/cache-solana
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            # target # Removed due to build dependency caching conflicts
+            target
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
       - name: Run tests
         run: |
@@ -128,12 +128,12 @@ jobs:
         run: yarn --frozen-lockfile
 
       - uses: ./.github/actions/cache-solana
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            # target # Removed due to build dependency caching conflicts
+            target
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
       - name: run tests
         run: yarn test

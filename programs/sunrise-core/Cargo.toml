@@ -1,12 +1,12 @@
 [package]
-name = "sunrise_beam"
+name = "sunrise-core"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "sunrise_beam"
+name = "sunrise_core"
 
 [features]
 no-entrypoint = []

@@ -11,7 +11,7 @@ import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { IDL, type SunriseBeam } from "../../types/sunrise_beam";
+import { IDL, type SunriseBeam } from "../../types/sunrise_core";
 import { StateAccount } from "./state";
 import { GSOL_AUTHORITY_SEED, SUNRISE_PROGRAM_ID } from "./constants";
 

@@ -20,7 +20,7 @@ use system::accounts::{EpochReport, ProxyTicket};
 use system::utils;
 
 // TODO: Use actual CPI crate.
-use sunrise_beam as sunrise_beam_cpi;
+use sunrise_core as sunrise_core_cpi;
 
 declare_id!("G9nMA5HvMa1HLXy1DBA3biH445Zxb2dkqsG4eDfcvgjm");
 
@@ -385,7 +385,7 @@ pub struct Deposit<'info> {
     /// CHECK: Checked by Marinade CPI.
     pub reserve_pda: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam::ID)]
+    #[account(address = sunrise_core::ID)]
     /// CHECK: The Sunrise program ID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = marinade_cpi::ID)]
@@ -462,7 +462,7 @@ pub struct DepositStake<'info> {
     /// CHECK: Checked by Marinade CPI.
     pub stake_program: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam_cpi::ID)]
+    #[account(address = sunrise_core_cpi::ID)]
     /// CHECK: The Sunrise program ID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = marinade_cpi::ID)]
@@ -531,7 +531,7 @@ pub struct Withdraw<'info> {
     /// CHECK: Checked by Sunrise CPI.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_beam_cpi::ID)]
+    #[account(address = sunrise_core_cpi::ID)]
     /// CHECK: The Sunrise Program ID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = marinade_cpi::ID)]
@@ -598,7 +598,7 @@ pub struct OrderWithdrawal<'info> {
     )]
     pub proxy_ticket_account: Box<Account<'info, ProxyTicket>>,
 
-    #[account(address = sunrise_beam_cpi::ID)]
+    #[account(address = sunrise_core_cpi::ID)]
     /// CHECK: The Sunrise Program ID.
     pub beam_program: UncheckedAccount<'info>,
     #[account(address = marinade_cpi::ID)]

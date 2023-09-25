@@ -1,6 +1,6 @@
 use anchor_lang::{InstructionData, ToAccountMetas};
 use solana_sdk::{instruction::Instruction, pubkey::Pubkey, system_program, sysvar};
-use sunrise_beam::{accounts as sunrise_accounts, instruction as sunrise_instructions};
+use sunrise_core::{accounts as sunrise_accounts, instruction as sunrise_instructions};
 
 pub fn register_state(
     payer: &Pubkey,
@@ -21,7 +21,7 @@ pub fn register_state(
     };
 
     let data = sunrise_instructions::RegisterState {
-        input: sunrise_beam::RegisterStateInput {
+        input: sunrise_core::RegisterStateInput {
             update_authority: *update_authority,
             yield_account: *yield_account,
             initial_capacity,
@@ -29,7 +29,7 @@ pub fn register_state(
     };
 
     let instruction = Instruction {
-        program_id: sunrise_beam::id(),
+        program_id: sunrise_core::id(),
         data: data.data(),
         accounts: accounts.to_account_metas(None),
     };
@@ -51,7 +51,7 @@ pub fn update_state(
     };
 
     let data = sunrise_instructions::UpdateState {
-        input: sunrise_beam::UpdateStateInput {
+        input: sunrise_core::UpdateStateInput {
             new_update_authority: new_update_authority.map(|n| *n),
             new_yield_account: new_yield_account.map(|n| *n),
             new_gsol_mint: new_gsol_mint.map(|n| *n),
@@ -60,7 +60,7 @@ pub fn update_state(
     };
 
     let instruction = Instruction {
-        program_id: sunrise_beam::id(),
+        program_id: sunrise_core::id(),
         data: data.data(),
         accounts: accounts.to_account_metas(None),
     };
@@ -82,7 +82,7 @@ pub fn register_beam(
     let data = sunrise_instructions::RegisterBeam {};
 
     let instruction = Instruction {
-        program_id: sunrise_beam::id(),
+        program_id: sunrise_core::id(),
         data: data.data(),
         accounts: accounts.to_account_metas(None),
     };
@@ -105,7 +105,7 @@ pub fn resize_allocations(
     let data = sunrise_instructions::ResizeAllocations { additional_beams };
 
     let instruction = Instruction {
-        program_id: sunrise_beam::id(),
+        program_id: sunrise_core::id(),
         accounts: accounts.to_account_metas(None),
         data: data.data(),
     };
@@ -116,7 +116,7 @@ pub fn resize_allocations(
 pub fn update_allocations(
     update_authority: &Pubkey,
     state: &Pubkey,
-    new_allocations: Vec<sunrise_beam::AllocationUpdate>,
+    new_allocations: Vec<sunrise_core::AllocationUpdate>,
 ) -> (sunrise_accounts::UpdateBeamAllocations, Instruction) {
     let accounts = sunrise_accounts::UpdateBeamAllocations {
         state: *state,
@@ -125,7 +125,7 @@ pub fn update_allocations(
     let data = sunrise_instructions::UpdateAllocations { new_allocations };
 
     let instruction = Instruction {
-        program_id: sunrise_beam::id(),
+        program_id: sunrise_core::id(),
         accounts: accounts.to_account_metas(None),
         data: data.data(),
     };
@@ -147,7 +147,7 @@ pub fn remove_beam(
     };
 
     let instruction = Instruction {
-        program_id: sunrise_beam::id(),
+        program_id: sunrise_core::id(),
         accounts: accounts.to_account_metas(None),
         data: data.data(),
     };
@@ -174,7 +174,7 @@ pub fn export_mint_authority(
     let data = sunrise_instructions::ExportMintAuthority {};
 
     let instruction = Instruction {
-        program_id: sunrise_beam::id(),
+        program_id: sunrise_core::id(),
         accounts: accounts.to_account_metas(None),
         data: data.data(),
     };
