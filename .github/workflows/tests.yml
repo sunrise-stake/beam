@@ -3,27 +3,11 @@ on:
   push:
   pull_request:
 
-env:
-  solana_version: v1.16.13
-  anchor_version: 0.28.0
-
 jobs:
   install:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
-#      - name: Set Solana path
-#        run: echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-#
-#      - uses: actions/cache@v3
-#        name: cache solana cli
-#        id: cache-solana
-#        with:
-#          path: |
-#            ~/.cache/solana/
-#            ~/.local/share/solana/
-#          key: solana-${{ runner.os }}-v0000-${{ env.solana_version }}
 
       - uses: ./.github/actions/cache-solana
 
@@ -52,12 +36,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y pkg-config build-essential libudev-dev
 
-#      - name: install solana
-#        if: steps.cache-solana.outputs.cache-hit != 'true'
-#        run: |
-#          sh -c "$(curl -sSfL https://release.solana.com/${{ env.solana_version }}/install)"
-#          solana --version
-
   clippy-lint:
     needs: install
     runs-on: ubuntu-latest
@@ -71,8 +49,26 @@ jobs:
       - name: Run clippy
         run: cargo clippy -- --deny=warnings
 
-  cargo-test:
+  cargo-build:
     needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cache rust
+        uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/cache-solana
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            # target # Removed due to build dependency caching conflicts
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
+      - name: Build all programs
+        run: cargo build-sbf
+
+  cargo-test:
+    needs: cargo-build
     runs-on: ubuntu-latest
 
     steps:
@@ -80,6 +76,13 @@ jobs:
       - name: Cache rust
         uses: Swatinem/rust-cache@v2
       - uses: ./.github/actions/cache-solana
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            # target # Removed due to build dependency caching conflicts
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
       - name: Run tests
         run: |
           cargo test-sbf
@@ -104,7 +107,7 @@ jobs:
         run: yarn lint
 
   functional-test:
-    needs: [clippy-lint, yarn-lint]
+    needs: [clippy-lint, yarn-lint, cargo-build]
     runs-on: ubuntu-latest
 
     steps:
@@ -125,7 +128,13 @@ jobs:
         run: yarn --frozen-lockfile
 
       - uses: ./.github/actions/cache-solana
-
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            # target # Removed due to build dependency caching conflicts
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
       - name: run tests
         run: yarn test
 
