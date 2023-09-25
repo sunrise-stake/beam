@@ -14,7 +14,7 @@ pub use state::{AllocationUpdate, RegisterStateInput, State, UpdateStateInput};
 
 pub const GSOL_AUTHORITY: &[u8] = b"gsol_mint_authority";
 
-declare_id!("Ed4u8JNwKGJJcMucgG7nF4DNXsvmXhunB7ULL8mHGFrf");
+declare_id!("suncPB4RR39bMwnRhCym6ZLKqMfnFG83vjzVVuXNhCq");
 
 #[program]
 pub mod sunrise_beam {

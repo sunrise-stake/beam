@@ -92,7 +92,6 @@ export class SunriseClient {
       .registerBeam()
       .accounts({
         state: this.state,
-        payer: this.provider.publicKey,
         updateAuthority: this.account.updateAuthority,
         beamAccount: newBeam,
       })
