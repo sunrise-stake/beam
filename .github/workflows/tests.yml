@@ -13,6 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Set Solana path
+        run: echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
       - uses: actions/cache@v3
         name: cache solana cli
         id: cache-solana
@@ -33,9 +36,7 @@ jobs:
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
 
       - name: install node_modules
-        run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          yarn --frozen-lockfile --network-concurrency 2
+        run: yarn --frozen-lockfile --network-concurrency 2
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -53,7 +54,6 @@ jobs:
         if: steps.cache-solana.outputs.cache-hit != 'true'
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/${{ env.solana_version }}/install)"
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           solana --version
 
   clippy-lint:
@@ -87,12 +87,10 @@ jobs:
           key: solana-${{ runner.os }}-v0000-${{ env.solana_version }}
       - name: setup solana
         run: |
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           solana --version
           solana-keygen new --silent --no-bip39-passphrase
       - name: Run tests
         run: |
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           cargo test-sbf
 
   yarn-lint:
@@ -133,9 +131,7 @@ jobs:
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
 
       - name: install node_modules
-        run: |
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          yarn --frozen-lockfile
+        run: yarn --frozen-lockfile
 
       - uses: actions/cache@v3
         name: cache solana cli
@@ -148,13 +144,10 @@ jobs:
 
       - name: setup solana
         run: |
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           solana --version
           solana-keygen new --silent --no-bip39-passphrase
       - name: run tests
-        run: |
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          anchor test
+        run: yarn test
 
       - uses: actions/upload-artifact@v3
         if: always()
