@@ -54,7 +54,7 @@ describe("sunrise-stake", () => {
     expect(account.address).to.equal(sunrise.publicKey.toBase58());
     expect(account.yieldAccount).to.equal(yieldAccount.publicKey.toBase58());
     expect(account.gsolAuthBump).to.equal(
-      client.gsolMintAuthority()[1].toString()
+      client.gsolMintAuthority[1].toString()
     );
     expect(account.preSupply).to.equal("0");
     expect(account.gsolMint).to.equal(mint.toBase58());
@@ -68,7 +68,7 @@ describe("sunrise-stake", () => {
       provider,
       mint,
       authority,
-      client.gsolMintAuthority()[0]
+      client.gsolMintAuthority[0]
     );
   });
 
@@ -89,8 +89,8 @@ describe("sunrise-stake", () => {
   });
 
   it("can add beams to the state", async () => {
-    mState = MarinadeClient.deriveStateAddress(client.state)[0];
-    splState = SplClient.deriveStateAddress(client.state)[0];
+    mState = MarinadeClient.deriveStateAddress(client.stateAddress)[0];
+    splState = SplClient.deriveStateAddress(client.stateAddress)[0];
     beams = [mState, splState, tempBeam.publicKey];
 
     for (let beam of beams) {
@@ -116,14 +116,14 @@ describe("sunrise-stake", () => {
   it("can resize the state", async () => {
     const increase = 5;
     const initialLen = await provider.connection
-      .getAccountInfo(client.state)
-      .then((info) => info.data.length);
+      .getAccountInfo(client.stateAddress)
+      .then((info) => info!.data.length);
     const tx = await client.resizeAllocations(increase);
     await sendAndConfirmTransaction(provider, tx);
 
     const finalLen = await provider.connection
-      .getAccountInfo(client.state)
-      .then((info) => info.data.length);
+      .getAccountInfo(client.stateAddress)
+      .then((info) => info!.data.length);
     expect(finalLen).to.equal(initialLen + 5 * BEAM_DETAILS_LEN);
 
     await client.refresh();

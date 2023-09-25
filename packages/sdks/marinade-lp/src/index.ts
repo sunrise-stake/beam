@@ -181,7 +181,7 @@ export class MarinadeLpClient extends BeamInterface {
 
     // Fetch the sunrise client only if it's not provided.
     const sunriseClient = sunrise ?? (await this.getSunrise());
-    if (sunriseClient.state !== this.account.sunriseState) {
+    if (sunriseClient.stateAddress !== this.account.sunriseState) {
       throw new Error("Invalid sunrise client instance");
     }
     const gsolMint = sunriseClient.account.gsolMint;
