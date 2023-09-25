@@ -87,11 +87,13 @@ jobs:
           key: solana-${{ runner.os }}-v0000-${{ env.solana_version }}
       - name: setup solana
         run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           solana --version
           solana-keygen new --silent --no-bip39-passphrase
       - name: Run tests
-        run: cargo test-sbf
+        run: |
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          cargo test-sbf
 
   yarn-lint:
     needs: install
@@ -112,7 +114,7 @@ jobs:
       - name: Run lint
         run: yarn lint
 
-  test:
+  functional-test:
     needs: [clippy-lint, yarn-lint]
     runs-on: ubuntu-latest
 
@@ -129,9 +131,10 @@ jobs:
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
+
       - name: install node_modules
         run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           yarn --frozen-lockfile
 
       - uses: actions/cache@v3
@@ -145,15 +148,12 @@ jobs:
 
       - name: setup solana
         run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           solana --version
           solana-keygen new --silent --no-bip39-passphrase
-
       - name: run tests
         run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          ls node_modules/.bin
-          npm i -g @coral-xyz/anchor-cli@${{ env.anchor_version }} ts-mocha typescript
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           anchor test
 
       - uses: actions/upload-artifact@v3
