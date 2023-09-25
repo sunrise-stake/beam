@@ -1,4 +1,4 @@
-export type SunriseBeam = {
+export type SunriseCore = {
   "version": "0.1.0",
   "name": "sunrise_core",
   "instructions": [
@@ -564,7 +564,7 @@ export type SunriseBeam = {
   ]
 };
 
-export const IDL: SunriseBeam = {
+export const IDL: SunriseCore = {
   "version": "0.1.0",
   "name": "sunrise_core",
   "instructions": [
