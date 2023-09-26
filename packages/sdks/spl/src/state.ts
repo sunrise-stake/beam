@@ -1,7 +1,7 @@
 import { type PublicKey } from "@solana/web3.js";
 import { type IdlAccounts, type BN } from "@coral-xyz/anchor";
 import { type SplBeam } from "../../types/spl_beam";
-import { type BeamState } from "../../sunrise/src/beamInterface";
+import {BeamState} from "sunrise-stake-client/src/beamInterface";
 
 /** The deserialized state for the on-chain SPL-beam account. */
 export class StateAccount implements BeamState {

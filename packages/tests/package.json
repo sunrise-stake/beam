@@ -1,5 +1,5 @@
 {
-  "name": "tests",
+  "name": "@sunrisestake/beams-tests",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",

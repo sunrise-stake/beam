@@ -1,18 +1,10 @@
-import { type AnchorProvider, Program } from "@coral-xyz/anchor";
+import { type AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import BN from "bn.js";
-import { SunriseClient } from "../../sunrise/src";
-import { MarinadeClient } from "../../marinade-sp/src";
-import { MarinadeLpClient } from "../../marinade-lp/src";
-import { SplClient } from "../../spl/src";
+import { SunriseClient } from "sunrise/src";
 import {
   BeamInterface,
-  canDepositSol,
-  canDepositStake,
-  canLiquidUnstake,
-  canOrderUnstake,
-  canWithdrawStake,
-} from "../src/beamInterface";
+} from "./beamInterface";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -36,32 +28,32 @@ export class SunriseStake {
   details: SunriseStakeDetails | undefined;
 
   private constructor(
-    readonly provider: AnchorProvider,
-    readonly beams: BeamInterface[],
-    sunrise: SunriseClient
+      readonly provider: AnchorProvider,
+      readonly beams: BeamInterface<any, any>[],
+      sunrise: SunriseClient
   ) {
     this.sunriseClient = sunrise;
     this.staker = this.provider.publicKey;
     this.stakerGsolATA = PublicKey.findProgramAddressSync(
-      [
-        this.staker.toBuffer(),
-        TOKEN_PROGRAM_ID.toBuffer(),
-        sunrise.account.gsolMint.toBuffer(),
-      ],
-      ASSOCIATED_TOKEN_PROGRAM_ID
+        [
+          this.staker.toBuffer(),
+          TOKEN_PROGRAM_ID.toBuffer(),
+          sunrise.account.gsolMint.toBuffer(),
+        ],
+        ASSOCIATED_TOKEN_PROGRAM_ID
     )[0];
   }
 
   public async init(
-    provider: AnchorProvider,
-    beams: BeamInterface[],
-    envConfig?: EnvironmentConfig
+      provider: AnchorProvider,
+      beams: BeamInterface<any, any>[],
+      envConfig?: EnvironmentConfig
   ): Promise<SunriseStake> {
     let config = envConfig ?? DEFAULT_ENVIRONMENT_CONFIG;
     let sunrise = await SunriseClient.get(
-      config.sunriseState,
-      provider,
-      config.sunriseProgramId
+        provider,
+        config.sunriseState,
+        config.sunriseProgramId
     );
 
     /** Validate that beams are compatible with sunrise instance. */
@@ -76,8 +68,8 @@ export class SunriseStake {
   }
 
   public async deposit(
-    lamports: BN,
-    recipient?: PublicKey
+      lamports: BN,
+      recipient?: PublicKey
   ): Promise<Transaction[]> {
     let options = this.solDepositBeams();
     if (options.length === 0) {
@@ -96,9 +88,9 @@ export class SunriseStake {
 
   /** Route a deposit through the beams required to complete it. */
   private async splitDeposit(
-    lamports: BN,
-    options: BeamInterface[]
-  ): Promise<[BeamInterface, BN][]> {
+      lamports: BN,
+      options: BeamInterface<any, any>[]
+  ): Promise<[BeamInterface<any, any>, BN][]> {
     const { effectiveGsolSupply } = await this.fetchDetails();
     // If effective Gsol supply equals 0, any beam can fully cover the deposit.
     if (effectiveGsolSupply.eqn(0)) {
@@ -106,21 +98,24 @@ export class SunriseStake {
     }
 
     let unassigned = lamports;
-    let results = new Array<[BeamInterface, BN]>();
+    let results = new Array<[BeamInterface<any, any>, BN]>();
 
     for (let i = 0; i < options.length; ++i) {
-      if (unassigned.eqn(0) === true) {
+      if (unassigned.eqn(0)) {
         break;
       }
 
       const allocation = this.sunriseClient.account.beams.find(
-        (a) => a.key === options[i].state
-      ).allocation;
+          (a) => a.key === options[i].state
+      )?.allocation;
+
+      if (!allocation) throw new Error("Beam allocation not found");
+
       const window = effectiveGsolSupply.muln(allocation).divn(100);
 
       // Assumes no overflow for `toNumber()`
       let singleDeposit = new BN(
-        Math.min(window.toNumber(), unassigned.toNumber())
+          Math.min(window.toNumber(), unassigned.toNumber())
       );
 
       unassigned = unassigned.sub(singleDeposit);
@@ -128,9 +123,9 @@ export class SunriseStake {
     }
 
     // Reachable if the client is initialized with some beams missing.
-    if (unassigned.eqn(0) === false) {
+    if (!unassigned.eqn(0)) {
       throw new Error(
-        `Presently available beams are inadequate for deposit, 
+          `Presently available beams are inadequate for deposit, 
         missing ${unassigned.toString()} lamports. `
       );
     }
@@ -140,11 +135,11 @@ export class SunriseStake {
 
   private async fetchDetails(): Promise<SunriseStakeDetails> {
     let currentGsolCirculation = await this.provider.connection
-      .getTokenSupply(this.sunriseClient.account.gsolMint)
-      .then((response) => response.value);
+        .getTokenSupply(this.sunriseClient.account.gsolMint)
+        .then((response) => response.value);
     let preGsolCirculation = this.sunriseClient.account.preSupply;
     let effectiveGsolSupply = new BN(currentGsolCirculation.amount).sub(
-      preGsolCirculation
+        preGsolCirculation
     );
 
     return {
@@ -153,8 +148,8 @@ export class SunriseStake {
   }
 
   public async depositStake(
-    stakeAccount: PublicKey,
-    recipient?: PublicKey
+      stakeAccount: PublicKey,
+      recipient?: PublicKey
   ): Promise<Transaction[]> {
     let options = this.stakeDepositBeams();
     if (options.length === 0) {
@@ -181,19 +176,19 @@ export class SunriseStake {
 
   public async calculateExtractableYield() {}
 
-  private solDepositBeams(): BeamInterface[] {
+  private solDepositBeams(): BeamInterface<any, any>[] {
     return this.beams.filter((beam) => beam.supportsSolDeposit());
   }
-  private stakeDepositBeams(): BeamInterface[] {
+  private stakeDepositBeams(): BeamInterface<any, any>[] {
     return this.beams.filter((beam) => beam.supportsStakeDeposit());
   }
-  private liquidUnstakeBeams(): BeamInterface[] {
+  private liquidUnstakeBeams(): BeamInterface<any, any>[] {
     return this.beams.filter((beam) => beam.supportsLiquidUnstake());
   }
-  private orderUnstakeBeams(): BeamInterface[] {
+  private orderUnstakeBeams(): BeamInterface<any, any>[] {
     return this.beams.filter((beam) => beam.supportsOrderUnstake());
   }
-  private withdrawStakeAccountBeams(): BeamInterface[] {
+  private withdrawStakeAccountBeams(): BeamInterface<any, any>[] {
     return this.beams.filter((beam) => beam.supportsWithdrawStake());
   }
 }

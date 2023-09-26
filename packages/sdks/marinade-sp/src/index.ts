@@ -35,24 +35,20 @@ import { SunriseClient } from "sunrise/src";
 /** An instance of the Sunrise program that acts as a proxy to
  * marinade-compatible stake-pools.
  */
-export class MarinadeClient extends BeamInterface<MarinadeBeam> {
-    /** The address of the authority of this beam's token vaults*/
-    vaultAuthority: [PublicKey, number];
-
+export class MarinadeClient extends BeamInterface<MarinadeBeam, StateAccount> {
     private constructor(
         program: Program<MarinadeBeam>,
         stateAddress: PublicKey,
-        readonly account: StateAccount, // The deserialized state account for this beam state
+        account: StateAccount, // The deserialized state account for this beam state
         readonly marinade: MarinadeClientParams,
         readonly sunrise: SunriseClient
     ) {
-        super(program, stateAddress, [
+        super(program, stateAddress, account, [
             { kind: "sol-deposit" },
             { kind: "stake-deposit" },
             { kind: "order-unstake" },
             { kind: "liquid-unstake" },
         ]);
-        this.vaultAuthority = Utils.deriveAuthorityAddress(program.programId, this.stateAddress);
     }
 
     /** Register a new state.*/
@@ -162,8 +158,8 @@ export class MarinadeClient extends BeamInterface<MarinadeBeam> {
             .deposit(amount)
             .accounts({
                 state: this.stateAddress,
-                marinadeState: this.account.proxyState,
-                sunriseState: this.account.sunriseState,
+                marinadeState: this.state.proxyState,
+                sunriseState: this.state.sunriseState,
                 depositor,
                 mintGsolTo: gsolATA,
                 msolMint: this.marinade.state.mSolMint.address,
@@ -204,8 +200,8 @@ export class MarinadeClient extends BeamInterface<MarinadeBeam> {
             .withdraw(amount)
             .accounts({
                 state: this.stateAddress,
-                marinadeState: this.account.proxyState,
-                sunriseState: this.account.sunriseState,
+                marinadeState: this.state.proxyState,
+                sunriseState: this.state.sunriseState,
                 withdrawer,
                 gsolTokenAccount: burnGsolFrom,
                 gsolMint,
@@ -267,8 +263,8 @@ export class MarinadeClient extends BeamInterface<MarinadeBeam> {
             .orderWithdrawal(lamports)
             .accounts({
                 state: this.stateAddress,
-                marinadeState: this.account.proxyState,
-                sunriseState: this.account.sunriseState,
+                marinadeState: this.state.proxyState,
+                sunriseState: this.state.sunriseState,
                 withdrawer,
                 gsolTokenAccount: burnGsolFrom,
                 gsolMint,
@@ -307,7 +303,7 @@ export class MarinadeClient extends BeamInterface<MarinadeBeam> {
             .redeemTicket()
             .accounts({
                 state: this.stateAddress,
-                marinadeState: this.account.proxyState,
+                marinadeState: this.state.proxyState,
                 beneficiary: ticketAccountInfo.beneficiary,
                 sunriseTicketAccount: ticketAccount,
                 marinadeTicketAccount: ticketAccountInfo.marinadeTicketAccount,
@@ -361,8 +357,8 @@ export class MarinadeClient extends BeamInterface<MarinadeBeam> {
             .depositStakeAccount(validatorIndex)
             .accounts({
                 state: this.stateAddress,
-                marinadeState: this.account.proxyState,
-                sunriseState: this.account.sunriseState,
+                marinadeState: this.state.proxyState,
+                sunriseState: this.state.sunriseState,
                 stakeOwner,
                 stakeAccount,
                 mintGsolTo: gsolATA,

@@ -1,5 +1,5 @@
 {
-    "name": "sunrise-stake-client",
+    "name": "@sunrisestake/beams-sunrise-stake-client",
     "version": "1.0.0",
     "main": "index.js",
     "license": "MIT",

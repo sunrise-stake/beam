@@ -57,7 +57,7 @@ describe("sunrise-stake", () => {
     );
     await client.refresh();
 
-    const account = client.account.pretty();
+    const account = client.state.pretty();
     expect(account.address).to.equal(sunrise.publicKey.toBase58());
     expect(account.yieldAccount).to.equal(yieldAccount.publicKey.toBase58());
     expect(account.gsolAuthBump).to.equal(
@@ -86,11 +86,11 @@ describe("sunrise-stake", () => {
     await client.refresh();
 
     // changed
-    expect(client.account.yieldAccount.toBase58()).to.equal(
+    expect(client.state.yieldAccount.toBase58()).to.equal(
       newYieldAccount.toBase58()
     );
     // unchanged
-    expect(client.account.updateAuthority.toBase58()).to.equal(
+    expect(client.state.updateAuthority.toBase58()).to.equal(
       provider.publicKey.toBase58()
     );
   });
@@ -106,7 +106,7 @@ describe("sunrise-stake", () => {
     }
 
     await client.refresh();
-    const account = client.account.pretty();
+    const account = client.state.pretty();
     for (let beam of account.beams) {
       expect(beam.allocation).to.equal("0");
       expect(beam.partialGsolSupply).to.equal("0");
@@ -134,7 +134,7 @@ describe("sunrise-stake", () => {
     expect(finalLen).to.equal(initialLen + 5 * BEAM_DETAILS_LEN);
 
     await client.refresh();
-    for (let beam of client.account.pretty().beams.slice(15, 20)) {
+    for (let beam of client.state.pretty().beams.slice(15, 20)) {
       expect(beam.key).to.equal(PublicKey.default.toBase58());
     }
   });
@@ -155,7 +155,7 @@ describe("sunrise-stake", () => {
     await sendAndConfirmTransaction(provider, tx);
     await client.refresh();
 
-    for (let beam of client.account.pretty().beams) {
+    for (let beam of client.state.pretty().beams) {
       if (beam.key == mState.toBase58() || beam.key == splState.toBase58()) {
         expect(beam.allocation).to.equal("50");
       } else {
@@ -204,11 +204,11 @@ describe("sunrise-stake", () => {
     await client.refresh();
 
     expect(
-      client.account.beams.find(
+      client.state.beams.find(
         (beam) => beam.key.toBase58() === tempBeam.publicKey.toBase58()
       )
     ).to.be.undefined;
-    expect(client.account.beams[2].key.toBase58()).to.equal(
+    expect(client.state.beams[2].key.toBase58()).to.equal(
       PublicKey.default.toBase58()
     );
   });
@@ -246,7 +246,7 @@ describe("sunrise-marinade", () => {
     );
 
     await client.refresh();
-    const info = client.account.pretty();
+    const info = client.state.pretty();
     expect(info.proxyState).to.equal(
       client.marinade.state.marinadeStateAddress.toBase58()
     );
@@ -265,11 +265,11 @@ describe("sunrise-marinade", () => {
   it("Can update a state", async () => {
     const newTreasury = Keypair.generate();
     const updateParams = {
-      updateAuthority: client.account.updateAuthority,
-      sunriseState: client.account.sunriseState,
-      vaultAuthorityBump: client.account.vaultAuthorityBump,
+      updateAuthority: client.state.updateAuthority,
+      sunriseState: client.state.sunriseState,
+      vaultAuthorityBump: client.state.vaultAuthorityBump,
       treasury: newTreasury.publicKey,
-      marinadeState: client.account.proxyState,
+      marinadeState: client.state.proxyState,
     };
     await sendAndConfirmTransaction(
       provider,
@@ -278,7 +278,7 @@ describe("sunrise-marinade", () => {
     );
 
     client = await client.refresh();
-    expect(client.account.treasury.toBase58()).to.equal(
+    expect(client.state.treasury.toBase58()).to.equal(
       newTreasury.publicKey.toBase58()
     );
     msolTokenAccount = client.marinade.beamMsolVault;
@@ -453,7 +453,7 @@ describe("sunrise-spl", () => {
     );
 
     await client.refresh();
-    const info = client.account.pretty();
+    const info = client.state.pretty();
     expect(info.proxyState).to.equal(client.stakePool.toBase58());
     expect(info.sunriseState).to.equal(sunrise.publicKey.toBase58());
     expect(info.vaultAuthorityBump).to.equal(
@@ -470,9 +470,9 @@ describe("sunrise-spl", () => {
   it("Can update a state", async () => {
     const newTreasury = Keypair.generate();
     const updateParams = {
-      updateAuthority: client.account.updateAuthority,
-      sunriseState: client.account.sunriseState,
-      vaultAuthorityBump: client.account.vaultAuthorityBump,
+      updateAuthority: client.state.updateAuthority,
+      sunriseState: client.state.sunriseState,
+      vaultAuthorityBump: client.state.vaultAuthorityBump,
       treasury: newTreasury.publicKey,
       stakePool: client.stakePool,
     };
@@ -483,7 +483,7 @@ describe("sunrise-spl", () => {
     );
 
     await client.refresh();
-    expect(client.account.treasury.toBase58()).to.equal(
+    expect(client.state.treasury.toBase58()).to.equal(
       newTreasury.publicKey.toBase58()
     );
   });
@@ -599,7 +599,7 @@ describe("marinade-lp", () => {
     );
 
     await client.refresh();
-    const info = client.account.pretty();
+    const info = client.state.pretty();
     expect(info.proxyState).to.equal(
       client.lp.marinade.marinadeStateAddress.toBase58()
     );
@@ -615,12 +615,12 @@ describe("marinade-lp", () => {
   it("Can update a state", async () => {
     const newTreasury = Keypair.generate();
     const updateParams = {
-      updateAuthority: client.account.updateAuthority,
-      sunriseState: client.account.sunriseState,
-      vaultAuthorityBump: client.account.vaultAuthorityBump,
+      updateAuthority: client.state.updateAuthority,
+      sunriseState: client.state.sunriseState,
+      vaultAuthorityBump: client.state.vaultAuthorityBump,
       treasury: newTreasury.publicKey,
       msolTokenAccount,
-      marinadeState: client.account.proxyState,
+      marinadeState: client.state.proxyState,
     };
     await sendAndConfirmTransaction(
       provider,
@@ -629,7 +629,7 @@ describe("marinade-lp", () => {
     );
 
     await client.refresh();
-    expect(client.account.treasury.toBase58()).to.equal(
+    expect(client.state.treasury.toBase58()).to.equal(
       newTreasury.publicKey.toBase58()
     );
   });

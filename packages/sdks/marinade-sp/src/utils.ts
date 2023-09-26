@@ -3,7 +3,7 @@ import {Marinade, MarinadeConfig, MarinadeState} from "@sunrisestake/marinade-ts
 import {getAssociatedTokenAddressSync} from "@solana/spl-token";
 import {AnchorProvider} from "@coral-xyz/anchor";
 import {MARINADE_FINANCE_PROGRAM_ID} from "./constants";
-import * as module from "module";
+import {StakePool} from "spl/src/getStakePool";
 
 export type MarinadeClientParams = {
   /** The marinade state. */
@@ -70,11 +70,11 @@ export class Utils {
 
   public static async getMarinadeClientParams(
       provider: AnchorProvider,
-      programId: PublicKey,
+      beamProgramId: PublicKey,
       stateAddress: PublicKey
   ): Promise<MarinadeClientParams> {
     const marinadeState = await this.loadMarinadeState(provider);
-    const vaultAuthority = Utils.deriveAuthorityAddress(programId, stateAddress);
+    const vaultAuthority = Utils.deriveAuthorityAddress(beamProgramId, stateAddress);
     return {
       state: marinadeState,
       beamMsolVault: getAssociatedTokenAddressSync(

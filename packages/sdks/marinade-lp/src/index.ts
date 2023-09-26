@@ -12,7 +12,7 @@ import {
   createAssociatedTokenAccountIdempotentInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { IDL, type MarinadeLpBeam } from "../../types/marinade_lp_beam";
+import { IDL, type MarinadeLpBeam } from "@sunrisestake/beams-common";
 import { StateAccount } from "./state";
 import {
   MARINADE_BEAM_PROGRAM_ID,
@@ -29,12 +29,12 @@ import {
   BeamCapability,
 } from "../../sunrise-stake-client/src/beamInterface";
 import BN from "bn.js";
-import { SunriseClient } from "../../sunrise/src";
+import { SunriseClient } from "@sunrisestake/beams-sunrise";
 
 /** An instance of the Sunrise program that acts as a proxy to Marinade-compatible
  * stake-pools.
  */
-export class MarinadeLpClient extends BeamInterface {
+export class MarinadeLpClient extends BeamInterface<MarinadeLpBeam, StateAccount> {
   /** A list of actions supported by this beam. */
   public readonly caps: BeamCapability[];
   /** Anchor program instance. */

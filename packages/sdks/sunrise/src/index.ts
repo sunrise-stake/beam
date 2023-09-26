@@ -9,7 +9,7 @@ import {
 } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync,
+  getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { IDL, type SunriseCore } from "../../types/sunrise_core";
 import { StateAccount } from "./state";
