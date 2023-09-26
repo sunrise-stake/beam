@@ -4,6 +4,8 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "@solana/spl-token": "^0.3.8"
+    "@solana/spl-token": "^0.3.8",
+    "@types/chai-as-promised": "^7.1.6",
+    "chai-as-promised": "^7.1.1"
   }
 }

@@ -1,6 +1,16 @@
 import { PublicKey } from "@solana/web3.js";
-import { MarinadeState } from "@sunrisestake/marinade-ts-sdk";
+import {Marinade, MarinadeConfig, MarinadeState} from "@sunrisestake/marinade-ts-sdk";
+import {getAssociatedTokenAddressSync} from "@solana/spl-token";
+import {AnchorProvider} from "@coral-xyz/anchor";
+import {MARINADE_FINANCE_PROGRAM_ID} from "./constants";
+import * as module from "module";
 
+export type MarinadeClientParams = {
+  /** The marinade state. */
+  state: MarinadeState;
+  /** The sunrise vault that holds the marinade pool's tokens. */
+  beamMsolVault: PublicKey;
+};
 /** All the constant seeds used for the PDAs of the on-chain program. */
 const enum Seeds {
   STATE = "sunrise-marinade",
@@ -45,4 +55,33 @@ export class Utils {
       ? marinadeState.state.validatorSystem.validatorList.count
       : validatorLookupIndex;
   };
+
+  public static async loadMarinadeState(
+      provider: AnchorProvider,
+  ): Promise<MarinadeState> {
+    const marinadeConfig = new MarinadeConfig({
+      marinadeFinanceProgramId: MARINADE_FINANCE_PROGRAM_ID,
+      connection: provider.connection,
+      publicKey: provider.publicKey,
+    });
+    const marinade = new Marinade(marinadeConfig);
+    return marinade.getMarinadeState();
+  }
+
+  public static async getMarinadeClientParams(
+      provider: AnchorProvider,
+      programId: PublicKey,
+      stateAddress: PublicKey
+  ): Promise<MarinadeClientParams> {
+    const marinadeState = await this.loadMarinadeState(provider);
+    const vaultAuthority = Utils.deriveAuthorityAddress(programId, stateAddress);
+    return {
+      state: marinadeState,
+      beamMsolVault: getAssociatedTokenAddressSync(
+          marinadeState.mSolMint.address,
+          vaultAuthority[0],
+          true
+      ),
+    }
+  }
 }

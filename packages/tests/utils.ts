@@ -14,7 +14,7 @@ import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { type AnchorProvider } from "@coral-xyz/anchor";
+import {AnchorError, type AnchorProvider} from "@coral-xyz/anchor";
 import { expect } from "chai";
 import BN from "bn.js";
 import * as fs from "fs";
@@ -61,7 +61,7 @@ export const expectAssociatedTokenAccountBalanceA = async (
   );
 };
 
-export const expectAssociatedTokenAccountBalanceB = async (
+export const expectTokenBalance = async (
   provider: AnchorProvider,
   address: PublicKey,
   expectedAmount: number | BN,
@@ -126,15 +126,13 @@ export const createKeypairFromFile = (path: string): Keypair => {
 export const sendAndConfirmTransaction = (
   provider: AnchorProvider,
   transaction: Transaction,
-  signers?: Signer[],
-  opts?: ConfirmOptions
+  signers: Signer[] = [],
+  opts: ConfirmOptions = {}
 ): Promise<string> => {
-  return provider.sendAndConfirm(transaction, signers, opts).catch((e) => {
-    throw e;
-  });
+  return provider.sendAndConfirm(transaction, signers, opts);
 };
 
-export const airdropTo = async (
+export const fund = async (
   provider: AnchorProvider,
   account: PublicKey,
   amount: number
@@ -157,7 +155,7 @@ export const initializeTestMint = async (
 }> => {
   let mint = Keypair.generate();
   let authority = Keypair.generate();
-  await airdropTo(provider, authority.publicKey, 1);
+  await fund(provider, authority.publicKey, 1);
   const mintAddress = await createMint(
     provider.connection,
     authority,
@@ -206,3 +204,11 @@ export const createTokenAccount = async (
 
   await sendAndConfirmTransaction(provider, tx);
 };
+
+export const expectAnchorError = (errorCode: number, errorName: string, programId: any) => (err: any) => {
+  const anchorErr = AnchorError.parse(err.logs);
+  expect(anchorErr!.error.errorCode.code).to.equal(errorName);
+  expect(anchorErr!.error.errorCode.number).to.equal(errorCode);
+  expect(anchorErr!.program.equals(programId)).is.true;
+};
+

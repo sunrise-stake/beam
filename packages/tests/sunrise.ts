@@ -1,23 +1,30 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { AnchorError, AnchorProvider, Wallet } from "@coral-xyz/anchor";
 import { SunriseClient } from "../sdks/sunrise/src";
-import { expect } from "chai";
+import chai from "chai";
 import {
-  airdropTo,
+  fund,
   createTokenAccount,
   initializeTestMint,
   sendAndConfirmTransaction,
   transferMintAuthority,
   expectStakerSolBalance,
-  expectAssociatedTokenAccountBalanceB,
+  expectTokenBalance,
   waitForNextEpoch,
   solBalance,
-  tokenAccountBalance,
+  tokenAccountBalance, expectAnchorError,
 } from "./utils";
 import { MarinadeClient } from "../sdks/marinade-sp/src";
 import { SplClient } from "../sdks/spl/src";
 import BN from "bn.js";
 import { MarinadeLpClient } from "../sdks/marinade-lp/src";
+
+import chaiAsPromised from 'chai-as-promised'
+
+chai.use(chaiAsPromised);
+
+const {expect} = chai;
+
 
 const BEAM_DETAILS_LEN: number = 42;
 const provider = AnchorProvider.env();
@@ -165,21 +172,14 @@ describe("sunrise-stake", () => {
       testUser.publicKey
     );
     tokenAccount = accounts.mintGsolTo;
-    let failed = false;
-    try {
-      await client.program.methods
+
+    const shouldFail = client.program.methods
         .mintGsol(new BN(10))
         .accounts(accounts)
         .signers([tempBeam])
         .rpc();
-    } catch (_err) {
-      failed = true;
-      const err = AnchorError.parse(_err.logs);
-      expect(err.error.errorCode.code).to.equal("UnidentifiedCallingProgram");
-      expect(err.error.errorCode.number).to.equal(6007);
-      expect(err.program.equals(client.program.programId)).is.true;
-    }
-    expect(failed).to.be.true;
+
+    await expect(shouldFail).to.be.rejectedWith(expectAnchorError(6007, "UnidentifiedCallingProgram", client.program.programId));
   });
 
   it("can't burn Gsol without CPI", async () => {
@@ -189,21 +189,13 @@ describe("sunrise-stake", () => {
       testUser.publicKey
     );
     await createTokenAccount(client.provider, testUser.publicKey, gsolMint);
-    let failed = false;
-    try {
-      await client.program.methods
+    const shouldFail = client.program.methods
         .burnGsol(new BN(10))
         .accounts(accounts)
         .signers([tempBeam, testUser])
         .rpc();
-    } catch (_err) {
-      failed = true;
-      const err = AnchorError.parse(_err.logs);
-      expect(err.error.errorCode.code).to.equal("UnidentifiedCallingProgram");
-      expect(err.error.errorCode.number).to.equal(6007);
-      expect(err.program.equals(client.program.programId)).is.true;
-    }
-    expect(failed).to.be.true;
+
+    await expect(shouldFail).to.be.rejectedWith(expectAnchorError(6007, "UnidentifiedCallingProgram", client.program.programId));
   });
 
   it("can remove a beam from the state", async () => {
@@ -213,7 +205,7 @@ describe("sunrise-stake", () => {
 
     expect(
       client.account.beams.find(
-        (beam) => beam.key.toBase58() == tempBeam.publicKey.toBase58()
+        (beam) => beam.key.toBase58() === tempBeam.publicKey.toBase58()
       )
     ).to.be.undefined;
     expect(client.account.beams[2].key.toBase58()).to.equal(
@@ -285,7 +277,7 @@ describe("sunrise-marinade", () => {
       []
     );
 
-    await client.refresh();
+    client = await client.refresh();
     expect(client.account.treasury.toBase58()).to.equal(
       newTreasury.publicKey.toBase58()
     );
@@ -293,24 +285,23 @@ describe("sunrise-marinade", () => {
   });
 
   it("can deposit and mint gsol", async () => {
-    await airdropTo(provider, staker.publicKey, 30);
-    client = await MarinadeClient.get(client.state, stakerIdentity);
+    await fund(provider, staker.publicKey, 30);
+    client = await MarinadeClient.get(stakerIdentity, client.stateAddress);
     await sendAndConfirmTransaction(
       stakerIdentity,
-      await client.deposit(new BN(10)),
-      []
+      await client.deposit(new BN(10))
     );
 
     const expectedGsol = stakerGsolBalance.addn(depositAmount);
     const expectedMsol = vaultMsolBalance.addn(
       Math.floor(depositAmount / client.marinade.state.mSolPrice)
     );
-    await expectAssociatedTokenAccountBalanceB(
+    await expectTokenBalance(
       client.provider,
-      client.sunrise.stakerGsolATA,
+      client.sunrise.gsolAssociatedTokenAccount(),
       expectedGsol
     );
-    await expectAssociatedTokenAccountBalanceB(
+    await expectTokenBalance(
       client.provider,
       client.marinade.beamMsolVault,
       expectedMsol
@@ -320,24 +311,15 @@ describe("sunrise-marinade", () => {
   });
 
   it("can't deposit due to exceeding allocation", async () => {
-    let failed = false;
-    try {
-      await sendAndConfirmTransaction(
+    const shouldFail = sendAndConfirmTransaction(
         stakerIdentity,
         await client.deposit(new BN(failedDepositAmount)),
         []
-      );
-    } catch (_err) {
-      failed = true;
-      const err = AnchorError.parse(_err.logs);
-      expect(err.error.errorCode.number).to.equal(6001);
-      expect(err.error.errorCode.code).to.equal(
-        client.sunrise.client.program.idl["errors"][1].name
-      );
-      expect(err.program.equals(client.sunrise.client.program.programId)).is
-        .true;
-    }
-    expect(failed).to.be.true;
+    );
+
+    await expect(shouldFail).to.be.rejectedWith(
+        expectAnchorError(6001, client.sunrise.program.idl["errors"][1].name, client.sunrise.program.programId)
+    );
   });
 
   it("can withdraw and burn gsol", async () => {
@@ -351,12 +333,12 @@ describe("sunrise-marinade", () => {
     const expectedMsol = vaultMsolBalance.subn(
       Math.floor(liquidWithdrawalAmount / client.marinade.state.mSolPrice)
     );
-    await expectAssociatedTokenAccountBalanceB(
+    await expectTokenBalance(
       client.provider,
-      client.sunrise.stakerGsolATA,
+        client.sunrise.gsolAssociatedTokenAccount(),
       expectedGsol
     );
-    await expectAssociatedTokenAccountBalanceB(
+    await expectTokenBalance(
       client.provider,
       client.marinade.beamMsolVault,
       expectedMsol
@@ -385,18 +367,18 @@ describe("sunrise-marinade", () => {
     expect(ticketAccount.marinadeTicketAccount.toBase58()).to.equal(
       marinadeTicket.publicKey.toBase58()
     );
-    expect(ticketAccount.state.toBase58()).to.equal(client.state.toBase58());
+    expect(ticketAccount.state.toBase58()).to.equal(client.stateAddress.toBase58());
 
     const expectedGsol = stakerGsolBalance.subn(delayedWithdrawalAmount);
     const expectedMsol = vaultMsolBalance.subn(
       Math.floor(delayedWithdrawalAmount / client.marinade.state.mSolPrice)
     );
-    await expectAssociatedTokenAccountBalanceB(
+    await expectTokenBalance(
       client.provider,
-      client.sunrise.stakerGsolATA,
+        client.sunrise.gsolAssociatedTokenAccount(),
       expectedGsol
     );
-    await expectAssociatedTokenAccountBalanceB(
+    await expectTokenBalance(
       client.provider,
       client.marinade.beamMsolVault,
       expectedMsol
@@ -507,7 +489,7 @@ describe("sunrise-spl", () => {
   });
 
   it("can deposit and mint gsol", async () => {
-    await airdropTo(provider, staker.publicKey, 30);
+    await fund(provider, staker.publicKey, 30);
     client = await SplClient.get(client.state, stakerIdentity, stakePool);
     await sendAndConfirmTransaction(
       stakerIdentity,
@@ -519,12 +501,12 @@ describe("sunrise-spl", () => {
     const expectedBsol = vaultBsolBalance.addn(
       Math.floor(depositAmount / (await client.poolTokenPrice()))
     );
-    await expectAssociatedTokenAccountBalanceB(
+    await expectTokenBalance(
       client.provider,
       client.sunrise.stakerGsolATA,
       expectedGsol
     );
-    await expectAssociatedTokenAccountBalanceB(
+    await expectTokenBalance(
       client.provider,
       client.spl.beamVault,
       expectedBsol
@@ -565,12 +547,12 @@ describe("sunrise-spl", () => {
     const expectedBsol = vaultBsolBalance.subn(
       Math.floor(withdrawalAmount / (await client.poolTokenPrice()))
     );
-    await expectAssociatedTokenAccountBalanceB(
+    await expectTokenBalance(
       client.provider,
       client.sunrise.stakerGsolATA,
       expectedGsol
     );
-    await expectAssociatedTokenAccountBalanceB(
+    await expectTokenBalance(
       client.provider,
       client.spl.beamVault,
       expectedBsol
@@ -653,7 +635,7 @@ describe("marinade-lp", () => {
   });
 
   it("can deposit and mint gsol", async () => {
-    await airdropTo(provider, staker.publicKey, 30);
+    await fund(provider, staker.publicKey, 30);
     client = await MarinadeLpClient.get(client.state, stakerIdentity);
     await sendAndConfirmTransaction(
       stakerIdentity,
@@ -665,12 +647,12 @@ describe("marinade-lp", () => {
     const expectedLpTokens = vaultBalance.addn(
       Math.floor(depositAmount / (await client.poolTokenPrice()))
     );
-    await expectAssociatedTokenAccountBalanceB(
+    await expectTokenBalance(
       client.provider,
       client.sunrise.stakerGsolATA,
       expectedGsol
     );
-    await expectAssociatedTokenAccountBalanceB(
+    await expectTokenBalance(
       client.provider,
       client.lp.beamVault,
       expectedLpTokens
@@ -711,12 +693,12 @@ describe("marinade-lp", () => {
     const expectedBsol = vaultBalance.subn(
       Math.floor(withdrawalAmount / (await client.poolTokenPrice()))
     );
-    await expectAssociatedTokenAccountBalanceB(
+    await expectTokenBalance(
       client.provider,
       client.sunrise.stakerGsolATA,
       expectedGsol
     );
-    await expectAssociatedTokenAccountBalanceB(
+    await expectTokenBalance(
       client.provider,
       client.lp.beamVault,
       expectedBsol

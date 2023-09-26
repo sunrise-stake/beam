@@ -9,7 +9,7 @@ import {
 } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { IDL, type SunriseCore } from "../../types/sunrise_core";
 import { StateAccount } from "./state";
@@ -217,15 +217,8 @@ export class SunriseClient {
     return SunriseClient.deriveGsolMintAuthority(this.stateAddress, this.program.programId);
   }
 
-  /** Derive the gsol ATA for a particular owner. */
-  public gsolAssociatedTokenAccount(owner: PublicKey): PublicKey {
-      return PublicKey.findProgramAddressSync(
-          [
-            owner.toBuffer(),
-            TOKEN_PROGRAM_ID.toBuffer(),
-            this.account.gsolMint.toBuffer(),
-          ],
-          ASSOCIATED_TOKEN_PROGRAM_ID
-      )[0];
-    }
+  /** Derive the gsol ATA for a particular owner or the current provider key by default. */
+  public gsolAssociatedTokenAccount(owner?: PublicKey): PublicKey {
+    return getAssociatedTokenAddressSync(this.account.gsolMint, owner ?? this.provider.publicKey, true);
+  }
 }
