@@ -15,28 +15,24 @@ import {
     createAssociatedTokenAccountIdempotentInstruction,
     getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { IDL, type SplBeam } from "../../types/spl_beam";
+import { SplBeam, BeamInterface, getParsedStakeAccountInfo, SPL_STAKE_POOL_PROGRAM_ID } from "@sunrisestake/beams-common";
 import { StateAccount } from "./state";
 import {
     SPL_BEAM_PROGRAM_ID,
 } from "./constants";
 import {SplClientParams, Utils} from "./utils";
-import {
-    BeamInterface,
-
-} from "sunrise-stake-client/src/beamInterface";
 import BN from "bn.js";
-import { SunriseClient } from "sunrise/src";
-import { getParsedStakeAccountInfo, SPL_STAKE_POOL_PROGRAM_ID } from "common";
+import { SunriseClient } from "@sunrisestake/beams-sunrise";
 
 /** An instance of the Sunrise program that acts as a proxy to SPL-compatible
  * stake-pools.
  */
-export class SplClient extends BeamInterface<SplBeam, StateAccount> {
+export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
     /** The address of the authority of this beam's token vaults*/
+    readonly vaultAuthority: [PublicKey, number];
     /** Fields that depend on the stake-pool state. */
     private constructor(
-        program: Program<SplBeam>,
+        program: Program<SplBeam.SplBeam>,
         stateAddress: PublicKey,
         account: StateAccount, // The deserialized state account for this beam state
         readonly spl: SplClientParams,
@@ -48,6 +44,7 @@ export class SplClient extends BeamInterface<SplBeam, StateAccount> {
             { kind: "liquid-unstake" },
             { kind: "stake-withdrawal" },
         ]);
+        this.vaultAuthority = Utils.deriveAuthorityAddress(program.programId, stateAddress);
     }
 
     /** Fetch an instance for an existing state account.*/
@@ -56,7 +53,7 @@ export class SplClient extends BeamInterface<SplBeam, StateAccount> {
         provider: AnchorProvider,
         programId = SPL_BEAM_PROGRAM_ID,
     ): Promise<SplClient> {
-        const program = new Program<SplBeam>(IDL, programId, provider);
+        const program = new Program<SplBeam.SplBeam>(SplBeam.IDL, programId, provider);
         const idlState = await program.account.state.fetch(stateAddress);
         const state = StateAccount.fromIdlAccount(idlState, stateAddress);
         const sunriseClientPromise = SunriseClient.get(provider, state.sunriseState);
@@ -79,7 +76,7 @@ export class SplClient extends BeamInterface<SplBeam, StateAccount> {
         stakePool: PublicKey,
         programId = SPL_BEAM_PROGRAM_ID
     ): Promise<SplClient> {
-        const program = new Program<SplBeam>(IDL, programId, provider);
+        const program = new Program<SplBeam.SplBeam>(SplBeam.IDL, programId, provider);
         const stateAddress = Utils.deriveStateAddress(programId, sunriseState)[0];
 
         const splClientParams = await Utils.getSplClientParams(provider, programId, stateAddress, stakePool);

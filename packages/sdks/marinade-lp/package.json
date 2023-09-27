@@ -1,14 +1,19 @@
 {
-  "name": "marinade-lp",
+  "name": "@sunrisestake/beams-marinade-lp",
   "version": "1.0.0",
-  "main": "index.js",
   "license": "MIT",
+  "type": "module",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
   "scripts": {
-    "build": "tsc"
+    "build": "rimraf dist; tsc --module es2015 --target es5 --outDir dist/esm; tsc --module commonjs --target es5 --outDir dist/cjs && yarn typedoc"
   },
   "dependencies": {
+    "@coral-xyz/anchor": "^0.28.0",
+    "@solana/web3.js": "^1.78.5",
     "@sunrisestake/beams-common": "*",
-    "@sunrisestake/beams-sunrise-stake-client": "*",
+    "@sunrisestake/beams-common-marinade": "*",
     "@sunrisestake/beams-sunrise": "*"
   }
 }

@@ -27,7 +27,7 @@ export class StateAccount {
 
   /** Create a new instance from an anchor-deserialized account. */
   public static fromIdlAccount(
-    account: IdlAccounts<SunriseCore>["state"],
+    account: IdlAccounts<SunriseCore.SunriseCore>["state"],
     address: PublicKey
   ): StateAccount {
     return new StateAccount(address, account);

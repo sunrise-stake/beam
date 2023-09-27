@@ -1,9 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
-import {Marinade, MarinadeConfig, MarinadeState} from "@sunrisestake/marinade-ts-sdk";
 import {getAssociatedTokenAddressSync} from "@solana/spl-token";
 import {AnchorProvider} from "@coral-xyz/anchor";
-import {MARINADE_FINANCE_PROGRAM_ID} from "./constants";
-import {StakePool} from "spl/src/getStakePool";
+import {MarinadeState, loadMarinadeState} from '@sunrisestake/beams-common-marinade'
 
 export type MarinadeClientParams = {
   /** The marinade state. */
@@ -56,24 +54,12 @@ export class Utils {
       : validatorLookupIndex;
   };
 
-  public static async loadMarinadeState(
-      provider: AnchorProvider,
-  ): Promise<MarinadeState> {
-    const marinadeConfig = new MarinadeConfig({
-      marinadeFinanceProgramId: MARINADE_FINANCE_PROGRAM_ID,
-      connection: provider.connection,
-      publicKey: provider.publicKey,
-    });
-    const marinade = new Marinade(marinadeConfig);
-    return marinade.getMarinadeState();
-  }
-
   public static async getMarinadeClientParams(
       provider: AnchorProvider,
       beamProgramId: PublicKey,
       stateAddress: PublicKey
   ): Promise<MarinadeClientParams> {
-    const marinadeState = await this.loadMarinadeState(provider);
+    const marinadeState = await loadMarinadeState(provider);
     const vaultAuthority = Utils.deriveAuthorityAddress(beamProgramId, stateAddress);
     return {
       state: marinadeState,

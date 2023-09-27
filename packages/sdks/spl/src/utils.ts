@@ -4,7 +4,6 @@ import {AnchorProvider} from "@coral-xyz/anchor";
 import {getAssociatedTokenAddressSync} from "@solana/spl-token";
 import {SPL_STAKE_POOL_PROGRAM_ID} from "@sunrisestake/beams-common";
 
-
 export type SplClientParams = {
   /** The stake pool address. */
   stakePoolAddress: PublicKey;

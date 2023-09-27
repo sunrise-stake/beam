@@ -6,7 +6,7 @@ import {AnchorProvider, Program, Idl} from "@coral-xyz/anchor";
  * Represents a common interface for sunrise beams that act as stake-pool proxies.
  */
 export abstract class BeamInterface<TProgram extends Idl, TStateAccount extends BeamState> {
-  abstract readonly vaultAuthority: [PublicKey, number];
+  abstract vaultAuthority: [PublicKey, number];
 
   protected constructor(
       readonly program: Program<TProgram>,

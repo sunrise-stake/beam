@@ -15,7 +15,7 @@ import {
     createAssociatedTokenAccountIdempotentInstruction,
     getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { MarinadeBeam, BeamInterface } from "@sunrisestake/beams-common";
+import {MarinadeBeam, BeamInterface, deriveAuthorityAddress} from "@sunrisestake/beams-common";
 import { StateAccount } from "./state";
 import {
     MARINADE_BEAM_PROGRAM_ID,
@@ -33,6 +33,9 @@ import { SunriseClient } from "@sunrisestake/beams-sunrise";
  * marinade-compatible stake-pools.
  */
 export class MarinadeClient extends BeamInterface<MarinadeBeam.MarinadeBeam, StateAccount> {
+    /** The address of the authority of this beam's token vaults*/
+    readonly vaultAuthority: [PublicKey, number];
+
     private constructor(
         program: Program<MarinadeBeam.MarinadeBeam>,
         stateAddress: PublicKey,
@@ -46,6 +49,7 @@ export class MarinadeClient extends BeamInterface<MarinadeBeam.MarinadeBeam, Sta
             { kind: "order-unstake" },
             { kind: "liquid-unstake" },
         ]);
+        this.vaultAuthority = deriveAuthorityAddress(program.programId, stateAddress);
     }
 
     /** Register a new state.*/
@@ -56,7 +60,7 @@ export class MarinadeClient extends BeamInterface<MarinadeBeam.MarinadeBeam, Sta
         treasury: PublicKey,
         programId = MARINADE_BEAM_PROGRAM_ID
     ): Promise<MarinadeClient> {
-        const program = new Program<MarinadeBeam>(MarinadeBeam.IDL, programId, provider);
+        const program = new Program<MarinadeBeam.MarinadeBeam>(MarinadeBeam.IDL, programId, provider);
         const stateAddress = Utils.deriveStateAddress(programId, sunriseState)[0];
         const marinadeClientParams = await Utils.getMarinadeClientParams(provider, programId, stateAddress)
         const [msolVaultAuthority, vaultAuthorityBump] = Utils.deriveAuthorityAddress(programId, stateAddress);
@@ -97,7 +101,7 @@ export class MarinadeClient extends BeamInterface<MarinadeBeam.MarinadeBeam, Sta
         stateAddress: PublicKey,
         programId = MARINADE_BEAM_PROGRAM_ID
     ) {
-        const program = new Program<MarinadeBeam>(IDL, programId, provider);
+        const program = new Program<MarinadeBeam.MarinadeBeam>(MarinadeBeam.IDL, programId, provider);
         const idlState = await program.account.state.fetch(stateAddress);
         const account = StateAccount.fromIdlAccount(idlState, stateAddress);
 

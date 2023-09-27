@@ -4,7 +4,7 @@
         "packages/tests/*"
     ],
     "private": true,
-    "packageManager": "yarn",
+    "packageManager": "yarn@1.22.17",
     "scripts": {
         "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
         "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
@@ -12,7 +12,9 @@
     },
     "dependencies": {
         "@coral-xyz/anchor": "^0.28.0",
-        "@solana/spl-token": "^0.3.8"
+        "@solana/spl-token": "^0.3.8",
+        "rimraf": "^5.0.5",
+        "typedoc": "^0.25.1"
     },
     "devDependencies": {
         "@coral-xyz/anchor-cli": "^0.28.0",

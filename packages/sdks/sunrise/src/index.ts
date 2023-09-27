@@ -21,7 +21,7 @@ import { GSOL_AUTHORITY_SEED, SUNRISE_PROGRAM_ID } from "./constants";
 export class SunriseClient {
   private constructor(
       // The sunrise program.
-    readonly program: Program<SunriseCore>,
+    readonly program: Program<SunriseCore.SunriseCore>,
       // The state address.
     readonly stateAddress: PublicKey,
       // The deserialized on-chain account for this sunrise state.

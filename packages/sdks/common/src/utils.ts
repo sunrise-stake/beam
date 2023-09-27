@@ -3,6 +3,10 @@ import BN from "bn.js";
 import {Connection, PublicKey} from "@solana/web3.js";
 import {STAKE_PROGRAM_ID} from "./constants";
 
+const enum Seeds {
+  VAULT_AUTHORITY = "vault-authority"
+}
+
 const BNOrNull = (
     value: ConstructorParameters<typeof BN>[0] | null
 ): BN | null => value === null ? null : new BN(value);
@@ -96,4 +100,14 @@ export async function getParsedStakeAccountInfo(
     balanceLamports,
     stakedLamports,
   }
+}
+
+export const deriveAuthorityAddress = (
+    pid: PublicKey,
+    state: PublicKey
+): [PublicKey, number] => {
+  return PublicKey.findProgramAddressSync(
+      [state.toBuffer(), Buffer.from(Seeds.VAULT_AUTHORITY)],
+      pid
+  );
 }

@@ -6,4 +6,5 @@ target
 node_modules
 test-ledger
 .turbo
-dist/
+packages/sdks/*/dist/
+packages/sdks/*/doc/
