@@ -14,7 +14,7 @@ export class StateAccount {
 
   private constructor(
     _address: PublicKey,
-    account: IdlAccounts<SunriseCore.SunriseCore>["state"]
+    account: IdlAccounts<SunriseCore.SunriseCore>["state"],
   ) {
     this.address = _address;
     this.updateAuthority = account.updateAuthority;
@@ -28,7 +28,7 @@ export class StateAccount {
   /** Create a new instance from an anchor-deserialized account. */
   public static fromIdlAccount(
     account: IdlAccounts<SunriseCore.SunriseCore>["state"],
-    address: PublicKey
+    address: PublicKey,
   ): StateAccount {
     return new StateAccount(address, account);
   }

@@ -2,9 +2,7 @@ import { type AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import BN from "bn.js";
 import { SunriseClient } from "@sunrisestake/beams-sunrise";
-import {
-  BeamInterface,
-} from "@sunrisestake/beams-common";
+import { BeamInterface } from "@sunrisestake/beams-common";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -28,37 +26,37 @@ export class SunriseStake {
   details: SunriseStakeDetails | undefined;
 
   private constructor(
-      readonly provider: AnchorProvider,
-      readonly beams: BeamInterface<any, any>[],
-      sunrise: SunriseClient
+    readonly provider: AnchorProvider,
+    readonly beams: BeamInterface<any, any>[],
+    sunrise: SunriseClient,
   ) {
     this.sunriseClient = sunrise;
     this.staker = this.provider.publicKey;
     this.stakerGsolATA = PublicKey.findProgramAddressSync(
-        [
-          this.staker.toBuffer(),
-          TOKEN_PROGRAM_ID.toBuffer(),
-          sunrise.account.gsolMint.toBuffer(),
-        ],
-        ASSOCIATED_TOKEN_PROGRAM_ID
+      [
+        this.staker.toBuffer(),
+        TOKEN_PROGRAM_ID.toBuffer(),
+        sunrise.account.gsolMint.toBuffer(),
+      ],
+      ASSOCIATED_TOKEN_PROGRAM_ID,
     )[0];
   }
 
   public async init(
-      provider: AnchorProvider,
-      beams: BeamInterface<any, any>[],
-      envConfig?: EnvironmentConfig
+    provider: AnchorProvider,
+    beams: BeamInterface<any, any>[],
+    envConfig?: EnvironmentConfig,
   ): Promise<SunriseStake> {
-    let config = envConfig ?? DEFAULT_ENVIRONMENT_CONFIG;
-    let sunrise = await SunriseClient.get(
-        provider,
-        config.sunriseState,
-        config.sunriseProgramId
+    const config = envConfig ?? DEFAULT_ENVIRONMENT_CONFIG;
+    const sunrise = await SunriseClient.get(
+      provider,
+      config.sunriseState,
+      config.sunriseProgramId,
     );
 
     /** Validate that beams are compatible with sunrise instance. */
-    let sunriseBeams = sunrise.account.beams;
-    for (let beam of beams) {
+    const sunriseBeams = sunrise.account.beams;
+    for (const beam of beams) {
       if (sunriseBeams.find((b: any) => b.key === beam.state) === undefined) {
         throw new Error("Invalid Beam. Beam not recognized by sunrise state.");
       }
@@ -68,18 +66,18 @@ export class SunriseStake {
   }
 
   public async deposit(
-      lamports: BN,
-      recipient?: PublicKey
+    lamports: BN,
+    recipient?: PublicKey,
   ): Promise<Transaction[]> {
-    let options = this.solDepositBeams();
+    const options = this.solDepositBeams();
     if (options.length === 0) {
       throw new Error("No available beam(s) for deposit");
     }
 
-    let transactions = new Array<Transaction>();
-    let deposits = await this.splitDeposit(lamports, options);
-    for (let deposit of deposits) {
-      let [beam, amount] = deposit;
+    const transactions = new Array<Transaction>();
+    const deposits = await this.splitDeposit(lamports, options);
+    for (const deposit of deposits) {
+      const [beam, amount] = deposit;
       transactions.push(await beam.deposit(amount, recipient));
     }
 
@@ -88,8 +86,8 @@ export class SunriseStake {
 
   /** Route a deposit through the beams required to complete it. */
   private async splitDeposit(
-      lamports: BN,
-      options: BeamInterface<any, any>[]
+    lamports: BN,
+    options: BeamInterface<any, any>[],
   ): Promise<[BeamInterface<any, any>, BN][]> {
     const { effectiveGsolSupply } = await this.fetchDetails();
     // If effective Gsol supply equals 0, any beam can fully cover the deposit.
@@ -98,7 +96,7 @@ export class SunriseStake {
     }
 
     let unassigned = lamports;
-    let results = new Array<[BeamInterface<any, any>, BN]>();
+    const results = new Array<[BeamInterface<any, any>, BN]>();
 
     for (let i = 0; i < options.length; ++i) {
       if (unassigned.eqn(0)) {
@@ -106,7 +104,7 @@ export class SunriseStake {
       }
 
       const allocation = this.sunriseClient.account.beams.find(
-          (a) => a.key === options[i].state
+        (a) => a.key === options[i].state,
       )?.allocation;
 
       if (!allocation) throw new Error("Beam allocation not found");
@@ -114,8 +112,8 @@ export class SunriseStake {
       const window = effectiveGsolSupply.muln(allocation).divn(100);
 
       // Assumes no overflow for `toNumber()`
-      let singleDeposit = new BN(
-          Math.min(window.toNumber(), unassigned.toNumber())
+      const singleDeposit = new BN(
+        Math.min(window.toNumber(), unassigned.toNumber()),
       );
 
       unassigned = unassigned.sub(singleDeposit);
@@ -125,8 +123,8 @@ export class SunriseStake {
     // Reachable if the client is initialized with some beams missing.
     if (!unassigned.eqn(0)) {
       throw new Error(
-          `Presently available beams are inadequate for deposit, 
-        missing ${unassigned.toString()} lamports. `
+        `Presently available beams are inadequate for deposit, 
+        missing ${unassigned.toString()} lamports. `,
       );
     }
 
@@ -134,12 +132,12 @@ export class SunriseStake {
   }
 
   private async fetchDetails(): Promise<SunriseStakeDetails> {
-    let currentGsolCirculation = await this.provider.connection
-        .getTokenSupply(this.sunriseClient.account.gsolMint)
-        .then((response) => response.value);
-    let preGsolCirculation = this.sunriseClient.account.preSupply;
-    let effectiveGsolSupply = new BN(currentGsolCirculation.amount).sub(
-        preGsolCirculation
+    const currentGsolCirculation = await this.provider.connection
+      .getTokenSupply(this.sunriseClient.account.gsolMint)
+      .then((response) => response.value);
+    const preGsolCirculation = this.sunriseClient.account.preSupply;
+    const effectiveGsolSupply = new BN(currentGsolCirculation.amount).sub(
+      preGsolCirculation,
     );
 
     return {
@@ -148,10 +146,10 @@ export class SunriseStake {
   }
 
   public async depositStake(
-      stakeAccount: PublicKey,
-      recipient?: PublicKey
+    stakeAccount: PublicKey,
+    recipient?: PublicKey,
   ): Promise<Transaction[]> {
-    let options = this.stakeDepositBeams();
+    const options = this.stakeDepositBeams();
     if (options.length === 0) {
       throw new Error("No available beam(s) for stake deposit.");
     }

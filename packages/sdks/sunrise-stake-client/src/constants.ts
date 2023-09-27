@@ -7,7 +7,7 @@ export interface EnvironmentConfig {
 
 export const DEFAULT_ENVIRONMENT_CONFIG = {
   sunriseProgramId: new PublicKey(
-    "suncPB4RR39bMwnRhCym6ZLKqMfnFG83vjzVVuXNhCq"
+    "suncPB4RR39bMwnRhCym6ZLKqMfnFG83vjzVVuXNhCq",
   ),
   sunriseState: PublicKey.default, // TODO: Replace.
 };
