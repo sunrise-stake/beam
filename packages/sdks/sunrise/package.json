@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
+    "@sunrisestake/beams-common": "*",
+    "@solana/web3.js": "^1.78.5"
   }
 }

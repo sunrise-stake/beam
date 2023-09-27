@@ -4,6 +4,7 @@
         "packages/tests/*"
     ],
     "private": true,
+    "packageManager": "yarn",
     "scripts": {
         "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
         "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",

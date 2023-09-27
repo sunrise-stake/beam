@@ -1,10 +1,10 @@
 import { type AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import BN from "bn.js";
-import { SunriseClient } from "sunrise/src";
+import { SunriseClient } from "@sunrisestake/beams-sunrise";
 import {
   BeamInterface,
-} from "./beamInterface";
+} from "@sunrisestake/beams-common";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -59,7 +59,7 @@ export class SunriseStake {
     /** Validate that beams are compatible with sunrise instance. */
     let sunriseBeams = sunrise.account.beams;
     for (let beam of beams) {
-      if (sunriseBeams.find((b) => b.key === beam.state) === undefined) {
+      if (sunriseBeams.find((b: any) => b.key === beam.state) === undefined) {
         throw new Error("Invalid Beam. Beam not recognized by sunrise state.");
       }
     }

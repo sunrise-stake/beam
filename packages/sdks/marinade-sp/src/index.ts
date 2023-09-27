@@ -15,7 +15,7 @@ import {
     createAssociatedTokenAccountIdempotentInstruction,
     getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { IDL, type MarinadeBeam } from "../../types/marinade_beam";
+import { MarinadeBeam, BeamInterface } from "@sunrisestake/beams-common";
 import { StateAccount } from "./state";
 import {
     MARINADE_BEAM_PROGRAM_ID,
@@ -27,17 +27,14 @@ import {
     Provider,
     type Wallet,
 } from "@sunrisestake/marinade-ts-sdk";
-import {
-    BeamInterface,
-} from "sunrise-stake-client/src/beamInterface";
 import BN from "bn.js";
-import { SunriseClient } from "sunrise/src";
+import { SunriseClient } from "@sunrisestake/beams-sunrise";
 /** An instance of the Sunrise program that acts as a proxy to
  * marinade-compatible stake-pools.
  */
-export class MarinadeClient extends BeamInterface<MarinadeBeam, StateAccount> {
+export class MarinadeClient extends BeamInterface<MarinadeBeam.MarinadeBeam, StateAccount> {
     private constructor(
-        program: Program<MarinadeBeam>,
+        program: Program<MarinadeBeam.MarinadeBeam>,
         stateAddress: PublicKey,
         account: StateAccount, // The deserialized state account for this beam state
         readonly marinade: MarinadeClientParams,
@@ -59,7 +56,7 @@ export class MarinadeClient extends BeamInterface<MarinadeBeam, StateAccount> {
         treasury: PublicKey,
         programId = MARINADE_BEAM_PROGRAM_ID
     ): Promise<MarinadeClient> {
-        const program = new Program<MarinadeBeam>(IDL, programId, provider);
+        const program = new Program<MarinadeBeam>(MarinadeBeam.IDL, programId, provider);
         const stateAddress = Utils.deriveStateAddress(programId, sunriseState)[0];
         const marinadeClientParams = await Utils.getMarinadeClientParams(provider, programId, stateAddress)
         const [msolVaultAuthority, vaultAuthorityBump] = Utils.deriveAuthorityAddress(programId, stateAddress);

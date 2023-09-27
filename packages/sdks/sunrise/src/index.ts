@@ -1,4 +1,4 @@
-import { type Provider, type AnchorProvider, Program } from "@coral-xyz/anchor";
+import { type AnchorProvider, Program } from "@coral-xyz/anchor";
 import {
   PublicKey,
   type Keypair,
@@ -11,7 +11,7 @@ import {
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { IDL, type SunriseCore } from "../../types/sunrise_core";
+import { SunriseCore } from "@sunrisestake/beams-common";
 import { StateAccount } from "./state";
 import { GSOL_AUTHORITY_SEED, SUNRISE_PROGRAM_ID } from "./constants";
 
@@ -39,7 +39,7 @@ export class SunriseClient {
       state: PublicKey,
       programId = SUNRISE_PROGRAM_ID
   ) {
-    const program = new Program<SunriseCore>(IDL, programId, provider);
+    const program = new Program<SunriseCore.SunriseCore>(SunriseCore.IDL, programId, provider);
     const idlState = await program.account.state.fetch(state);
     const account = StateAccount.fromIdlAccount(idlState, state);
 
@@ -61,7 +61,7 @@ export class SunriseClient {
     gsolMint: PublicKey,
     programId = SUNRISE_PROGRAM_ID
   ): Promise<SunriseClient> {
-    const program = new Program<SunriseCore>(IDL, programId, provider);
+    const program = new Program<SunriseCore.SunriseCore>(SunriseCore.IDL, programId, provider);
     const register = await program.methods
       .registerState({ updateAuthority, yieldAccount, initialCapacity })
       .accounts({

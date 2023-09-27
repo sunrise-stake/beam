@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import {getStakePoolAccount, StakePool} from "./getStakePool";
 import {AnchorProvider} from "@coral-xyz/anchor";
 import {getAssociatedTokenAddressSync} from "@solana/spl-token";
-import {SPL_STAKE_POOL_PROGRAM_ID} from "./constants";
+import {SPL_STAKE_POOL_PROGRAM_ID} from "@sunrisestake/beams-common";
 
 
 export type SplClientParams = {

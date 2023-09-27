@@ -12,7 +12,7 @@ import {
   createAssociatedTokenAccountIdempotentInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { IDL, type MarinadeLpBeam } from "@sunrisestake/beams-common";
+import { IDL, type MarinadeLpBeam, BeamInterface, BeamCapability } from "@sunrisestake/beams-common";
 import { StateAccount } from "./state";
 import {
   MARINADE_BEAM_PROGRAM_ID,
@@ -24,10 +24,6 @@ import {
   MarinadeConfig,
   MarinadeState,
 } from "@sunrisestake/marinade-ts-sdk";
-import {
-  BeamInterface,
-  BeamCapability,
-} from "../../sunrise-stake-client/src/beamInterface";
 import BN from "bn.js";
 import { SunriseClient } from "@sunrisestake/beams-sunrise";
 
@@ -35,16 +31,6 @@ import { SunriseClient } from "@sunrisestake/beams-sunrise";
  * stake-pools.
  */
 export class MarinadeLpClient extends BeamInterface<MarinadeLpBeam, StateAccount> {
-  /** A list of actions supported by this beam. */
-  public readonly caps: BeamCapability[];
-  /** Anchor program instance. */
-  readonly program: Program<MarinadeLpBeam>;
-  /** State address of this beam. */
-  readonly state: PublicKey;
-  /* The deserialized state account for this beam state*/
-  account: StateAccount | undefined;
-  /** The address of the authority of this beam's token vaults*/
-  vaultAuthority: [PublicKey, number];
 
   /** Fields that depend on the stake-pool state. */
   lp:

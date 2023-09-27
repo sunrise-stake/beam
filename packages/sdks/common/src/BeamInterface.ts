@@ -1,14 +1,12 @@
 import { Keypair, type PublicKey, Transaction } from "@solana/web3.js";
 import BN from "bn.js";
-import {AnchorProvider, Program} from "@coral-xyz/anchor";
-import {Idl} from "@coral-xyz/anchor/dist/cjs/idl";
-import {Utils} from "spl/src/utils";
+import {AnchorProvider, Program, Idl} from "@coral-xyz/anchor";
 
 /**
  * Represents a common interface for sunrise beams that act as stake-pool proxies.
  */
 export abstract class BeamInterface<TProgram extends Idl, TStateAccount extends BeamState> {
-  readonly vaultAuthority: [PublicKey, number];
+  abstract readonly vaultAuthority: [PublicKey, number];
 
   protected constructor(
       readonly program: Program<TProgram>,
@@ -16,7 +14,6 @@ export abstract class BeamInterface<TProgram extends Idl, TStateAccount extends 
       readonly state: TStateAccount,
       readonly caps: BeamCapability[],
   ) {
-    this.vaultAuthority = Utils.deriveAuthorityAddress(program.programId, stateAddress);
   }
 
   public get provider():AnchorProvider {
