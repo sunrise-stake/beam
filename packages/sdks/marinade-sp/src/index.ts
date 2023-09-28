@@ -20,12 +20,12 @@ import {
   BeamInterface,
   deriveAuthorityAddress,
 } from "@sunrisestake/beams-common";
-import { StateAccount } from "./state";
+import { StateAccount } from "./state.js";
 import {
   MARINADE_BEAM_PROGRAM_ID,
   MARINADE_FINANCE_PROGRAM_ID,
-} from "./constants";
-import { MarinadeClientParams, Utils } from "./utils";
+} from "./constants.js";
+import { MarinadeClientParams, Utils } from "./utils.js";
 import {
   MarinadeUtils,
   Provider,

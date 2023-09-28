@@ -6,9 +6,18 @@
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "rimraf dist; tsc --module es2015 --target es5 --outDir dist/esm; tsc --module commonjs --target es5 --outDir dist/cjs && yarn typedoc",
-    "lint": "eslint -c ../../../.eslintrc.yaml --ext .ts,.tsx src"
+    "build": "rm -r dist; tsc --module es2015 --outDir dist/esm; tsc --module commonjs --outDir dist/cjs && yarn typedoc",
+    "lint": "tsc --noEmit && eslint -c ../../../.eslintrc.yaml --ext .ts,.tsx src"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.28.0",

@@ -21,9 +21,9 @@ import {
   getParsedStakeAccountInfo,
   SPL_STAKE_POOL_PROGRAM_ID,
 } from "@sunrisestake/beams-common";
-import { StateAccount } from "./state";
-import { SPL_BEAM_PROGRAM_ID } from "./constants";
-import { SplClientParams, Utils } from "./utils";
+import { StateAccount } from "./state.js";
+import { SPL_BEAM_PROGRAM_ID } from "./constants.js";
+import { SplClientParams, Utils } from "./utils.js";
 import BN from "bn.js";
 import { SunriseClient } from "@sunrisestake/beams-sunrise";
 

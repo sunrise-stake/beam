@@ -1,7 +1,7 @@
 import { AnchorProvider } from "@coral-xyz/anchor";
 import BN from "bn.js";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { STAKE_PROGRAM_ID } from "./constants";
+import { STAKE_PROGRAM_ID } from "./constants.js";
 
 const enum Seeds {
   VAULT_AUTHORITY = "vault-authority",

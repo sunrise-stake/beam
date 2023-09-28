@@ -1,5 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
-import { getStakePoolAccount, StakePool } from "./getStakePool";
+import { getStakePoolAccount, StakePool } from "./getStakePool.js";
 import { AnchorProvider } from "@coral-xyz/anchor";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { SPL_STAKE_POOL_PROGRAM_ID } from "@sunrisestake/beams-common";

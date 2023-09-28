@@ -12,8 +12,8 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { SunriseCore } from "@sunrisestake/beams-common";
-import { StateAccount } from "./state";
-import { GSOL_AUTHORITY_SEED, SUNRISE_PROGRAM_ID } from "./constants";
+import { StateAccount } from "./state.js";
+import { GSOL_AUTHORITY_SEED, SUNRISE_PROGRAM_ID } from "./constants.js";
 
 /** An instance of the Sunrise program that checks the validity of other
  * beams and regulates the minting and burning of GSOL.

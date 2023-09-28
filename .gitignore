@@ -8,3 +8,6 @@ test-ledger
 .turbo
 packages/sdks/*/dist/
 packages/sdks/*/doc/
+
+packages/tests/dist/
+packages/tests/doc/

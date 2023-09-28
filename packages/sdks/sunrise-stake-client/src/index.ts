@@ -7,7 +7,7 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { DEFAULT_ENVIRONMENT_CONFIG, EnvironmentConfig } from "./constants";
+import { DEFAULT_ENVIRONMENT_CONFIG, EnvironmentConfig } from "./constants.js";
 
 interface SunriseStakeDetails {
   effectiveGsolSupply: BN;
