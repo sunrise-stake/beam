@@ -87,7 +87,8 @@ jobs:
         run: |
           cargo test-sbf
 
-  yarn-lint:
+
+  yarn-build:
     needs: install
     runs-on: ubuntu-latest
     steps:
@@ -95,7 +96,7 @@ jobs:
       - name: Use Node ${{ matrix.node }}
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '18'
 
       - name: Cache node dependencies
         uses: actions/cache@v3
@@ -103,8 +104,43 @@ jobs:
           path: '**/node_modules'
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
 
+      - name: Run build
+        run: yarn build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dists
+          path: packages/sdks/*/dist
+          if-no-files-found: error
+          retention-days: 1
+
+  yarn-lint:
+    needs: yarn-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node ${{ matrix.node }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Cache node dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dists
+          path: packages/sdks
+
       - name: Run lint
-        run: yarn lint
+        run: |
+          test -d packages/sdks/common/dist
+          yarn lint
 
   functional-test:
     needs: [clippy-lint, yarn-lint, cargo-build]
@@ -116,7 +152,7 @@ jobs:
       - name: Use Node ${{ matrix.node }}
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '18'
 
       - name: Cache node dependencies
         uses: actions/cache@v3
@@ -126,6 +162,12 @@ jobs:
 
       - name: install node_modules
         run: yarn --frozen-lockfile
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dists
+          path: packages/sdks
 
       - uses: ./.github/actions/cache-solana
       - uses: actions/cache@v3
