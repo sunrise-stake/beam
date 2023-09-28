@@ -73,7 +73,7 @@ export const StakePoolLayout = struct<StakePool>([
   u64("lastUpdateEpoch"),
   struct(
     [u64("unixTimestamp"), u64("epoch"), publicKey("custodian")],
-    "lockup"
+    "lockup",
   ),
   struct(feeFields, "epochFee"),
   option(struct(feeFields), "nextEpochFee"),
@@ -96,7 +96,7 @@ export const StakePoolLayout = struct<StakePool>([
 /** Fetch and decode a stake-pool account from its state address. */
 export async function getStakePoolAccount(
   connection: Connection,
-  stakePoolAddress: PublicKey
+  stakePoolAddress: PublicKey,
 ): Promise<StakePool> {
   const account = await connection.getAccountInfo(stakePoolAddress);
 

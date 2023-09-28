@@ -1,34 +1,36 @@
 import { Keypair, type PublicKey, Transaction } from "@solana/web3.js";
 import BN from "bn.js";
-import {AnchorProvider, Program, Idl} from "@coral-xyz/anchor";
+import { AnchorProvider, Program, Idl } from "@coral-xyz/anchor";
 
 /**
  * Represents a common interface for sunrise beams that act as stake-pool proxies.
  */
-export abstract class BeamInterface<TProgram extends Idl, TStateAccount extends BeamState> {
+export abstract class BeamInterface<
+  TProgram extends Idl,
+  TStateAccount extends BeamState,
+> {
   abstract vaultAuthority: [PublicKey, number];
 
   protected constructor(
-      readonly program: Program<TProgram>,
-      readonly stateAddress: PublicKey,
-      readonly state: TStateAccount,
-      readonly caps: BeamCapability[],
-  ) {
-  }
+    readonly program: Program<TProgram>,
+    readonly stateAddress: PublicKey,
+    readonly state: TStateAccount,
+    readonly caps: BeamCapability[],
+  ) {}
 
-  public get provider():AnchorProvider {
+  public get provider(): AnchorProvider {
     return this.program.provider as AnchorProvider;
   }
 
   abstract refresh(): Promise<this>;
-  abstract update(...args: any[]): Promise<Transaction>;
+  abstract update(...args: unknown[]): Promise<Transaction>;
   abstract deposit(
-      lamports: BN,
-      recipient: PublicKey | undefined
+    lamports: BN,
+    recipient: PublicKey | undefined,
   ): Promise<Transaction>;
   abstract depositStake(
-      stakeAccount: PublicKey,
-      recipient: PublicKey | undefined
+    stakeAccount: PublicKey,
+    recipient: PublicKey | undefined,
   ): Promise<Transaction>;
   abstract withdraw(lamports: BN): Promise<Transaction>;
   abstract orderWithdraw(lamports: BN): Promise<{
@@ -96,11 +98,11 @@ interface StakeWithdrawal {
 
 /** A discriminated union of possible actions that can be performed on sunrise beams. */
 export type BeamCapability =
-    | SolDeposit
-    | StakeDeposit
-    | LiquidUnstake
-    | OrderUnstake
-    | StakeWithdrawal;
+  | SolDeposit
+  | StakeDeposit
+  | LiquidUnstake
+  | OrderUnstake
+  | StakeWithdrawal;
 
 /** @type {BeamCapability} variant is sol deposit.*/
 export const canDepositSol = (cap: BeamCapability): cap is SolDeposit => {
@@ -120,7 +122,7 @@ export const canOrderUnstake = (cap: BeamCapability): cap is OrderUnstake => {
 };
 /** @type {BeamCapability} variant is withdrawal to a stake account.*/
 export const canWithdrawStake = (
-    cap: BeamCapability
+  cap: BeamCapability,
 ): cap is StakeWithdrawal => {
   return "stake-withdrawal" in cap;
 };

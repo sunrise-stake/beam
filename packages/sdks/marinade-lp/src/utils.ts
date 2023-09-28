@@ -1,8 +1,11 @@
 import { PublicKey } from "@solana/web3.js";
-import {MarinadeState, loadMarinadeState} from '@sunrisestake/beams-common-marinade'
-import {getAssociatedTokenAddressSync} from "@solana/spl-token";
-import {AnchorProvider} from "@coral-xyz/anchor";
-import {deriveAuthorityAddress} from "@sunrisestake/beams-common";
+import {
+  MarinadeState,
+  loadMarinadeState,
+} from "@sunrisestake/beams-common-marinade";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { AnchorProvider } from "@coral-xyz/anchor";
+import { deriveAuthorityAddress } from "@sunrisestake/beams-common";
 
 export type MarinadeLpClientParams = {
   /** The marinade state. */
@@ -21,30 +24,30 @@ export class Utils {
   /** Derive the address of the state account for this beam. */
   public static deriveStateAddress(
     pid: PublicKey,
-    sunrise: PublicKey
+    sunrise: PublicKey,
   ): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
       [Buffer.from(Seeds.STATE), sunrise.toBuffer()],
-      pid
+      pid,
     );
   }
 
   public static async getMarinadeLpClientParams(
-      provider: AnchorProvider,
-      beamProgramId: PublicKey,
-      stateAddress: PublicKey
+    provider: AnchorProvider,
+    beamProgramId: PublicKey,
+    stateAddress: PublicKey,
   ): Promise<MarinadeLpClientParams> {
     const vaultAuthority = deriveAuthorityAddress(beamProgramId, stateAddress);
     const marinadeState = await loadMarinadeState(provider);
     const beamVault = getAssociatedTokenAddressSync(
-            marinadeState.lpMint.address,
-            vaultAuthority[0],
-            true
-        );
+      marinadeState.lpMint.address,
+      vaultAuthority[0],
+      true,
+    );
 
     return {
       marinade: marinadeState,
-      beamVault
-    }
+      beamVault,
+    };
   }
 }

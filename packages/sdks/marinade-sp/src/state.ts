@@ -13,7 +13,7 @@ export class StateAccount implements BeamState {
 
   private constructor(
     _address: PublicKey,
-    account: IdlAccounts<MarinadeBeam.MarinadeBeam>["state"]
+    account: IdlAccounts<MarinadeBeam.MarinadeBeam>["state"],
   ) {
     this.address = _address;
     this.updateAuthority = account.updateAuthority;
@@ -26,7 +26,7 @@ export class StateAccount implements BeamState {
   /** Create a new instance from an anchor-deserialized account. */
   public static fromIdlAccount(
     account: IdlAccounts<MarinadeBeam.MarinadeBeam>["state"],
-    address: PublicKey
+    address: PublicKey,
   ): StateAccount {
     return new StateAccount(address, account);
   }

@@ -25,7 +25,7 @@ export class SunriseClient {
     // The state address.
     readonly stateAddress: PublicKey,
     // The deserialized on-chain account for this sunrise state.
-    readonly account: StateAccount,
+    readonly state: StateAccount,
   ) {}
 
   public get provider(): AnchorProvider {
@@ -97,7 +97,7 @@ export class SunriseClient {
       .registerBeam()
       .accounts({
         state: this.stateAddress,
-        updateAuthority: this.account.updateAuthority,
+        updateAuthority: this.state.updateAuthority,
         beamAccount: newBeam,
       })
       .transaction();
@@ -114,7 +114,7 @@ export class SunriseClient {
       .updateAllocations(newAllocations)
       .accounts({
         state: this.stateAddress,
-        updateAuthority: this.account.updateAuthority,
+        updateAuthority: this.state.updateAuthority,
       })
       .transaction();
   }
@@ -125,7 +125,7 @@ export class SunriseClient {
       .removeBeam(beam)
       .accounts({
         state: this.stateAddress,
-        updateAuthority: this.account.updateAuthority,
+        updateAuthority: this.state.updateAuthority,
       })
       .transaction();
   }
@@ -146,7 +146,7 @@ export class SunriseClient {
       })
       .accounts({
         state: this.stateAddress,
-        updateAuthority: this.account.updateAuthority,
+        updateAuthority: this.state.updateAuthority,
       })
       .transaction();
   }
@@ -158,7 +158,7 @@ export class SunriseClient {
     return this.program.methods
       .resizeAllocations(additional)
       .accounts({
-        updateAuthority: this.account.updateAuthority,
+        updateAuthority: this.state.updateAuthority,
         payer: this.program.provider.publicKey,
         state: this.stateAddress,
         systemProgram: SystemProgram.programId,
@@ -183,7 +183,7 @@ export class SunriseClient {
     return {
       state: this.stateAddress,
       beam,
-      gsolMint: this.account.gsolMint,
+      gsolMint: this.state.gsolMint,
       gsolMintAuthority: this.gsolMintAuthority[0],
       mintGsolTo:
         gsolTokenAccount ?? this.gsolAssociatedTokenAccount(tokenAccountOwner),
@@ -209,7 +209,7 @@ export class SunriseClient {
     return {
       state: this.stateAddress,
       beam,
-      gsolMint: this.account.gsolMint,
+      gsolMint: this.state.gsolMint,
       burnGsolFromOwner: tokenAccountOwner,
       burnGsolFrom:
         gsolTokenAccount ?? this.gsolAssociatedTokenAccount(tokenAccountOwner),
@@ -239,7 +239,7 @@ export class SunriseClient {
   /** Derive the gsol ATA for a particular owner or the current provider key by default. */
   public gsolAssociatedTokenAccount(owner?: PublicKey): PublicKey {
     return getAssociatedTokenAddressSync(
-      this.account.gsolMint,
+      this.state.gsolMint,
       owner ?? this.provider.publicKey,
       true,
     );
