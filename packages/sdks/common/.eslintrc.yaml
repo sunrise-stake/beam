@@ -1,0 +1,4 @@
+extends:
+  - "../../../.eslintrc.yaml"
+ignorePatterns:
+  - "src/types"
