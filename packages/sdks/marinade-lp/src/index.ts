@@ -12,74 +12,45 @@ import {
   createAssociatedTokenAccountIdempotentInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { IDL, type MarinadeLpBeam } from "../../types/marinade_lp_beam";
-import { StateAccount } from "./state";
+import {
+  MarinadeLpBeam,
+  BeamInterface,
+  deriveAuthorityAddress,
+} from "@sunrisestake/beams-common";
+import { StateAccount } from "./state.js";
 import {
   MARINADE_BEAM_PROGRAM_ID,
   MARINADE_FINANCE_PROGRAM_ID,
-} from "./constants";
-import { Utils } from "./utils";
-import {
-  Marinade,
-  MarinadeConfig,
-  MarinadeState,
-} from "@sunrisestake/marinade-ts-sdk";
-import {
-  BeamInterface,
-  BeamCapability,
-} from "../../sunrise-stake-client/src/beamInterface";
+} from "./constants.js";
+import { MarinadeLpClientParams, Utils } from "./utils.js";
 import BN from "bn.js";
-import { SunriseClient } from "../../sunrise/src";
+import { SunriseClient } from "@sunrisestake/beams-sunrise";
 
 /** An instance of the Sunrise program that acts as a proxy to Marinade-compatible
  * stake-pools.
  */
-export class MarinadeLpClient extends BeamInterface {
-  /** A list of actions supported by this beam. */
-  public readonly caps: BeamCapability[];
-  /** Anchor program instance. */
-  readonly program: Program<MarinadeLpBeam>;
-  /** State address of this beam. */
-  readonly state: PublicKey;
-  /* The deserialized state account for this beam state*/
-  account: StateAccount | undefined;
+export class MarinadeLpClient extends BeamInterface<
+  MarinadeLpBeam.MarinadeLpBeam,
+  StateAccount
+> {
   /** The address of the authority of this beam's token vaults*/
-  vaultAuthority: [PublicKey, number];
-
-  /** Fields that depend on the stake-pool state. */
-  lp:
-    | {
-        /** The marinade state. */
-        marinade: MarinadeState;
-        /** The mint address of the liquidity-pool token. */
-        liqPoolMint: PublicKey;
-        /** The sunrise vault that holds the liquidity-pool tokens. */
-        beamVault: PublicKey;
-      }
-    | undefined;
-
-  /** Fields that depend on the sunrise "token-regulator" state. */
-  sunrise:
-    | {
-        /** The sunrise client instance. */
-        client: SunriseClient;
-        /** The sunrise GSOL mint. */
-        gsol: PublicKey;
-        /** The derived GSOL ATA for the active provider. */
-        stakerGsolATA: PublicKey;
-      }
-    | undefined;
+  readonly vaultAuthority: [PublicKey, number];
 
   private constructor(
-    readonly provider: AnchorProvider,
-    state: PublicKey,
-    programId: PublicKey
+    program: Program<MarinadeLpBeam.MarinadeLpBeam>,
+    stateAddress: PublicKey,
+    account: StateAccount, // The deserialized state account for this beam state
+    readonly marinadeLp: MarinadeLpClientParams,
+    readonly sunrise: SunriseClient,
   ) {
-    super();
-    this.program = new Program<MarinadeLpBeam>(IDL, programId, provider);
-    this.state = state;
-    this.vaultAuthority = Utils.deriveAuthorityAddress(programId, state);
-    this.caps = [{ kind: "sol-deposit" }, { kind: "liquid-unstake" }];
+    super(program, stateAddress, account, [
+      { kind: "sol-deposit" },
+      { kind: "liquid-unstake" },
+    ]);
+    this.vaultAuthority = deriveAuthorityAddress(
+      program.programId,
+      stateAddress,
+    );
   }
 
   /** Register a new state.*/
@@ -89,34 +60,28 @@ export class MarinadeLpClient extends BeamInterface {
     sunriseState: PublicKey,
     treasury: PublicKey,
     msolTokenAccount: PublicKey,
-    programId?: PublicKey
+    programId = MARINADE_BEAM_PROGRAM_ID,
   ): Promise<MarinadeLpClient> {
-    let PID = programId ?? MARINADE_BEAM_PROGRAM_ID;
-    const state = Utils.deriveStateAddress(PID, sunriseState)[0];
-    const client = await this.get(state, provider, PID, true);
-    const vaultAuthority = client.vaultAuthority[0];
-    const vaultAuthorityBump = client.vaultAuthority[1];
-
-    const marinadeConfig = new MarinadeConfig({
-      marinadeFinanceProgramId: MARINADE_FINANCE_PROGRAM_ID,
-      connection: provider.connection,
-      publicKey: provider.publicKey,
-      proxyProgramId: MARINADE_BEAM_PROGRAM_ID /**TODO: Modify marinade fork */,
-    });
-    const marinade = new Marinade(marinadeConfig);
-    const marinadeObj = await marinade.getMarinadeState();
-    const marinadeState = marinadeConfig.marinadeStateAddress;
-    const liqPoolMint = marinadeObj.lpMint.address;
-    const liqPoolVault = getAssociatedTokenAddressSync(
-      liqPoolMint,
-      vaultAuthority,
-      true
+    const program = new Program<MarinadeLpBeam.MarinadeLpBeam>(
+      MarinadeLpBeam.IDL,
+      programId,
+      provider,
+    );
+    const stateAddress = Utils.deriveStateAddress(programId, sunriseState)[0];
+    const marinadeLpClientParams = await Utils.getMarinadeLpClientParams(
+      provider,
+      programId,
+      stateAddress,
+    );
+    const [vaultAuthority, vaultAuthorityBump] = deriveAuthorityAddress(
+      programId,
+      stateAddress,
     );
 
-    const register = await client.program.methods
+    const register = await program.methods
       .initialize({
         updateAuthority,
-        marinadeState,
+        marinadeState: marinadeLpClientParams.marinade.marinadeStateAddress,
         sunriseState,
         vaultAuthorityBump,
         treasury,
@@ -124,9 +89,9 @@ export class MarinadeLpClient extends BeamInterface {
       })
       .accounts({
         payer: provider.publicKey,
-        state,
-        liqPoolMint,
-        liqPoolVault,
+        state: stateAddress,
+        liqPoolMint: marinadeLpClientParams.marinade.lpMint.address,
+        liqPoolVault: marinadeLpClientParams.beamVault,
         vaultAuthority,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -134,88 +99,57 @@ export class MarinadeLpClient extends BeamInterface {
       })
       .transaction();
 
-    await client.provider.sendAndConfirm(register, [], {
+    await provider.sendAndConfirm(register, [], {
       commitment: "confirmed",
     });
-    return client;
+
+    return MarinadeLpClient.get(provider, stateAddress, programId);
   }
 
-  /**
-   * Fetch an instance for an existing state account.
-   */
   public static async get(
-    state: PublicKey,
     provider: AnchorProvider,
-    programId?: PublicKey,
-    refreshOverride?: boolean
-  ): Promise<MarinadeLpClient> {
-    const client = new MarinadeLpClient(
+    stateAddress: PublicKey,
+    programId = MARINADE_BEAM_PROGRAM_ID,
+  ) {
+    const program = new Program<MarinadeLpBeam.MarinadeLpBeam>(
+      MarinadeLpBeam.IDL,
+      programId,
       provider,
-      state,
-      programId ?? MARINADE_BEAM_PROGRAM_ID
     );
-    if (refreshOverride === undefined || refreshOverride === false) {
-      await client.refresh();
-    }
-    return client;
+    const idlState = await program.account.state.fetch(stateAddress);
+    const account = StateAccount.fromIdlAccount(idlState, stateAddress);
+
+    const sunriseClientPromise = SunriseClient.get(
+      provider,
+      account.sunriseState,
+    );
+    const marinadeLpClientParamsPromise = Utils.getMarinadeLpClientParams(
+      provider,
+      programId,
+      stateAddress,
+    );
+
+    const marinadeLpClientParams = await marinadeLpClientParamsPromise;
+    const sunriseClient = await sunriseClientPromise;
+
+    return new MarinadeLpClient(
+      program,
+      stateAddress,
+      account,
+      marinadeLpClientParams,
+      sunriseClient,
+    );
   }
 
   /**
    * Query on-chain data for the most recent account state.
    */
-  public async refresh(sunrise?: SunriseClient): Promise<void> {
-    const idlState = await this.program.account.state.fetch(this.state);
-    this.account = StateAccount.fromIdlAccount(idlState, this.state);
-
-    const marinadeState = await this.getMarinade();
-    const liqPoolMint = marinadeState.lpMint.address;
-    this.lp = {
-      marinade: marinadeState,
-      liqPoolMint,
-      beamVault: getAssociatedTokenAddressSync(
-        liqPoolMint,
-        this.vaultAuthority[0],
-        true
-      ),
-    };
-
-    // Fetch the sunrise client only if it's not provided.
-    const sunriseClient = sunrise ?? (await this.getSunrise());
-    if (sunriseClient.state !== this.account.sunriseState) {
-      throw new Error("Invalid sunrise client instance");
-    }
-    const gsolMint = sunriseClient.account.gsolMint;
-    this.sunrise = {
-      client: sunriseClient,
-      gsol: gsolMint,
-      stakerGsolATA: getAssociatedTokenAddressSync(
-        gsolMint,
-        this.provider.publicKey,
-        false
-      ),
-    };
-  }
-
-  /** Fetch the marinade client for this beam. */
-  private async getMarinade(): Promise<MarinadeState> {
-    if (this.account === undefined) {
-      throw new Error("refresh() not called");
-    }
-    const marinadeConfig = new MarinadeConfig({
-      marinadeFinanceProgramId: MARINADE_FINANCE_PROGRAM_ID,
-      connection: this.provider.connection,
-      publicKey: this.provider.publicKey,
-    });
-    const marinade = new Marinade(marinadeConfig);
-    return marinade.getMarinadeState();
-  }
-
-  /** Fetch the sunrise client. */
-  private async getSunrise(): Promise<SunriseClient> {
-    if (this.account === undefined) {
-      throw new Error("refresh() not called");
-    }
-    return SunriseClient.get(this.account.sunriseState, this.provider);
+  public refresh(): Promise<this> {
+    return MarinadeLpClient.get(
+      this.provider,
+      this.stateAddress,
+      this.program.programId,
+    ) as Promise<this>;
   }
 
   /** Return a transaction to update this beam's parameters. */
@@ -226,13 +160,13 @@ export class MarinadeLpClient extends BeamInterface {
         StateAccount,
         "pretty" | "proxyState" | "address"
       >]: StateAccount[Property];
-    } & { marinadeState: PublicKey }
+    } & { marinadeState: PublicKey },
   ): Promise<Transaction> {
     return this.program.methods
       .update(updateParams)
       .accounts({
         updateAuthority: currentUpdateAuthority,
-        state: this.state,
+        state: this.stateAddress,
       })
       .transaction();
   }
@@ -240,14 +174,11 @@ export class MarinadeLpClient extends BeamInterface {
   /** Return a transaction to deposit to a marinade liquidity pool. */
   public async deposit(
     amount: BN,
-    recipient?: PublicKey
+    recipient?: PublicKey,
   ): Promise<Transaction> {
-    if (!this.sunrise || !this.lp) {
-      await this.refresh();
-    }
     const depositor = this.provider.publicKey;
     const { gsolMint, gsolMintAuthority, instructionsSysvar } =
-      this.sunrise.client.mintGsolAccounts(this.state, depositor);
+      this.sunrise.mintGsolAccounts(this.stateAddress, depositor);
 
     const transaction = new Transaction();
     const gsolOwner = recipient ?? depositor;
@@ -260,24 +191,25 @@ export class MarinadeLpClient extends BeamInterface {
     const instruction = await this.program.methods
       .deposit(amount)
       .accounts({
-        state: this.state,
-        marinadeState: this.account.proxyState,
-        sunriseState: this.account.sunriseState,
+        state: this.stateAddress,
+        marinadeState: this.state.proxyState,
+        sunriseState: this.state.sunriseState,
         depositor,
         mintGsolTo: gsolATA,
-        liqPoolMint: this.lp.liqPoolMint,
-        liqPoolTokenVault: this.lp.beamVault,
+        liqPoolMint: this.marinadeLp.marinade.lpMint.address,
+        liqPoolTokenVault: this.marinadeLp.beamVault,
         vaultAuthority: this.vaultAuthority[0],
         gsolMint,
         gsolMintAuthority,
         instructionsSysvar,
-        liqPoolSolLegPda: await this.lp.marinade.solLeg(),
-        liqPoolMsolLeg: this.lp.marinade.mSolLeg,
-        liqPoolMsolLegAuthority: await this.lp.marinade.mSolLegAuthority(),
-        liqPoolMintAuthority: await this.lp.marinade.lpMintAuthority(),
+        liqPoolSolLegPda: await this.marinadeLp.marinade.solLeg(),
+        liqPoolMsolLeg: this.marinadeLp.marinade.mSolLeg,
+        liqPoolMsolLegAuthority:
+          await this.marinadeLp.marinade.mSolLegAuthority(),
+        liqPoolMintAuthority: await this.marinadeLp.marinade.lpMintAuthority(),
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
-        beamProgram: this.sunrise.client.program.programId,
+        beamProgram: this.sunrise.program.programId,
         marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
       })
       .instruction();
@@ -285,51 +217,49 @@ export class MarinadeLpClient extends BeamInterface {
     return transaction.add(instruction);
   }
 
-  public depositStake(
-    stakeAccount: PublicKey,
-    recipient?: PublicKey
-  ): Promise<Transaction> {
+  public depositStake(): Promise<Transaction> {
     throw new Error(
-      "Deposit-stake-account is unimplemented for marinade-lp beam."
+      "Deposit-stake-account is unimplemented for marinade-lp beam.", // TODO
     );
   }
 
   /** Return a transaction to withdraw from a marinade liquidity-pool. */
   public async withdraw(
     amount: BN,
-    gsolTokenAccount?: PublicKey
+    gsolTokenAccount?: PublicKey,
   ): Promise<Transaction> {
-    if (!this.sunrise || !this.lp) {
+    if (!this.sunrise || !this.marinadeLp) {
       await this.refresh();
     }
     const withdrawer = this.provider.publicKey;
     const { gsolMint, instructionsSysvar, burnGsolFrom } =
-      this.sunrise.client.burnGsolAccounts(
-        this.state,
+      this.sunrise.burnGsolAccounts(
+        this.stateAddress,
         withdrawer,
-        gsolTokenAccount
+        gsolTokenAccount,
       );
 
     const instruction = await this.program.methods
       .withdraw(amount)
       .accounts({
-        state: this.state,
-        marinadeState: this.account.proxyState,
-        sunriseState: this.account.sunriseState,
+        state: this.stateAddress,
+        marinadeState: this.state.proxyState,
+        sunriseState: this.state.sunriseState,
         withdrawer,
         gsolTokenAccount: burnGsolFrom,
-        liqPoolMint: this.lp.liqPoolMint,
-        liqPoolTokenVault: this.lp.beamVault,
+        liqPoolMint: this.marinadeLp.marinade.lpMint.address,
+        liqPoolTokenVault: this.marinadeLp.beamVault,
         vaultAuthority: this.vaultAuthority[0],
-        transferMsolTo: this.account.msolTokenAccount,
-        liqPoolSolLegPda: await this.lp.marinade.solLeg(),
-        liqPoolMsolLeg: this.lp.marinade.mSolLeg,
-        liqPoolMsolLegAuthority: await this.lp.marinade.mSolLegAuthority(),
+        transferMsolTo: this.state.msolTokenAccount,
+        liqPoolSolLegPda: await this.marinadeLp.marinade.solLeg(),
+        liqPoolMsolLeg: this.marinadeLp.marinade.mSolLeg,
+        liqPoolMsolLegAuthority:
+          await this.marinadeLp.marinade.mSolLegAuthority(),
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         gsolMint,
         instructionsSysvar,
-        beamProgram: this.sunrise.client.program.programId,
+        beamProgram: this.sunrise.program.programId,
         marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
       })
       .instruction();
@@ -341,13 +271,13 @@ export class MarinadeLpClient extends BeamInterface {
    * Return a transaction to order a delayed withdrawal from a marinade liquidity-pool.
    * NOTE: This is not a supported feature for Marinade Lps and will throw an error.
    */
-  public orderWithdraw(lamports: BN): Promise<{
+  public orderWithdraw(): Promise<{
     tx: Transaction;
     sunriseTicket: Keypair;
     proxyTicket: Keypair;
   }> {
     throw new Error(
-      "Delayed withdrawals are unimplemented for Marinade-lp beam"
+      "Delayed withdrawals are unimplemented for Marinade-lp beam",
     );
   }
 
@@ -357,7 +287,7 @@ export class MarinadeLpClient extends BeamInterface {
    */
   public redeemTicket(): Promise<Transaction> {
     throw new Error(
-      "Delayed withdrawals are unimplemented for Marinade-lp beams"
+      "Delayed withdrawals are unimplemented for Marinade-lp beams",
     );
   }
 
@@ -367,13 +297,13 @@ export class MarinadeLpClient extends BeamInterface {
   private createTokenAccount(
     account: PublicKey,
     owner: PublicKey,
-    mint: PublicKey
+    mint: PublicKey,
   ): TransactionInstruction {
     return createAssociatedTokenAccountIdempotentInstruction(
       this.provider.publicKey,
       account,
       owner,
-      mint
+      mint,
     );
   }
 
@@ -382,7 +312,7 @@ export class MarinadeLpClient extends BeamInterface {
    */
   public static deriveStateAddress = (
     sunrise: PublicKey,
-    programId?: PublicKey
+    programId?: PublicKey,
   ): [PublicKey, number] => {
     const PID = programId ?? MARINADE_BEAM_PROGRAM_ID;
     return Utils.deriveStateAddress(PID, sunrise);
@@ -393,18 +323,18 @@ export class MarinadeLpClient extends BeamInterface {
    * NOTE: This might not give the current price is refresh() isn't called first.
    */
   public poolTokenPrice = async () => {
-    const lpMintInfo = await this.lp.marinade.lpMint.mintInfo();
+    const lpMintInfo = await this.marinadeLp.marinade.lpMint.mintInfo();
     const lpSupply = lpMintInfo.supply;
-    const lpSolLeg = await this.lp.marinade.solLeg();
+    const lpSolLeg = await this.marinadeLp.marinade.solLeg();
     const lpSolLegBalance = await this.provider.connection.getBalance(lpSolLeg);
     const rentExemptReserveForTokenAccount = 2039280;
     const solBalance = lpSolLegBalance - rentExemptReserveForTokenAccount;
 
-    const lpMsolLeg = this.lp.marinade.mSolLeg;
+    const lpMsolLeg = this.marinadeLp.marinade.mSolLeg;
     const lpMsolLegBalance =
       await this.provider.connection.getTokenAccountBalance(lpMsolLeg);
 
-    const msolPrice = this.lp.marinade.mSolPrice;
+    const msolPrice = this.marinadeLp.marinade.mSolPrice;
 
     const msolValue = Number(lpMsolLegBalance.value.amount) * msolPrice;
 

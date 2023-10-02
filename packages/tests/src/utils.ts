@@ -14,10 +14,14 @@ import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { type AnchorProvider } from "@coral-xyz/anchor";
-import { expect } from "chai";
+import { type AnchorProvider, AnchorError } from "@coral-xyz/anchor";
+import chai from "chai";
 import BN from "bn.js";
-import * as fs from "fs";
+
+import chaiAsPromised from "chai-as-promised";
+
+chai.use(chaiAsPromised);
+const { expect } = chai;
 
 // Set in anchor.toml
 const SLOTS_IN_EPOCH = 32;
@@ -25,12 +29,12 @@ const SLOTS_IN_EPOCH = 32;
 export const deriveATA = (owner: PublicKey, mint: PublicKey) =>
   PublicKey.findProgramAddressSync(
     [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
-    ASSOCIATED_TOKEN_PROGRAM_ID
+    ASSOCIATED_TOKEN_PROGRAM_ID,
   )[0];
 
 export const tokenAccountBalance = async (
   provider: AnchorProvider,
-  address: PublicKey
+  address: PublicKey,
 ): Promise<BN> =>
   await provider.connection
     .getTokenAccountBalance(address)
@@ -38,10 +42,10 @@ export const tokenAccountBalance = async (
 
 export const solBalance = async (
   provider: AnchorProvider,
-  address?: PublicKey
+  address?: PublicKey,
 ): Promise<BN> => {
   const balance = await provider.connection.getBalance(
-    address ?? provider.publicKey
+    address ?? provider.publicKey,
   );
   // cast to string then convert to BN as BN has trouble with large values of type number in its constructor
   return new BN(`${balance}`);
@@ -52,22 +56,22 @@ export const expectAssociatedTokenAccountBalanceA = async (
   owner: PublicKey,
   mint: PublicKey,
   expectedAmount: number | BN,
-  tolerance = 0
+  tolerance = 0,
 ) => {
   expectAmount(
     await tokenAccountBalance(provider, deriveATA(owner, mint)),
     expectedAmount,
-    tolerance
+    tolerance,
   );
 };
 
-export const expectAssociatedTokenAccountBalanceB = async (
+export const expectTokenBalance = async (
   provider: AnchorProvider,
   address: PublicKey,
   expectedAmount: number | BN,
-  tolerance = 0
+  tolerance = 0,
 ) => {
-  let actualAmount = await tokenAccountBalance(provider, address);
+  const actualAmount = await tokenAccountBalance(provider, address);
   expectAmount(actualAmount, expectedAmount, tolerance);
 };
 
@@ -76,7 +80,7 @@ export const expectAssociatedTokenAccountBalanceB = async (
 export const expectStakerSolBalance = async (
   provider: AnchorProvider,
   expectedAmount: number | BN,
-  tolerance = 0 // Allow for a tolerance as the balance depends on the fees which are unstable at the beginning of a test validator
+  tolerance = 0, // Allow for a tolerance as the balance depends on the fees which are unstable at the beginning of a test validator
 ) => {
   const actualAmount = await solBalance(provider);
   expectAmount(actualAmount, expectedAmount, tolerance);
@@ -85,7 +89,7 @@ export const expectStakerSolBalance = async (
 export const expectAmount = (
   actualAmount: number | BN,
   expectedAmount: number | BN,
-  tolerance = 0
+  tolerance = 0,
 ) => {
   const actualAmountBN = new BN(actualAmount);
   const minExpected = new BN(expectedAmount).subn(tolerance);
@@ -117,54 +121,46 @@ export const waitForNextEpoch = async (provider: AnchorProvider) => {
   await provider.connection.removeSlotChangeListener(subscriptionId);
 };
 
-export const createKeypairFromFile = (path: string): Keypair => {
-  const secretKeyString = fs.readFileSync(path, { encoding: "utf8" });
-  const secretKey = Uint8Array.from(JSON.parse(secretKeyString));
-  return Keypair.fromSecretKey(secretKey);
-};
-
 export const sendAndConfirmTransaction = (
   provider: AnchorProvider,
   transaction: Transaction,
-  signers?: Signer[],
-  opts?: ConfirmOptions
+  signers: Signer[] = [],
+  opts: ConfirmOptions = {},
 ): Promise<string> => {
-  return provider.sendAndConfirm(transaction, signers, opts).catch((e) => {
-    throw e;
-  });
+  return provider.sendAndConfirm(transaction, signers, opts);
 };
 
-export const airdropTo = async (
+export const fund = async (
   provider: AnchorProvider,
   account: PublicKey,
-  amount: number
+  amount: number,
 ): Promise<void> => {
   const transaction = new Transaction().add(
     SystemProgram.transfer({
       fromPubkey: provider.publicKey,
       toPubkey: account,
       lamports: amount * 1_000_000_000,
-    })
+    }),
   );
   await sendAndConfirmTransaction(provider, transaction);
 };
 
 export const initializeTestMint = async (
-  provider: AnchorProvider
+  provider: AnchorProvider,
 ): Promise<{
   mint: PublicKey;
   authority: Keypair;
 }> => {
-  let mint = Keypair.generate();
-  let authority = Keypair.generate();
-  await airdropTo(provider, authority.publicKey, 1);
+  const mint = Keypair.generate();
+  const authority = Keypair.generate();
+  await fund(provider, authority.publicKey, 1);
   const mintAddress = await createMint(
     provider.connection,
     authority,
     authority.publicKey,
     authority.publicKey,
     0,
-    mint
+    mint,
   );
   return {
     mint: mintAddress,
@@ -176,7 +172,7 @@ export const transferMintAuthority = async (
   provider: AnchorProvider,
   mint: PublicKey,
   prevAuth: Keypair,
-  newAuth: PublicKey
+  newAuth: PublicKey,
 ): Promise<void> => {
   await setAuthority(
     provider.connection,
@@ -184,25 +180,57 @@ export const transferMintAuthority = async (
     mint,
     prevAuth,
     AuthorityType.MintTokens,
-    newAuth
+    newAuth,
   );
 };
 
 export const createTokenAccount = async (
   provider: AnchorProvider,
   owner: PublicKey,
-  mint: PublicKey
+  mint: PublicKey,
 ): Promise<void> => {
-  let account = deriveATA(owner, mint);
+  const account = deriveATA(owner, mint);
 
-  let tx = new Transaction().add(
+  const tx = new Transaction().add(
     createAssociatedTokenAccountIdempotentInstruction(
       provider.publicKey,
       account,
       owner,
-      mint
-    )
+      mint,
+    ),
   );
 
   await sendAndConfirmTransaction(provider, tx);
 };
+
+export const expectAnchorError =
+  (errorCode: number, errorName: string, programId: PublicKey) =>
+  (anchorErr: any) => {
+    console.log(anchorErr);
+    const normalisedError = AnchorError.parse(anchorErr.logs);
+    expect(normalisedError).not.to.be.null;
+    expect(normalisedError!.error.errorCode.code).to.equal(errorName);
+    expect(normalisedError!.error.errorCode.number).to.equal(errorCode);
+    expect(normalisedError!.program.equals(programId)).is.true;
+  };
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Chai {
+    interface Assertion {
+      rejectedWithAnchorError(
+        code: number,
+        name: string,
+        programId: PublicKey,
+      ): Promise<void>;
+    }
+  }
+}
+chai.Assertion.addMethod(
+  "rejectedWithAnchorError",
+  function (code: number, name: string, programId: PublicKey) {
+    return expect(this._obj)
+      .to.be.rejectedWith(/* some base class or message */)
+      .then(expectAnchorError(code, name, programId));
+  },
+);

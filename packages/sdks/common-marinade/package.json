@@ -1,5 +1,5 @@
 {
-  "name": "@sunrisestake/beams-marinade-sp",
+  "name": "@sunrisestake/beams-common-marinade",
   "version": "1.0.0",
   "license": "MIT",
   "type": "module",
@@ -22,8 +22,6 @@
   "dependencies": {
     "@coral-xyz/anchor": "^0.28.0",
     "@solana/web3.js": "^1.78.5",
-    "@sunrisestake/beams-common": "*",
-    "@sunrisestake/beams-common-marinade": "*",
-    "@sunrisestake/beams-sunrise": "*"
+    "@sunrisestake/marinade-ts-sdk": "^4.0.4-alpha.18"
   }
 }

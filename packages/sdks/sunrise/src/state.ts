@@ -1,6 +1,6 @@
 import { type PublicKey } from "@solana/web3.js";
 import { type IdlAccounts, type BN } from "@coral-xyz/anchor";
-import { type SunriseBeam } from "../../types/sunrise_core";
+import { SunriseCore } from "@sunrisestake/beams-common";
 
 /** The deserialized state for the on-chain beam account.*/
 export class StateAccount {
@@ -14,7 +14,7 @@ export class StateAccount {
 
   private constructor(
     _address: PublicKey,
-    account: IdlAccounts<SunriseBeam>["state"]
+    account: IdlAccounts<SunriseCore.SunriseCore>["state"],
   ) {
     this.address = _address;
     this.updateAuthority = account.updateAuthority;
@@ -27,8 +27,8 @@ export class StateAccount {
 
   /** Create a new instance from an anchor-deserialized account. */
   public static fromIdlAccount(
-    account: IdlAccounts<SunriseBeam>["state"],
-    address: PublicKey
+    account: IdlAccounts<SunriseCore.SunriseCore>["state"],
+    address: PublicKey,
   ): StateAccount {
     return new StateAccount(address, account);
   }

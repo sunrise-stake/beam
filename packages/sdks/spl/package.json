@@ -1,6 +1,29 @@
 {
-  "name": "spl",
+  "name": "@sunrisestake/beams-spl",
   "version": "1.0.0",
-  "main": "index.js",
-  "license": "MIT"
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rm -r dist; tsc --module es2015 --outDir dist/esm; tsc --module commonjs --outDir dist/cjs && yarn typedoc",
+    "lint": "tsc --noEmit && eslint -c ../../../.eslintrc.yaml --ext .ts,.tsx src"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.28.0",
+    "@solana/spl-token": "^0.3.8",
+    "@solana/web3.js": "^1.78.5",
+    "@sunrisestake/beams-common": "*",
+    "@sunrisestake/beams-sunrise": "*"
+  }
 }

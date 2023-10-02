@@ -9,54 +9,53 @@ import {
 } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { IDL, type SunriseCore } from "../../types/sunrise_core";
-import { StateAccount } from "./state";
-import { GSOL_AUTHORITY_SEED, SUNRISE_PROGRAM_ID } from "./constants";
+import { SunriseCore } from "@sunrisestake/beams-common";
+import { StateAccount } from "./state.js";
+import { GSOL_AUTHORITY_SEED, SUNRISE_PROGRAM_ID } from "./constants.js";
 
 /** An instance of the Sunrise program that checks the validity of other
  * beams and regulates the minting and burning of GSOL.
  */
 export class SunriseClient {
-  // The sunrise program.
-  readonly program: Program<SunriseCore>;
-  // The state address.
-  readonly state: PublicKey;
-  // The deserialized on-chain account for this sunrise state.
-  account: StateAccount | undefined;
-
   private constructor(
-    readonly provider: AnchorProvider,
-    state: PublicKey,
-    programId: PublicKey
-  ) {
-    this.program = new Program<SunriseCore>(IDL, programId, provider);
-    this.state = state;
+    // The sunrise program.
+    readonly program: Program<SunriseCore.SunriseCore>,
+    // The state address.
+    readonly stateAddress: PublicKey,
+    // The deserialized on-chain account for this sunrise state.
+    readonly state: StateAccount,
+  ) {}
+
+  public get provider(): AnchorProvider {
+    return this.program.provider as AnchorProvider;
   }
 
   /** Fetch an instance for an existing state account.*/
   public static async get(
-    state: PublicKey,
     provider: AnchorProvider,
-    programId?: PublicKey,
-    refreshOverride?: boolean
-  ): Promise<SunriseClient> {
-    const client = new SunriseClient(
+    state: PublicKey,
+    programId = SUNRISE_PROGRAM_ID,
+  ) {
+    const program = new Program<SunriseCore.SunriseCore>(
+      SunriseCore.IDL,
+      programId,
       provider,
-      state,
-      programId ?? SUNRISE_PROGRAM_ID
     );
-    if (refreshOverride === undefined || refreshOverride === false) {
-      await client.refresh();
-    }
-    return client;
+    const idlState = await program.account.state.fetch(state);
+    const account = StateAccount.fromIdlAccount(idlState, state);
+
+    return new SunriseClient(program, state, account);
   }
 
   /** Query on-chain data for the most recent account state. */
-  public async refresh(): Promise<void> {
-    const idlState = await this.program.account.state.fetch(this.state);
-    this.account = StateAccount.fromIdlAccount(idlState, this.state);
+  public async refresh(): Promise<SunriseClient> {
+    return SunriseClient.get(
+      this.provider,
+      this.stateAddress,
+      this.program.programId,
+    );
   }
 
   /** Register a new state.*/
@@ -67,23 +66,29 @@ export class SunriseClient {
     yieldAccount: PublicKey,
     initialCapacity: number,
     gsolMint: PublicKey,
-    programId?: PublicKey
+    programId = SUNRISE_PROGRAM_ID,
   ): Promise<SunriseClient> {
-    const client = await this.get(state.publicKey, provider, programId, true);
-    const register = await client.program.methods
+    const program = new Program<SunriseCore.SunriseCore>(
+      SunriseCore.IDL,
+      programId,
+      provider,
+    );
+    const register = await program.methods
       .registerState({ updateAuthority, yieldAccount, initialCapacity })
       .accounts({
-        payer: client.provider.publicKey,
-        state: client.state,
+        payer: provider.publicKey,
+        state: state.publicKey,
         gsolMint,
-        gsolMintAuthority: client.gsolMintAuthority()[0],
+        gsolMintAuthority: SunriseClient.deriveGsolMintAuthority(
+          state.publicKey,
+        )[0],
         systemProgram: SystemProgram.programId,
         rent: SYSVAR_RENT_PUBKEY,
       })
       .transaction();
 
-    await client.provider.sendAndConfirm(register, [state]);
-    return client;
+    await provider.sendAndConfirm(register, [state]);
+    return SunriseClient.get(provider, state.publicKey, programId);
   }
 
   /** Return a transaction to register a new beam to the state. */
@@ -91,8 +96,8 @@ export class SunriseClient {
     return this.program.methods
       .registerBeam()
       .accounts({
-        state: this.state,
-        updateAuthority: this.account.updateAuthority,
+        state: this.stateAddress,
+        updateAuthority: this.state.updateAuthority,
         beamAccount: newBeam,
       })
       .transaction();
@@ -103,13 +108,13 @@ export class SunriseClient {
     newAllocations: Array<{
       beam: PublicKey;
       newAllocation: number;
-    }>
+    }>,
   ): Promise<Transaction> {
     return this.program.methods
       .updateAllocations(newAllocations)
       .accounts({
-        state: this.state,
-        updateAuthority: this.account.updateAuthority,
+        state: this.stateAddress,
+        updateAuthority: this.state.updateAuthority,
       })
       .transaction();
   }
@@ -119,8 +124,8 @@ export class SunriseClient {
     return this.program.methods
       .removeBeam(beam)
       .accounts({
-        state: this.state,
-        updateAuthority: this.account.updateAuthority,
+        state: this.stateAddress,
+        updateAuthority: this.state.updateAuthority,
       })
       .transaction();
   }
@@ -130,7 +135,7 @@ export class SunriseClient {
     newUpdateAuthority: PublicKey | null,
     newYieldAccount: PublicKey | null,
     newGsolMint: PublicKey | null,
-    newGsolMintAuthorityBump: number | null
+    newGsolMintAuthorityBump: number | null,
   ): Promise<Transaction> {
     return this.program.methods
       .updateState({
@@ -140,8 +145,8 @@ export class SunriseClient {
         newGsolMintAuthorityBump,
       })
       .accounts({
-        state: this.state,
-        updateAuthority: this.account.updateAuthority,
+        state: this.stateAddress,
+        updateAuthority: this.state.updateAuthority,
       })
       .transaction();
   }
@@ -153,9 +158,9 @@ export class SunriseClient {
     return this.program.methods
       .resizeAllocations(additional)
       .accounts({
-        updateAuthority: this.account.updateAuthority,
-        payer: this.provider.publicKey,
-        state: this.state,
+        updateAuthority: this.state.updateAuthority,
+        payer: this.program.provider.publicKey,
+        state: this.stateAddress,
         systemProgram: SystemProgram.programId,
       })
       .transaction();
@@ -165,7 +170,7 @@ export class SunriseClient {
   public mintGsolAccounts(
     beam: PublicKey,
     tokenAccountOwner: PublicKey,
-    gsolTokenAccount?: PublicKey
+    gsolTokenAccount?: PublicKey,
   ): {
     state: PublicKey;
     beam: PublicKey;
@@ -176,10 +181,10 @@ export class SunriseClient {
     tokenProgram: PublicKey;
   } {
     return {
-      state: this.state,
+      state: this.stateAddress,
       beam,
-      gsolMint: this.account.gsolMint,
-      gsolMintAuthority: this.gsolMintAuthority()[0],
+      gsolMint: this.state.gsolMint,
+      gsolMintAuthority: this.gsolMintAuthority[0],
       mintGsolTo:
         gsolTokenAccount ?? this.gsolAssociatedTokenAccount(tokenAccountOwner),
       instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -191,7 +196,7 @@ export class SunriseClient {
   public burnGsolAccounts(
     beam: PublicKey,
     tokenAccountOwner: PublicKey,
-    gsolTokenAccount?: PublicKey
+    gsolTokenAccount?: PublicKey,
   ): {
     state: PublicKey;
     beam: PublicKey;
@@ -202,9 +207,9 @@ export class SunriseClient {
     tokenProgram: PublicKey;
   } {
     return {
-      state: this.state,
+      state: this.stateAddress,
       beam,
-      gsolMint: this.account.gsolMint,
+      gsolMint: this.state.gsolMint,
       burnGsolFromOwner: tokenAccountOwner,
       burnGsolFrom:
         gsolTokenAccount ?? this.gsolAssociatedTokenAccount(tokenAccountOwner),
@@ -213,21 +218,30 @@ export class SunriseClient {
     };
   }
 
-  /** Get the address of the gsol mint authority. */
-  gsolMintAuthority = (): [PublicKey, number] =>
-    PublicKey.findProgramAddressSync(
-      [this.state.toBuffer(), Buffer.from(GSOL_AUTHORITY_SEED)],
-      this.program.programId
+  private static deriveGsolMintAuthority(
+    stateAddress: PublicKey,
+    programId = SUNRISE_PROGRAM_ID,
+  ): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [stateAddress.toBuffer(), Buffer.from(GSOL_AUTHORITY_SEED)],
+      programId,
     );
+  }
 
-  /** Derive the gsol ATA for a particular owner. */
-  gsolAssociatedTokenAccount = (owner: PublicKey): PublicKey =>
-    PublicKey.findProgramAddressSync(
-      [
-        owner.toBuffer(),
-        TOKEN_PROGRAM_ID.toBuffer(),
-        this.account.gsolMint.toBuffer(),
-      ],
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    )[0];
+  /** Get the address of the gsol mint authority. */
+  public get gsolMintAuthority(): [PublicKey, number] {
+    return SunriseClient.deriveGsolMintAuthority(
+      this.stateAddress,
+      this.program.programId,
+    );
+  }
+
+  /** Derive the gsol ATA for a particular owner or the current provider key by default. */
+  public gsolAssociatedTokenAccount(owner?: PublicKey): PublicKey {
+    return getAssociatedTokenAddressSync(
+      this.state.gsolMint,
+      owner ?? this.provider.publicKey,
+      true,
+    );
+  }
 }

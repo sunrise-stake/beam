@@ -1,7 +1,6 @@
 import { type PublicKey } from "@solana/web3.js";
-import { type IdlAccounts, type BN } from "@coral-xyz/anchor";
-import { type MarinadeBeam } from "../../types/marinade_beam";
-import { type BeamState } from "../../sunrise/src/beamInterface";
+import { type IdlAccounts } from "@coral-xyz/anchor";
+import { type BeamState, MarinadeBeam } from "@sunrisestake/beams-common";
 
 /** The deserialized state for the on-chain Marinade-beam account. */
 export class StateAccount implements BeamState {
@@ -14,7 +13,7 @@ export class StateAccount implements BeamState {
 
   private constructor(
     _address: PublicKey,
-    account: IdlAccounts<MarinadeBeam>["state"]
+    account: IdlAccounts<MarinadeBeam.MarinadeBeam>["state"],
   ) {
     this.address = _address;
     this.updateAuthority = account.updateAuthority;
@@ -26,8 +25,8 @@ export class StateAccount implements BeamState {
 
   /** Create a new instance from an anchor-deserialized account. */
   public static fromIdlAccount(
-    account: IdlAccounts<MarinadeBeam>["state"],
-    address: PublicKey
+    account: IdlAccounts<MarinadeBeam.MarinadeBeam>["state"],
+    address: PublicKey,
   ): StateAccount {
     return new StateAccount(address, account);
   }
