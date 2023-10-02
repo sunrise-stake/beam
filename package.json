@@ -11,6 +11,7 @@
         "build": "turbo build",
         "lint": "turbo lint",
         "lint:fix": "turbo lint -- --fix",
+        "_test:all": "turbo test",
         "test": "anchor test"
     },
     "dependencies": {

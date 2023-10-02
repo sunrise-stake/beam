@@ -2,24 +2,24 @@ import { type AnchorProvider, Program } from "@coral-xyz/anchor";
 import {
   Keypair,
   PublicKey,
-  Transaction,
-  type TransactionInstruction,
   StakeProgram,
   SystemProgram,
   SYSVAR_CLOCK_PUBKEY,
   SYSVAR_STAKE_HISTORY_PUBKEY,
+  Transaction,
+  type TransactionInstruction,
 } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountIdempotentInstruction,
   getAssociatedTokenAddressSync,
+  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import {
-  SplBeam,
   BeamInterface,
   getParsedStakeAccountInfo,
   SPL_STAKE_POOL_PROGRAM_ID,
+  SplBeam,
 } from "@sunrisestake/beams-common";
 import { StateAccount } from "./state.js";
 import { SPL_BEAM_PROGRAM_ID } from "./constants.js";
@@ -185,9 +185,6 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
     amount: BN,
     recipient?: PublicKey,
   ): Promise<Transaction> {
-    if (!this.sunrise || !this.spl) {
-      await this.refresh();
-    }
     const depositor = this.provider.publicKey;
 
     const { gsolMint, gsolMintAuthority, instructionsSysvar } =
@@ -235,9 +232,6 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
     amount: BN,
     gsolTokenAccount?: PublicKey,
   ): Promise<Transaction> {
-    if (!this.sunrise || !this.spl) {
-      await this.refresh();
-    }
     const withdrawer = this.provider.publicKey;
     const { gsolMint, instructionsSysvar, burnGsolFrom } =
       this.sunrise.burnGsolAccounts(
@@ -282,10 +276,6 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
     stakeAccount: PublicKey,
     recipient?: PublicKey,
   ): Promise<Transaction> {
-    if (!this.sunrise || !this.spl) {
-      await this.refresh();
-    }
-
     const stakeOwner = this.provider.publicKey;
     const { gsolMint, gsolMintAuthority, instructionsSysvar } =
       this.sunrise.mintGsolAccounts(this.stateAddress, stakeOwner);
@@ -349,9 +339,6 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
     newStakeAccount: PublicKey,
     gsolTokenAccount?: PublicKey,
   ): Promise<Transaction> {
-    if (!this.sunrise || !this.spl) {
-      await this.refresh();
-    }
     const withdrawer = this.provider.publicKey;
     const { gsolMint, instructionsSysvar, burnGsolFrom } =
       this.sunrise.burnGsolAccounts(
@@ -420,13 +407,8 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
    * NOTE: This might not give the current price is refresh() isn't called first.
    */
   public poolTokenPrice = async (): Promise<number> => {
-    if (!this.spl) {
-      await this.refresh();
-    }
-
     const pool = this.spl.stakePoolState;
-    const price = Number(pool.totalLamports) / Number(pool.poolTokenSupply);
-    return price;
+    return Number(pool.totalLamports) / Number(pool.poolTokenSupply);
   };
 
   /** Utility method to create a token account. */
@@ -451,4 +433,25 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
     const PID = programId ?? SPL_BEAM_PROGRAM_ID;
     return Utils.deriveStateAddress(PID, sunriseState);
   };
+
+  public async details() {
+    const balance = await this.provider.connection.getTokenAccountBalance(
+      this.spl.beamVault,
+    );
+
+    return {
+      stateAddress: this.stateAddress,
+      stakePoolAddress: this.spl.stakePoolAddress,
+      stakePoolState: this.spl.stakePoolState,
+      poolMint: this.spl.poolMint,
+      beamVault: this.spl.beamVault,
+      withdrawAuthority: this.spl.withdrawAuthority,
+      depositAuthority: this.spl.depositAuthority,
+      vaultAuthority: this.vaultAuthority,
+      sunriseState: this.state.sunriseState,
+      poolTokenSupply: this.spl.stakePoolState.poolTokenSupply,
+      totalLamports: this.spl.stakePoolState.totalLamports,
+      balance,
+    };
+  }
 }

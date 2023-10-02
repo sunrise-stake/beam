@@ -3,5 +3,6 @@
   "loader": "ts-node/esm",
   "extension": ["ts"],
   "timeout": 1000000,
-  "parallel": false
+  "parallel": false,
+  "bail": true
 }

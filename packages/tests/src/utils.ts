@@ -14,9 +14,14 @@ import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { AnchorError, type AnchorProvider } from "@coral-xyz/anchor";
-import { expect } from "chai";
+import { type AnchorProvider, AnchorError } from "@coral-xyz/anchor";
+import chai from "chai";
 import BN from "bn.js";
+
+import chaiAsPromised from "chai-as-promised";
+
+chai.use(chaiAsPromised);
+const { expect } = chai;
 
 // Set in anchor.toml
 const SLOTS_IN_EPOCH = 32;
@@ -199,9 +204,33 @@ export const createTokenAccount = async (
 };
 
 export const expectAnchorError =
-  (errorCode: number, errorName: string, programId: any) => (err: any) => {
-    const anchorErr = AnchorError.parse(err.logs);
-    expect(anchorErr!.error.errorCode.code).to.equal(errorName);
-    expect(anchorErr!.error.errorCode.number).to.equal(errorCode);
-    expect(anchorErr!.program.equals(programId)).is.true;
+  (errorCode: number, errorName: string, programId: PublicKey) =>
+  (anchorErr: any) => {
+    console.log(anchorErr);
+    const normalisedError = AnchorError.parse(anchorErr.logs);
+    expect(normalisedError).not.to.be.null;
+    expect(normalisedError!.error.errorCode.code).to.equal(errorName);
+    expect(normalisedError!.error.errorCode.number).to.equal(errorCode);
+    expect(normalisedError!.program.equals(programId)).is.true;
   };
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Chai {
+    interface Assertion {
+      rejectedWithAnchorError(
+        code: number,
+        name: string,
+        programId: PublicKey,
+      ): Promise<void>;
+    }
+  }
+}
+chai.Assertion.addMethod(
+  "rejectedWithAnchorError",
+  function (code: number, name: string, programId: PublicKey) {
+    return expect(this._obj)
+      .to.be.rejectedWith(/* some base class or message */)
+      .then(expectAnchorError(code, name, programId));
+  },
+);

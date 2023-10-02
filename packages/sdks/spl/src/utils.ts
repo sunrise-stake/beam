@@ -79,7 +79,7 @@ export class Utils {
       poolMint: stakePoolState.poolMint,
       beamVault,
       withdrawAuthority: PublicKey.findProgramAddressSync(
-        [stateAddress.toBuffer(), Buffer.from("withdraw")],
+        [stakePoolAddress.toBuffer(), Buffer.from("withdraw")],
         SPL_STAKE_POOL_PROGRAM_ID,
       )[0],
       depositAuthority: PublicKey.findProgramAddressSync(
