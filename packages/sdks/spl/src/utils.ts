@@ -1,16 +1,14 @@
 import { PublicKey } from "@solana/web3.js";
-import { getStakePoolAccount, StakePool } from "./getStakePool.js";
 import { AnchorProvider } from "@coral-xyz/anchor";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { SPL_STAKE_POOL_PROGRAM_ID } from "@sunrisestake/beams-common";
+import { getStakePoolAccount, StakePool } from "@solana/spl-stake-pool";
 
 export type SplClientParams = {
   /** The stake pool address. */
   stakePoolAddress: PublicKey;
   /** The deserialized stake-pool state. */
   stakePoolState: StakePool;
-  /** The mint of the stake pool's token. */
-  poolMint: PublicKey;
   /** The sunrise vault for holding the pool tokens. */
   beamVault: PublicKey;
   /** The stake pool's withdraw authority PDA. */
@@ -69,14 +67,13 @@ export class Utils {
       stakePoolAddress,
     );
     const beamVault = getAssociatedTokenAddressSync(
-      stakePoolState.poolMint,
+      stakePoolState.account.data.poolMint,
       vaultAuthority[0],
       true,
     );
     return {
       stakePoolAddress,
-      stakePoolState,
-      poolMint: stakePoolState.poolMint,
+      stakePoolState: stakePoolState.account.data,
       beamVault,
       withdrawAuthority: PublicKey.findProgramAddressSync(
         [stakePoolAddress.toBuffer(), Buffer.from("withdraw")],

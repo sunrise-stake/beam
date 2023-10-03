@@ -469,6 +469,10 @@ describe("sunrise-marinade", () => {
   });
 });
 
+/**
+ * A suite of tests for the spl stake pool sunbeam. The spl stake pool sunbeam uses the SPL stake pool
+ * to generate yield.
+ */
 describe("sunrise-spl", () => {
   let client: SplClient;
   const provider = AnchorProvider.env();
@@ -611,6 +615,10 @@ describe("sunrise-spl", () => {
   });
 });
 
+/**
+ * A suite of tests for the marinade-lp sunbeam. The marinade-lp sunbeam uses the marinade mSOL/SOL
+ * liquidity pool to generate yield.
+ */
 describe("marinade-lp", () => {
   let sunriseClient: SunriseClient;
   let client: MarinadeLpClient;
