@@ -61,7 +61,7 @@ pub mod marinade_lp_beam {
         // vault controlled by a PDA of this program.
         marinade_lp_interface::add_liquidity(ctx.accounts, lamports, None)?;
 
-        let state_bump = *ctx.bumps.get("state").unwrap();
+        let state_bump = ctx.bumps.state;
         // CPI: Mint GSOL of the same proportion as the lamports deposited to the depositor.
         sunrise_interface::mint_gsol(
             ctx.accounts.deref(),
@@ -93,7 +93,7 @@ pub mod marinade_lp_beam {
         // this vault is the source burning lp tokens.
         marinade_lp_interface::remove_liquidity(ctx.accounts, liq_pool_tokens)?;
 
-        let state_bump = *ctx.bumps.get("state").unwrap();
+        let state_bump = ctx.bumps.state;
         // CPI: Burn GSOL of the same proportion as the lamports withdrawn from the depositor.
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),

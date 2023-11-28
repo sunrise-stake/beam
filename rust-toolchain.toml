@@ -1,5 +1,5 @@
 #https://github.com/solana-labs/solana/issues/30271
 [toolchain]
-channel = "1.69.0"
+channel = "1.74.0"
 profile = "default"
 components = ["rustfmt", "clippy"]

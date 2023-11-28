@@ -16,7 +16,7 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = '0.28.0'
-anchor-spl = '0.28.0'
-marinade-cpi = { git = "https://github.com/sunrise-stake/anchor-gen" }
+anchor-lang = '0.29.0'
+anchor-spl = '0.29.0'
+marinade-cpi = { git = "https://github.com/sunrise-stake/anchor-gen", branch = "update/anchor-v0.29" }
 sunrise-core = { path = "../sunrise-core", features = ["cpi"] }

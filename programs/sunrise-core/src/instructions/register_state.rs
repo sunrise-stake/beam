@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 pub fn handler(ctx: Context<RegisterState>, input: RegisterStateInput) -> Result<()> {
     let state_account = &mut ctx.accounts.state;
 
-    let auth_bump = *ctx.bumps.get("gsol_mint_authority").unwrap();
+    let auth_bump = ctx.bumps.gsol_mint_authority;
     let mint_key = ctx.accounts.gsol_mint.key();
     let mint_supply = ctx.accounts.gsol_mint.supply;
 

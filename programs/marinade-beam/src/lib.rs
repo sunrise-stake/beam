@@ -69,7 +69,7 @@ pub mod marinade_beam {
         // by a PDA of this program.
         marinade_interface::deposit(ctx.accounts, lamports)?;
 
-        let bump = *ctx.bumps.get("state").unwrap();
+        let bump = ctx.bumps.state;
         // CPI: Mint GSOL of the same proportion as the lamports deposited to the depositor.
         sunrise_interface::mint_gsol(
             ctx.accounts.deref(),
@@ -96,7 +96,7 @@ pub mod marinade_beam {
         // CPI: Deposit stake account to Marinade.
         marinade_interface::deposit_stake_account(ctx.accounts, validator_index)?;
 
-        let bump = *ctx.bumps.get("state").unwrap();
+        let bump = ctx.bumps.state;
         // CPI: Mint GSOL of the same proportion as the stake amount to the depositor.
         sunrise_interface::mint_gsol(
             ctx.accounts.deref(),
@@ -124,7 +124,7 @@ pub mod marinade_beam {
         // CPI: Liquid unstake.
         marinade_interface::liquid_unstake(ctx.accounts, msol_lamports)?;
 
-        let bump = *ctx.bumps.get("state").unwrap();
+        let bump = ctx.bumps.state;
         // CPI: Burn GSOL of the same proportion as the number of lamports withdrawn.
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
@@ -157,7 +157,7 @@ pub mod marinade_beam {
         ticket_account.marinade_ticket_account = ctx.accounts.new_ticket_account.key();
         ticket_account.beneficiary = ctx.accounts.withdrawer.key();
 
-        let bump = *ctx.bumps.get("state").unwrap();
+        let bump = ctx.bumps.state;
         // CPI: Burn GSOL of the same proportion as the number of lamports withdrawn.
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
@@ -218,7 +218,7 @@ pub mod marinade_beam {
             extractable_yield,
             extracted_yield: 0, // modified below with remarks
             partial_gsol_supply: ctx.accounts.state.partial_gsol_supply,
-            bump: *ctx.bumps.get("epoch_report_account").unwrap(),
+            bump: ctx.bumps.epoch_report_account,
         };
         // we have to trust that the extracted amount is accurate,
         // as extracted yield is no longer managed by the program.

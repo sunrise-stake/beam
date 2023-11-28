@@ -56,7 +56,7 @@ pub mod spl_beam {
         // CPI: Deposit SOL to SPL stake pool.
         spl_interface::deposit(ctx.accounts, lamports)?;
 
-        let state_bump = *ctx.bumps.get("state").unwrap();
+        let state_bump = ctx.bumps.state;
         // CPI: Mint GSOL of the same proportion as the lamports deposited to depositor.
         sunrise_interface::mint_gsol(
             ctx.accounts.deref(),
@@ -81,7 +81,7 @@ pub mod spl_beam {
         // CPI: Deposit staked SOL to SPL stake pool.
         spl_interface::deposit_stake(ctx.accounts)?;
 
-        let state_bump = *ctx.bumps.get("state").unwrap();
+        let state_bump = ctx.bumps.state;
         // CPI: Mint Gsol of the same proportion as the stake amount.
         sunrise_interface::mint_gsol(
             ctx.accounts.deref(),
@@ -109,7 +109,7 @@ pub mod spl_beam {
         spl_interface::withdraw(ctx.accounts.deref(), pool_tokens_amount)?;
 
         // CPI: Burn GSOL of the same proportion as the lamports withdrawn.
-        let state_bump = *ctx.bumps.get("state").unwrap();
+        let state_bump = ctx.bumps.state;
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
@@ -137,7 +137,7 @@ pub mod spl_beam {
         spl_interface::withdraw_stake(ctx.accounts.deref(), pool_tokens_amount)?;
 
         // CPI: Burn GSOL of the same proportion as the lamports withdrawn.
-        let state_bump = *ctx.bumps.get("state").unwrap();
+        let state_bump = ctx.bumps.state;
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),

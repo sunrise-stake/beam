@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{borsh0_10::try_from_slice_unchecked, stake::state::StakeState};
+use anchor_lang::solana_program::{borsh0_10::try_from_slice_unchecked, stake::state::StakeStateV2};
 use spl_stake_pool::state::StakePool;
 
 /// calculate amount*numerator/denominator
@@ -24,7 +24,7 @@ pub fn pool_tokens_from_lamports(stake_pool: &AccountInfo, lamports: u64) -> Res
 
 pub fn get_delegated_stake_amount(stake_account: &AccountInfo) -> Result<u64> {
     // Gets the active stake amount of the stake account. We need this to determine how much gSol to mint.
-    let stake_state = try_from_slice_unchecked::<StakeState>(&stake_account.data.borrow())?;
+    let stake_state = try_from_slice_unchecked::<StakeStateV2>(&stake_account.data.borrow())?;
 
     match stake_state.delegation() {
         Some(delegation) => Ok(delegation.stake),

@@ -16,7 +16,7 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = '0.28.0'
-anchor-spl = '0.28.0'
+anchor-lang = '0.29.0'
+anchor-spl = '0.29.0'
 spl-stake-pool = { git = "https://github.com/solana-labs/solana-program-library", features = ["no-entrypoint"] }
 sunrise-core = { path = "../sunrise-core", features = ["cpi"] }
