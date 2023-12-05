@@ -7,10 +7,7 @@ rm -r ../../mochawesome-report
 find src/functional -name "*.test.ts" | while read test_file; do
   echo "Running test: $test_file"
 
-  # Unique report filename
-  report_name="mocha-reports/mocha-report-$(basename "$test_file" .test.ts).json"
-
-  R=t.json yarn anchor test --skip-build packages/tests/$test_file $report_name || true
+  yarn anchor test --skip-build packages/tests/$test_file || true
 done
 
 yarn -s mochawesome-merge ../../mochawesome-report/mocha-reports/*.json > ../../mochawesome-report/mergedReport.json

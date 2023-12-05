@@ -19,6 +19,7 @@ import {
   MarinadeBeam,
   BeamInterface,
   deriveAuthorityAddress,
+  sendAndConfirmChecked,
 } from "@sunrisestake/beams-common";
 import { StateAccount } from "./state.js";
 import {
@@ -108,7 +109,7 @@ export class MarinadeClient extends BeamInterface<
       })
       .transaction();
 
-    await provider.sendAndConfirm(register, [], {
+    await sendAndConfirmChecked(provider, register, [], {
       commitment: "confirmed",
     });
     return MarinadeClient.get(provider, stateAddress, programId);

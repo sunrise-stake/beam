@@ -9,18 +9,20 @@ import {
 import { MarinadeClient } from "@sunrisestake/beams-marinade-sp";
 import { SplClient } from "@sunrisestake/beams-spl";
 import BN from "bn.js";
-import { provider, sunriseStateKeypair } from "../setup.js";
+import { provider } from "../setup.js";
 import { expect } from "chai";
 
 const BEAM_DETAILS_LEN: number = 42;
 
-describe.only("sunrise-core", () => {
+describe("sunrise-core", () => {
   let gsolMint: PublicKey;
   let client: SunriseClient;
   let mState: PublicKey; // marinade-beam state address.
   let splState: PublicKey; // spl-beam state address.
   const tempBeam = Keypair.generate();
   let beams: PublicKey[];
+
+  const newSunriseStateKeypair = Keypair.generate();
 
   /**
    * This test creates a new core sunrise state on-chain, and associates it with a token mint.
@@ -29,14 +31,14 @@ describe.only("sunrise-core", () => {
    * sunrise program to create and destroy tokens.
    * It also controls the yield account, which is the PDA that yield earned by beams is deposited into.
    */
-  it.only("can register a new sunrise-stake state", async () => {
+  it("can register a new sunrise-stake state", async () => {
     const yieldAccount = Keypair.generate();
     const { mint, authority } = await initializeTestMint(provider);
     gsolMint = mint;
 
     client = await SunriseClient.register(
       provider,
-      sunriseStateKeypair,
+      newSunriseStateKeypair,
       provider.publicKey,
       yieldAccount.publicKey,
       15,
@@ -44,7 +46,7 @@ describe.only("sunrise-core", () => {
     );
 
     const account = client.state.pretty();
-    expect(account.address).to.equal(sunriseStateKeypair.publicKey.toBase58());
+    expect(account.address).to.equal(newSunriseStateKeypair.publicKey.toBase58());
     expect(account.yieldAccount).to.equal(yieldAccount.publicKey.toBase58());
     expect(account.gsolAuthBump).to.equal(
       client.gsolMintAuthority[1].toString(),

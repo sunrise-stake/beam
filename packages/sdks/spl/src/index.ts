@@ -18,6 +18,7 @@ import {
 import {
   BeamInterface,
   getParsedStakeAccountInfo,
+  sendAndConfirmChecked,
   SPL_STAKE_POOL_PROGRAM_ID,
   SplBeam,
 } from "@sunrisestake/beams-common";
@@ -139,7 +140,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
       })
       .transaction();
 
-    await provider.sendAndConfirm(register, [], {
+    await sendAndConfirmChecked(provider, register, [], {
       commitment: "confirmed",
     });
     return SplClient.get(stateAddress, provider, programId);

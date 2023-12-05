@@ -1,6 +1,12 @@
 import { AnchorProvider } from "@coral-xyz/anchor";
 import BN from "bn.js";
-import { Connection, PublicKey } from "@solana/web3.js";
+import {
+  ConfirmOptions,
+  Connection,
+  PublicKey,
+  Signer,
+  Transaction,
+} from "@solana/web3.js";
 import { STAKE_PROGRAM_ID } from "./constants.js";
 
 const enum Seeds {
@@ -109,4 +115,18 @@ export const deriveAuthorityAddress = (
     [state.toBuffer(), Buffer.from(Seeds.VAULT_AUTHORITY)],
     pid,
   );
+};
+
+export const sendAndConfirmChecked = async (
+  provider: AnchorProvider,
+  tx: Transaction,
+  signers: Signer[],
+  opts?: ConfirmOptions,
+) => {
+  try {
+    return await provider.sendAndConfirm(tx, signers, opts);
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
 };

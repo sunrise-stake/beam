@@ -1,4 +1,5 @@
 echo "test file" $1
-echo "report file" $2
 
-mocha --config packages/tests/.mocharc.json --reporter mochawesome --reporter-options reportFilename=$2,quiet=true $1
+report_name="mocha-reports/mocha-report-$(basename "$1" .test.ts).json"
+
+mocha --config packages/tests/.mocharc.json --reporter mochawesome --reporter-options reportFilename=$report_name,quiet=true $1
