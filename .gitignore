@@ -11,3 +11,5 @@ packages/sdks/*/doc/
 
 packages/tests/dist/
 packages/tests/doc/
+
+mochawesome-report/

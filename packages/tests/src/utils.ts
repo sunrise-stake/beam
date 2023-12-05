@@ -26,6 +26,21 @@ const { expect } = chai;
 // Set in anchor.toml
 const SLOTS_IN_EPOCH = 32;
 
+const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"] as const;
+type LOG_LEVEL = (typeof LOG_LEVELS)[number];
+
+const logLevel: LOG_LEVEL = (process.env.LOG_LEVEL ?? "error") as LOG_LEVEL;
+
+const logAtLevel =
+  (level = logLevel) =>
+  (...args: any[]) => {
+    if (LOG_LEVELS.indexOf(level) <= LOG_LEVELS.indexOf(logLevel)) {
+      console.log(level, ...args);
+    }
+  };
+
+const log = logAtLevel();
+
 export const deriveATA = (owner: PublicKey, mint: PublicKey) =>
   PublicKey.findProgramAddressSync(
     [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
@@ -127,7 +142,10 @@ export const sendAndConfirmTransaction = (
   signers: Signer[] = [],
   opts: ConfirmOptions = {},
 ): Promise<string> => {
-  return provider.sendAndConfirm(transaction, signers, opts);
+  return provider.sendAndConfirm(transaction, signers, opts).catch((err) => {
+    log(err);
+    return err;
+  });
 };
 
 export const fund = async (
@@ -206,7 +224,7 @@ export const createTokenAccount = async (
 export const expectAnchorError =
   (errorCode: number, errorName: string, programId: PublicKey) =>
   (anchorErr: any) => {
-    console.log(anchorErr);
+    logAtLevel("trace")(anchorErr); // only log if we are tracing, otherwise we expect an error so don't log it
     const normalisedError = AnchorError.parse(anchorErr.logs);
     expect(normalisedError).not.to.be.null;
     expect(normalisedError!.error.errorCode.code).to.equal(errorName);

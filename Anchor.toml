@@ -18,7 +18,7 @@ cluster = "Localnet"
 wallet = "packages/tests/fixtures/provider.json"
 
 [scripts]
-test = "yarn _test:all"
+test = "packages/tests/run.sh"
 
 [test.validator]
 slots_per_epoch = "32"
@@ -33,6 +33,14 @@ program = "packages/tests/fixtures/marinade/marinade_finance.so"
 # SPL stake pool program.
 address = "SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy"
 program = "packages/tests/fixtures/spl/spl_stake_pool.so"
+
+# Sunrise accounts.
+[[test.validator.account]] #empty-state (no beams added)
+address = "89wj5p56PTFiKQcHLTkx78jM3Cv4jVRCXgMKJvoFvvp"
+filename = "packages/tests/fixtures/core/empty-state.json"
+[[test.validator.account]] #gsol mint
+address = "HGFi2ubkrCKdxqeAHXDTRAMzyquKqWj3xdT9kz2ux7gi"
+filename = "packages/tests/fixtures/core/gsol-mint.json"
 
 # Marinade accounts.
 [[test.validator.account]] #marinade-state
