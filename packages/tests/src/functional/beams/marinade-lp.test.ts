@@ -4,7 +4,7 @@
  */
 import { SunriseClient } from "@sunrisestake/beams-core";
 import { MarinadeLpClient } from "@sunrisestake/beams-marinade-lp";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Keypair } from "@solana/web3.js";
 import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
 import BN from "bn.js";
 import { provider, sunriseStateKeypair } from "../setup.js";
@@ -16,15 +16,10 @@ import {
   tokenAccountBalance,
 } from "../../utils.js";
 import { expect } from "chai";
-import {MSOL_MINT, SUNRISE_CORE_STATE} from "../consts.js";
+import { MSOL_MINT, SUNRISE_CORE_STATE } from "../consts.js";
 
 describe("Marinade liquidity pool beam", () => {
-  let sunriseClient: SunriseClient;
   let beamClient: MarinadeLpClient;
-
-  const mlpState = MarinadeLpClient.deriveStateAddress(
-    sunriseStateKeypair.publicKey,
-  )[0];
   const staker = Keypair.generate();
   const stakerIdentity = new AnchorProvider(
     provider.connection,
@@ -46,15 +41,12 @@ describe("Marinade liquidity pool beam", () => {
     // NOTE - when combined with the marinade-sp beam, this should be the msol token account
     // associated with the marinade stake pool.
     const msolTokenAccount = await createTokenAccount(
-        provider,
-        sunriseStateKeypair.publicKey,
-        MSOL_MINT,
-    );
-
-    sunriseClient = await SunriseClient.get(
       provider,
       sunriseStateKeypair.publicKey,
+      MSOL_MINT,
     );
+
+    await SunriseClient.get(provider, sunriseStateKeypair.publicKey);
 
     const treasury = Keypair.generate();
     beamClient = await MarinadeLpClient.initialize(

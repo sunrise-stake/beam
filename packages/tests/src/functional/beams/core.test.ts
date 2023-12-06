@@ -3,6 +3,7 @@ import { Keypair, PublicKey } from "@solana/web3.js";
 import {
   createTokenAccount,
   initializeTestMint,
+  log,
   sendAndConfirmTransaction,
   transferMintAuthority,
 } from "../../utils.js";
@@ -68,8 +69,8 @@ describe("Sunrise core", () => {
       client.gsolMintAuthority[0],
     );
 
-    console.log("state address", client.stateAddress.toBase58());
-    console.log("gsol mint", client.state.gsolMint.toBase58());
+    log("state address", client.stateAddress.toBase58());
+    log("gsol mint", client.state.gsolMint.toBase58());
   });
 
   /**
@@ -214,8 +215,8 @@ describe("Sunrise core", () => {
       .rpc();
 
     await expect(shouldFail).to.be.rejectedWithAnchorError(
-        client.program.idl,
-        6007,
+      client.program.idl,
+      6007,
       client.program.programId,
     );
   });

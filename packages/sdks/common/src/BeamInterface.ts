@@ -1,6 +1,6 @@
 import { Keypair, type PublicKey, Transaction } from "@solana/web3.js";
 import BN from "bn.js";
-import { AnchorProvider, Program, Idl } from "@coral-xyz/anchor";
+import { AnchorProvider, Program, type Idl } from "@coral-xyz/anchor";
 /**
  * Represents a common interface for sunrise beams that act as stake-pool proxies.
  */

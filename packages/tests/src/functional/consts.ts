@@ -9,4 +9,6 @@ export const MSOL_MINT = new PublicKey(
   "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
 );
 
-export const SPL_STAKE_POOL = new PublicKey("azFVdHtAJN8BX3sbGAYkXvtdjdrT5U6rj9rovvUFos9");
+export const SPL_STAKE_POOL = new PublicKey(
+  "azFVdHtAJN8BX3sbGAYkXvtdjdrT5U6rj9rovvUFos9",
+);

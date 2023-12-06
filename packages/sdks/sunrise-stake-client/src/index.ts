@@ -2,7 +2,12 @@ import { type AnchorProvider, Idl } from "@coral-xyz/anchor";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import BN from "bn.js";
 import { SunriseClient } from "@sunrisestake/beams-core";
-import { BeamInterface, BeamState } from "@sunrisestake/beams-common";
+import {
+  BeamInterface,
+  BeamState,
+  isNonEmptyArray,
+  NonEmptyArray,
+} from "@sunrisestake/beams-common";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -75,7 +80,7 @@ export class SunriseStake {
     recipient?: PublicKey,
   ): Promise<Transaction[]> {
     const options = this.solDepositBeams();
-    if (options.length === 0) {
+    if (!isNonEmptyArray(options)) {
       throw new Error("No available beam(s) for deposit");
     }
 
@@ -92,24 +97,25 @@ export class SunriseStake {
   /** Route a deposit through the beams required to complete it. */
   private async splitDeposit(
     lamports: BN,
-    options: BeamInterface<Idl, BeamState>[],
+    options: NonEmptyArray<BeamInterface<Idl, BeamState>>,
   ): Promise<[BeamInterface<Idl, BeamState>, BN][]> {
     const { effectiveGsolSupply } = await this.fetchDetails();
     // If effective Gsol supply equals 0, any beam can fully cover the deposit.
     if (effectiveGsolSupply.eqn(0)) {
-      return [[options[0], lamports]];
+      const [firstOption] = options;
+      return [[firstOption, lamports]];
     }
 
     let unassigned = lamports;
     const results = new Array<[BeamInterface<Idl, BeamState>, BN]>();
 
-    for (let i = 0; i < options.length; ++i) {
+    for (const item of options) {
       if (unassigned.eqn(0)) {
         break;
       }
 
       const allocation = this.sunriseClient.state.beams.find(
-        (a) => a.key === options[i].stateAddress,
+        (a) => a.key === item.stateAddress,
       )?.allocation;
 
       if (!allocation) throw new Error("Beam allocation not found");
@@ -122,7 +128,7 @@ export class SunriseStake {
       );
 
       unassigned = unassigned.sub(singleDeposit);
-      results.push([options[i], singleDeposit]);
+      results.push([item, singleDeposit]);
     }
 
     // Reachable if the client is initialized with some beams missing.

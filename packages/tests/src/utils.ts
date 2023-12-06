@@ -19,8 +19,7 @@ import chai from "chai";
 import BN from "bn.js";
 
 import chaiAsPromised from "chai-as-promised";
-import { sendAndConfirmChecked } from "@sunrisestake/beams-common";
-import { Idl } from "@coral-xyz/anchor/dist/cjs/idl";
+import { Idl } from "@coral-xyz/anchor";
 
 chai.use(chaiAsPromised);
 const { expect } = chai;
@@ -41,7 +40,7 @@ const logAtLevel =
     }
   };
 
-const log = logAtLevel();
+export const log = logAtLevel();
 
 export const deriveATA = (owner: PublicKey, mint: PublicKey) =>
   PublicKey.findProgramAddressSync(

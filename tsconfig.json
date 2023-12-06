@@ -1,16 +1,18 @@
 {
   "compilerOptions": {
-    "types": ["mocha", "chai"],
     "typeRoots": ["./node_modules/@types"],
-    "lib": ["esnext"],
-    "module": "esnext",
-    "moduleResolution": "node",
-    "target": "es6",
+    "lib": ["es2022"],
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
+    "sourceMap": true,
+    "target": "es2022",
     "esModuleInterop": true,
     "strict": true,
-    "outDir": "./dist",
+    "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "declaration": true,
+    "moduleDetection": "force",
+    "allowJs": true,
     "resolveJsonModule": true
   }
 }

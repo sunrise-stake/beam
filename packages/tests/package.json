@@ -11,10 +11,10 @@
   },
   "dependencies": {
     "@solana/spl-token": "^0.3.8",
+    "@sunrisestake/beams-core": "*",
     "@sunrisestake/beams-marinade-lp": "*",
     "@sunrisestake/beams-marinade-sp": "*",
     "@sunrisestake/beams-spl": "*",
-    "@sunrisestake/beams-core": "*",
     "@types/chai": "^4.3.6",
     "@types/chai-as-promised": "^7.1.6",
     "@types/mocha": "^10.0.6",
@@ -23,6 +23,7 @@
     "mocha": "^10.2.0",
     "mochawesome": "^7.1.3",
     "mochawesome-merge": "^4.3.0",
-    "ts-node": "^10.9.1"
+    "ts-node": "^10.9.1",
+    "tsx": "^4.6.2"
   }
 }

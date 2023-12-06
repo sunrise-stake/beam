@@ -1,13 +1,18 @@
 import { AnchorProvider } from "@coral-xyz/anchor";
 import BN from "bn.js";
 import {
-  ConfirmOptions,
+  type ConfirmOptions,
   Connection,
   PublicKey,
-  Signer,
+  type Signer,
   Transaction,
 } from "@solana/web3.js";
 import { STAKE_PROGRAM_ID } from "./constants.js";
+
+export type NonEmptyArray<T> = [T, ...T[]];
+
+export const isNonEmptyArray = <T>(array: T[]): array is NonEmptyArray<T> =>
+  array.length > 0;
 
 const enum Seeds {
   VAULT_AUTHORITY = "vault-authority",

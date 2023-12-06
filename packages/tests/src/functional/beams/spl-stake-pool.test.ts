@@ -14,8 +14,8 @@ import {
 } from "../../utils.js";
 import { sunriseStateKeypair } from "../setup.js";
 import { expect } from "chai";
-import {SPL_STAKE_POOL, SUNRISE_CORE_STATE} from "../consts.js";
-import {SunriseClient} from "@sunrisestake/beams-core";
+import { SPL_STAKE_POOL, SUNRISE_CORE_STATE } from "../consts.js";
+import { SunriseClient } from "@sunrisestake/beams-core";
 
 describe("SPL stake pool beam", () => {
   let beamClient: SplClient;
@@ -50,7 +50,9 @@ describe("SPL stake pool beam", () => {
     );
 
     const info = beamClient.state.pretty();
-    expect(info.proxyState).to.equal(beamClient.spl.stakePoolAddress.toBase58());
+    expect(info.proxyState).to.equal(
+      beamClient.spl.stakePoolAddress.toBase58(),
+    );
     expect(info.sunriseState).to.equal(
       sunriseStateKeypair.publicKey.toBase58(),
     );
@@ -90,17 +92,17 @@ describe("SPL stake pool beam", () => {
     beamClient = await SplClient.get(beamClient.stateAddress, stakerIdentity);
 
     const shouldFail = sendAndConfirmTransaction(
-        stakerIdentity,
-        await beamClient.deposit(new BN(10)),
-        [],
-        {},
-        false,
+      stakerIdentity,
+      await beamClient.deposit(new BN(10)),
+      [],
+      {},
+      false,
     );
 
     await expect(shouldFail).to.be.rejectedWithAnchorError(
-        beamClient.sunrise.program.idl,
-        6006,
-        beamClient.sunrise.program.programId,
+      beamClient.sunrise.program.idl,
+      6006,
+      beamClient.sunrise.program.programId,
     );
   });
 
@@ -108,8 +110,8 @@ describe("SPL stake pool beam", () => {
     // register the beam on sunrise
     const coreClient = await SunriseClient.get(provider, SUNRISE_CORE_STATE);
     await sendAndConfirmTransaction(
-        provider,
-        await coreClient.registerBeam(beamClient.stateAddress),
+      provider,
+      await coreClient.registerBeam(beamClient.stateAddress),
     );
 
     // try depositing again
@@ -144,12 +146,12 @@ describe("SPL stake pool beam", () => {
       stakerIdentity,
       await beamClient.deposit(new BN(failedDepositAmount)),
       [],
-        {},
-        false
+      {},
+      false,
     );
 
     await expect(shouldFail).to.be.rejectedWithAnchorError(
-        beamClient.sunrise.program.idl,
+      beamClient.sunrise.program.idl,
       6001,
       beamClient.sunrise.program.programId,
     );
