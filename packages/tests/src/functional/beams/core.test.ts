@@ -1,4 +1,4 @@
-import { SunriseClient } from "@sunrisestake/beams-sunrise";
+import { SunriseClient } from "@sunrisestake/beams-core";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import {
   createTokenAccount,
@@ -14,7 +14,7 @@ import { expect } from "chai";
 
 const BEAM_DETAILS_LEN: number = 42;
 
-describe("sunrise-core", () => {
+describe("Sunrise core", () => {
   let gsolMint: PublicKey;
   let client: SunriseClient;
   let mState: PublicKey; // marinade-beam state address.
@@ -46,7 +46,9 @@ describe("sunrise-core", () => {
     );
 
     const account = client.state.pretty();
-    expect(account.address).to.equal(newSunriseStateKeypair.publicKey.toBase58());
+    expect(account.address).to.equal(
+      newSunriseStateKeypair.publicKey.toBase58(),
+    );
     expect(account.yieldAccount).to.equal(yieldAccount.publicKey.toBase58());
     expect(account.gsolAuthBump).to.equal(
       client.gsolMintAuthority[1].toString(),
@@ -189,8 +191,8 @@ describe("sunrise-core", () => {
       .rpc();
 
     await expect(shouldFail).to.be.rejectedWithAnchorError(
+      client.program.idl,
       6007,
-      "UnidentifiedCallingProgram",
       client.program.programId,
     );
   });
@@ -212,8 +214,8 @@ describe("sunrise-core", () => {
       .rpc();
 
     await expect(shouldFail).to.be.rejectedWithAnchorError(
-      6007,
-      "UnidentifiedCallingProgram",
+        client.program.idl,
+        6007,
       client.program.programId,
     );
   });

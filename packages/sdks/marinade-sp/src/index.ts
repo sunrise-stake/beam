@@ -33,7 +33,7 @@ import {
   type Wallet,
 } from "@sunrisestake/marinade-ts-sdk";
 import BN from "bn.js";
-import { SunriseClient } from "@sunrisestake/beams-sunrise";
+import { SunriseClient } from "@sunrisestake/beams-core";
 /** An instance of the Sunrise program that acts as a proxy to
  * marinade-compatible stake-pools.
  */

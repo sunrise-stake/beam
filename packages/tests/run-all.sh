@@ -12,4 +12,4 @@ done
 
 yarn -s mochawesome-merge ../../mochawesome-report/mocha-reports/*.json > ../../mochawesome-report/mergedReport.json
 yarn marge ../../mochawesome-report/mergedReport.json -o ../../mochawesome-report
-yarn ts-node-esm analyseReport.ts
+yarn ts-node-esm src/analyseReport.ts

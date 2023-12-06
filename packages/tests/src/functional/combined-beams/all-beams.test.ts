@@ -1,4 +1,4 @@
-import { SunriseClient } from "@sunrisestake/beams-sunrise";
+import { SunriseClient } from "@sunrisestake/beams-core";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import {
   createTokenAccount,

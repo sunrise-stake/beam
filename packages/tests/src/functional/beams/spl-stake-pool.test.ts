@@ -14,9 +14,11 @@ import {
 } from "../../utils.js";
 import { sunriseStateKeypair } from "../setup.js";
 import { expect } from "chai";
+import {SPL_STAKE_POOL, SUNRISE_CORE_STATE} from "../consts.js";
+import {SunriseClient} from "@sunrisestake/beams-core";
 
-describe("sunrise-spl", () => {
-  let client: SplClient;
+describe("SPL stake pool beam", () => {
+  let beamClient: SplClient;
   const provider = AnchorProvider.env();
 
   const staker = Keypair.generate();
@@ -29,19 +31,17 @@ describe("sunrise-spl", () => {
   let vaultBsolBalance: BN;
   let stakerGsolBalance: BN = new BN(0);
 
-  /** The blaze stake devnet pool address.
-   * Setup as a fixture in `fixtures/blaze/pool.json` */
-  const stakePool: PublicKey = new PublicKey(
-    "azFVdHtAJN8BX3sbGAYkXvtdjdrT5U6rj9rovvUFos9",
-  );
+  const stakePool: PublicKey = SPL_STAKE_POOL;
 
   const depositAmount = 10;
   const failedDepositAmount = 5;
   const withdrawalAmount = 10;
 
+  before("Fund the staker", () => fund(provider, staker.publicKey, 30));
+
   it("can initialize a state", async () => {
     const treasury = Keypair.generate();
-    client = await SplClient.initialize(
+    beamClient = await SplClient.initialize(
       provider,
       provider.publicKey,
       sunriseStateKeypair.publicKey,
@@ -49,70 +49,90 @@ describe("sunrise-spl", () => {
       stakePool,
     );
 
-    client = await client.refresh();
-    const info = client.state.pretty();
-    expect(info.proxyState).to.equal(client.spl.stakePoolAddress.toBase58());
+    const info = beamClient.state.pretty();
+    expect(info.proxyState).to.equal(beamClient.spl.stakePoolAddress.toBase58());
     expect(info.sunriseState).to.equal(
       sunriseStateKeypair.publicKey.toBase58(),
     );
     expect(info.vaultAuthorityBump).to.equal(
-      client.vaultAuthority[1].toString(),
+      beamClient.vaultAuthority[1].toString(),
     );
     expect(info.updateAuthority).to.equal(provider.publicKey.toBase58());
 
     vaultBsolBalance = await tokenAccountBalance(
       provider,
-      client.spl.beamVault,
+      beamClient.spl.beamVault,
     );
   });
 
   it("can update a state", async () => {
     const newTreasury = Keypair.generate();
     const updateParams = {
-      updateAuthority: client.state.updateAuthority,
-      sunriseState: client.state.sunriseState,
-      vaultAuthorityBump: client.state.vaultAuthorityBump,
+      updateAuthority: beamClient.state.updateAuthority,
+      sunriseState: beamClient.state.sunriseState,
+      vaultAuthorityBump: beamClient.state.vaultAuthorityBump,
       treasury: newTreasury.publicKey,
-      stakePool: client.spl.stakePoolAddress,
+      stakePool: beamClient.spl.stakePoolAddress,
     };
     await sendAndConfirmTransaction(
       provider,
-      await client.update(provider.publicKey, updateParams),
+      await beamClient.update(provider.publicKey, updateParams),
       [],
     );
 
-    client = await client.refresh();
-    expect(client.state.treasury.toBase58()).to.equal(
+    beamClient = await beamClient.refresh();
+    expect(beamClient.state.treasury.toBase58()).to.equal(
       newTreasury.publicKey.toBase58(),
     );
   });
 
+  it("cannot deposit and mint gsol if the beam is not registered into sunrise core", async () => {
+    beamClient = await SplClient.get(beamClient.stateAddress, stakerIdentity);
+
+    const shouldFail = sendAndConfirmTransaction(
+        stakerIdentity,
+        await beamClient.deposit(new BN(10)),
+        [],
+        {},
+        false,
+    );
+
+    await expect(shouldFail).to.be.rejectedWithAnchorError(
+        beamClient.sunrise.program.idl,
+        6006,
+        beamClient.sunrise.program.programId,
+    );
+  });
+
   it("can deposit and mint gsol", async () => {
-    await fund(provider, staker.publicKey, 30);
-    client = await SplClient.get(client.stateAddress, stakerIdentity);
+    // register the beam on sunrise
+    const coreClient = await SunriseClient.get(provider, SUNRISE_CORE_STATE);
+    await sendAndConfirmTransaction(
+        provider,
+        await coreClient.registerBeam(beamClient.stateAddress),
+    );
 
-    console.log(await client.details());
+    // try depositing again
+    beamClient = await SplClient.get(beamClient.stateAddress, stakerIdentity);
 
-    console.log("ABOUT TO DEPOSIT");
     await sendAndConfirmTransaction(
       stakerIdentity,
-      await client.deposit(new BN(10)),
+      await beamClient.deposit(new BN(10)),
       [],
     );
-    console.log("DEPOSIT COMPLETE");
 
     const expectedGsol = stakerGsolBalance.addn(depositAmount);
     const expectedBsol = vaultBsolBalance.addn(
-      Math.floor(depositAmount / (await client.poolTokenPrice())),
+      Math.floor(depositAmount / (await beamClient.poolTokenPrice())),
     );
     await expectTokenBalance(
-      client.provider,
-      client.sunrise.gsolAssociatedTokenAccount(),
+      beamClient.provider,
+      beamClient.sunrise.gsolAssociatedTokenAccount(),
       expectedGsol,
     );
     await expectTokenBalance(
-      client.provider,
-      client.spl.beamVault,
+      beamClient.provider,
+      beamClient.spl.beamVault,
       expectedBsol,
     );
     stakerGsolBalance = expectedGsol;
@@ -122,36 +142,38 @@ describe("sunrise-spl", () => {
   it("can't deposit due to exceeding allocation", async () => {
     const shouldFail = sendAndConfirmTransaction(
       stakerIdentity,
-      await client.deposit(new BN(failedDepositAmount)),
+      await beamClient.deposit(new BN(failedDepositAmount)),
       [],
+        {},
+        false
     );
 
     await expect(shouldFail).to.be.rejectedWithAnchorError(
+        beamClient.sunrise.program.idl,
       6001,
-      client.sunrise.program.idl["errors"][1].name,
-      client.sunrise.program.programId,
+      beamClient.sunrise.program.programId,
     );
   });
 
   it("can withdraw and burn gsol", async () => {
     await sendAndConfirmTransaction(
       stakerIdentity,
-      await client.withdraw(new BN(withdrawalAmount)),
+      await beamClient.withdraw(new BN(withdrawalAmount)),
       [],
     );
 
     const expectedGsol = stakerGsolBalance.subn(withdrawalAmount);
     const expectedBsol = vaultBsolBalance.subn(
-      Math.floor(withdrawalAmount / (await client.poolTokenPrice())),
+      Math.floor(withdrawalAmount / (await beamClient.poolTokenPrice())),
     );
     await expectTokenBalance(
-      client.provider,
-      client.sunrise.gsolAssociatedTokenAccount(),
+      beamClient.provider,
+      beamClient.sunrise.gsolAssociatedTokenAccount(),
       expectedGsol,
     );
     await expectTokenBalance(
-      client.provider,
-      client.spl.beamVault,
+      beamClient.provider,
+      beamClient.spl.beamVault,
       expectedBsol,
     );
     stakerGsolBalance = expectedGsol;

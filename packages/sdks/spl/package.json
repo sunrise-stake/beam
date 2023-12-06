@@ -25,6 +25,6 @@
     "@solana/spl-token": "^0.3.8",
     "@solana/web3.js": "^1.78.5",
     "@sunrisestake/beams-common": "*",
-    "@sunrisestake/beams-sunrise": "*"
+    "@sunrisestake/beams-core": "*"
   }
 }

@@ -277,6 +277,9 @@ pub struct Withdraw<'info> {
     /// CHECK: The vault authority PDA with verified seeds.
     pub vault_authority: UncheckedAccount<'info>,
 
+    /// When withdrawing from the Marinade LP, the withdrawal is part SOL, part mSOL.
+    /// The SOL portion is transferred to the user (withdrawer) and the mSOL portion
+    /// is transferred to the msol_token_account owned by the marinade stake pool.
     #[account(mut, address = state.msol_token_account)]
     pub transfer_msol_to: Box<Account<'info, TokenAccount>>,
     #[account(mut)]

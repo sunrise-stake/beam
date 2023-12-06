@@ -19,6 +19,8 @@ import chai from "chai";
 import BN from "bn.js";
 
 import chaiAsPromised from "chai-as-promised";
+import { sendAndConfirmChecked } from "@sunrisestake/beams-common";
+import { Idl } from "@coral-xyz/anchor/dist/cjs/idl";
 
 chai.use(chaiAsPromised);
 const { expect } = chai;
@@ -141,12 +143,14 @@ export const sendAndConfirmTransaction = (
   transaction: Transaction,
   signers: Signer[] = [],
   opts: ConfirmOptions = {},
-): Promise<string> => {
-  return provider.sendAndConfirm(transaction, signers, opts).catch((err) => {
-    log(err);
-    return err;
+  logOnFailure = true,
+): Promise<string> =>
+  provider.sendAndConfirm(transaction, signers, opts).catch((err) => {
+    if (logOnFailure) {
+      logAtLevel("error")(err);
+    }
+    throw err;
   });
-};
 
 export const fund = async (
   provider: AnchorProvider,
@@ -206,7 +210,7 @@ export const createTokenAccount = async (
   provider: AnchorProvider,
   owner: PublicKey,
   mint: PublicKey,
-): Promise<void> => {
+): Promise<PublicKey> => {
   const account = deriveATA(owner, mint);
 
   const tx = new Transaction().add(
@@ -219,6 +223,8 @@ export const createTokenAccount = async (
   );
 
   await sendAndConfirmTransaction(provider, tx);
+
+  return account;
 };
 
 export const expectAnchorError =
@@ -237,8 +243,8 @@ declare global {
   namespace Chai {
     interface Assertion {
       rejectedWithAnchorError(
+        idl: Idl,
         code: number,
-        name: string,
         programId: PublicKey,
       ): Promise<void>;
     }
@@ -246,7 +252,9 @@ declare global {
 }
 chai.Assertion.addMethod(
   "rejectedWithAnchorError",
-  function (code: number, name: string, programId: PublicKey) {
+  function (idl: Idl, code: number, programId: PublicKey) {
+    const name = idl.errors?.find((e) => e.code === code)?.name;
+    if (!name) throw new Error(`No error with code ${code} found in IDL`);
     return expect(this._obj)
       .to.be.rejectedWith(/* some base class or message */)
       .then(expectAnchorError(code, name, programId));

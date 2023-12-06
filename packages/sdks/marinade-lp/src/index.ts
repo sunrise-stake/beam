@@ -25,7 +25,7 @@ import {
 } from "./constants.js";
 import { MarinadeLpClientParams, Utils } from "./utils.js";
 import BN from "bn.js";
-import { SunriseClient } from "@sunrisestake/beams-sunrise";
+import { SunriseClient } from "@sunrisestake/beams-core";
 
 /** An instance of the Sunrise program that acts as a proxy to Marinade-compatible
  * stake-pools.

@@ -26,7 +26,7 @@ import { StateAccount } from "./state.js";
 import { SPL_BEAM_PROGRAM_ID } from "./constants.js";
 import { SplClientParams, Utils } from "./utils.js";
 import BN from "bn.js";
-import { SunriseClient } from "@sunrisestake/beams-sunrise";
+import { SunriseClient } from "@sunrisestake/beams-core";
 
 /** An instance of the Sunrise program that acts as a proxy to SPL-compatible
  * stake-pools.

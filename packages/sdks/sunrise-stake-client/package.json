@@ -1,5 +1,5 @@
 {
-    "name": "@sunrisestake/beams-sunrise-stake-client",
+    "name": "@sunrisestake/beams-sunrise-client",
     "version": "1.0.0",
     "license": "MIT",
     "type": "module",
@@ -22,7 +22,7 @@
     "dependencies": {
         "@coral-xyz/anchor": "^0.28.0",
         "@solana/spl-token": "^0.3.8",
-        "@sunrisestake/beams-sunrise": "*",
+        "@sunrisestake/beams-core": "*",
         "@sunrisestake/beams-common": "*"
     }
   }

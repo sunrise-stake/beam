@@ -11,7 +11,7 @@ import {
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import {sendAndConfirmChecked, SunriseCore} from "@sunrisestake/beams-common";
+import { sendAndConfirmChecked, SunriseCore } from "@sunrisestake/beams-common";
 import { StateAccount } from "./state.js";
 import { GSOL_AUTHORITY_SEED, SUNRISE_PROGRAM_ID } from "./constants.js";
 

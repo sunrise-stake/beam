@@ -1,4 +1,7 @@
-import report from "../../mochawesome-report/mergedReport.json" assert { type: "json" };
+import report from "../../../mochawesome-report/mergedReport.json" assert { type: "json" };
+
+// This script parses the mochawesome report and outputs a summary of the test results
+// to the console. It also exits with a non-zero error code if any tests failed.
 
 let totalTests = 0;
 let passedTests = 0;

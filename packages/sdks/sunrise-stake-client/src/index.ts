@@ -1,7 +1,7 @@
 import { type AnchorProvider, Idl } from "@coral-xyz/anchor";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import BN from "bn.js";
-import { SunriseClient } from "@sunrisestake/beams-sunrise";
+import { SunriseClient } from "@sunrisestake/beams-core";
 import { BeamInterface, BeamState } from "@sunrisestake/beams-common";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
