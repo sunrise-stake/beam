@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{borsh0_10::try_from_slice_unchecked, stake::state::StakeStateV2};
+use anchor_lang::solana_program::{
+    borsh0_10::try_from_slice_unchecked, stake::state::StakeStateV2,
+};
 use spl_stake_pool::state::StakePool;
 
 /// calculate amount*numerator/denominator

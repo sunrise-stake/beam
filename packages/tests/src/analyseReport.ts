@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import report from "../../../mochawesome-report/mergedReport.json" assert { type: "json" };
 
 // This script parses the mochawesome report and outputs a summary of the test results
@@ -7,18 +9,20 @@ let totalTests = 0;
 let passedTests = 0;
 let failedTests = 0;
 
-report.results.forEach((suite) => {
-  suite.suites.forEach((testSuite) => {
-    testSuite.tests.forEach((test) => {
-      totalTests++;
-      if (test.state === "passed") {
-        passedTests++;
-      } else if (test.state === "failed") {
-        failedTests++;
-      }
+report.results.forEach(
+  (suite: { suites: { tests: { state: string }[] }[] }) => {
+    suite.suites.forEach((testSuite) => {
+      testSuite.tests.forEach((test) => {
+        totalTests++;
+        if (test.state === "passed") {
+          passedTests++;
+        } else if (test.state === "failed") {
+          failedTests++;
+        }
+      });
     });
-  });
-});
+  },
+);
 
 console.log("Test Summary:");
 console.log("Total Tests:", totalTests);
