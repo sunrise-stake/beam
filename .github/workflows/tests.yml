@@ -66,6 +66,13 @@ jobs:
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
       - name: Build all programs
         run: cargo build-sbf
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: target
+          path: target
+          if-no-files-found: error
+          retention-days: 1
 
   cargo-test:
     needs: cargo-build
@@ -163,11 +170,17 @@ jobs:
       - name: install node_modules
         run: yarn --frozen-lockfile
 
-      - name: Download build artifacts
+      - name: Download JS build artifacts
         uses: actions/download-artifact@v3
         with:
           name: dists
           path: packages/sdks
+
+      - name: Download Rust build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: target
+          path: .
 
       - uses: ./.github/actions/cache-solana
       - uses: actions/cache@v3
@@ -178,7 +191,10 @@ jobs:
             target
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
       - name: run tests
-        run: yarn test
+        run: |
+          ls target/deploy
+          #yarn anchor test --skip-build packages/tests/src/functional/beams/core.test.ts
+          yarn test
 
       - uses: actions/upload-artifact@v3
         if: always()

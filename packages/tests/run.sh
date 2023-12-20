@@ -1,3 +1,4 @@
+#!/bin/bash
 echo "test file" $1
 
 report_name="mocha-reports/mocha-report-$(basename "$1" .test.ts).json"

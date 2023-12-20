@@ -766,7 +766,8 @@ export type MarinadeBeam = {
           {
             "name": "vaultAuthorityBump",
             "docs": [
-              "that holds pool tokens(msol in this case)."
+              "The bump of the PDA that can authorize spending from the vault",
+              "that holds pool tokens (msol in this case)."
             ],
             "type": "u8"
           },
@@ -1685,7 +1686,8 @@ export const IDL: MarinadeBeam = {
           {
             "name": "vaultAuthorityBump",
             "docs": [
-              "that holds pool tokens(msol in this case)."
+              "The bump of the PDA that can authorize spending from the vault",
+              "that holds pool tokens (msol in this case)."
             ],
             "type": "u8"
           },

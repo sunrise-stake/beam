@@ -11,5 +11,5 @@ find src/functional -name "*.test.ts" | while read test_file; do
 done
 
 yarn -s mochawesome-merge ../../mochawesome-report/mocha-reports/*.json > ../../mochawesome-report/mergedReport.json
-yarn marge ../../mochawesome-report/mergedReport.json -o ../../mochawesome-report
-yarn tsx src/analyseReport.ts
+#yarn marge ../../mochawesome-report/mergedReport.json -o ../../mochawesome-report
+#yarn tsx src/analyseReport.ts

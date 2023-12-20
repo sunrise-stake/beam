@@ -23,7 +23,10 @@ export type MarinadeLpBeam = {
         {
           "name": "liqPoolVault",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The token account of the liquidity pool tokens held by the beam."
+          ]
         },
         {
           "name": "vaultAuthority",
@@ -233,7 +236,12 @@ export type MarinadeLpBeam = {
         {
           "name": "transferMsolTo",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "When withdrawing from the Marinade LP, the withdrawal is part SOL, part mSOL.",
+            "The SOL portion is transferred to the user (withdrawer) and the mSOL portion",
+            "is transferred to the msol_token_account owned by the marinade stake pool."
+          ]
         },
         {
           "name": "liqPoolSolLegPda",
@@ -437,7 +445,10 @@ export const IDL: MarinadeLpBeam = {
         {
           "name": "liqPoolVault",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The token account of the liquidity pool tokens held by the beam."
+          ]
         },
         {
           "name": "vaultAuthority",
@@ -647,7 +658,12 @@ export const IDL: MarinadeLpBeam = {
         {
           "name": "transferMsolTo",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "When withdrawing from the Marinade LP, the withdrawal is part SOL, part mSOL.",
+            "The SOL portion is transferred to the user (withdrawer) and the mSOL portion",
+            "is transferred to the msol_token_account owned by the marinade stake pool."
+          ]
         },
         {
           "name": "liqPoolSolLegPda",
