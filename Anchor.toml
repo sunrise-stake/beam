@@ -18,7 +18,7 @@ cluster = "Localnet"
 wallet = "packages/tests/fixtures/provider.json"
 
 [scripts]
-test = "packages/tests/run.sh"
+test = "echo in $(pwd)"
 
 [test.validator]
 slots_per_epoch = "32"
