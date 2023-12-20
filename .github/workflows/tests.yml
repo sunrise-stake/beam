@@ -85,8 +85,7 @@ jobs:
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
       - name: Run tests
         run: |
-          echo "TESTS SKIPPED DUE TO ANCHOR VERSION ISSUE - see https://github.com/coral-xyz/anchor/pull/2711"
-          # cargo test-sbf
+          cargo test-sbf
 
 
   yarn-build:

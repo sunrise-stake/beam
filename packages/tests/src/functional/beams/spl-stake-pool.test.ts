@@ -3,48 +3,46 @@
  * to generate yield.
  */
 import { SplClient } from "@sunrisestake/beams-spl";
-import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import {
   expectTokenBalance,
   fund,
+  registerSunriseState,
   sendAndConfirmTransaction,
   tokenAccountBalance,
 } from "../../utils.js";
-import { sunriseStateKeypair } from "../setup.js";
+import { provider, staker, stakerIdentity } from "../setup.js";
 import { expect } from "chai";
-import { SPL_STAKE_POOL, SUNRISE_CORE_STATE } from "../consts.js";
+import { SPL_STAKE_POOL } from "../consts.js";
 import { SunriseClient } from "@sunrisestake/beams-core";
 
 describe("SPL stake pool beam", () => {
+  let coreClient: SunriseClient;
   let beamClient: SplClient;
-  const provider = AnchorProvider.env();
-
-  const staker = Keypair.generate();
-  const stakerIdentity = new AnchorProvider(
-    provider.connection,
-    new Wallet(staker),
-    {},
-  );
-
-  let vaultBsolBalance: BN;
+  let vaultStakePoolSolBalance: BN;
   let stakerGsolBalance: BN = new BN(0);
+  let sunriseStateAddress: PublicKey;
 
   const stakePool: PublicKey = SPL_STAKE_POOL;
 
-  const depositAmount = 10;
-  const failedDepositAmount = 5;
-  const withdrawalAmount = 10;
+  const depositAmount = 10 * LAMPORTS_PER_SOL;
+  const failedDepositAmount = 5 * LAMPORTS_PER_SOL;
+  const withdrawalAmount = 10 * LAMPORTS_PER_SOL;
 
-  before("Fund the staker", () => fund(provider, staker.publicKey, 30));
+  before("Set up the sunrise state", async () => {
+    coreClient = await registerSunriseState();
+    sunriseStateAddress = coreClient.stateAddress;
+  });
+
+  before("Fund the staker", () => fund(provider, staker.publicKey, 100));
 
   it("can initialize a state", async () => {
     const treasury = Keypair.generate();
     beamClient = await SplClient.initialize(
       provider,
       provider.publicKey,
-      sunriseStateKeypair.publicKey,
+      sunriseStateAddress,
       treasury.publicKey,
       stakePool,
     );
@@ -53,15 +51,13 @@ describe("SPL stake pool beam", () => {
     expect(info.proxyState).to.equal(
       beamClient.spl.stakePoolAddress.toBase58(),
     );
-    expect(info.sunriseState).to.equal(
-      sunriseStateKeypair.publicKey.toBase58(),
-    );
+    expect(info.sunriseState).to.equal(sunriseStateAddress.toBase58());
     expect(info.vaultAuthorityBump).to.equal(
       beamClient.vaultAuthority[1].toString(),
     );
     expect(info.updateAuthority).to.equal(provider.publicKey.toBase58());
 
-    vaultBsolBalance = await tokenAccountBalance(
+    vaultStakePoolSolBalance = await tokenAccountBalance(
       provider,
       beamClient.spl.beamVault,
     );
@@ -89,11 +85,11 @@ describe("SPL stake pool beam", () => {
   });
 
   it("cannot deposit and mint gsol if the beam is not registered into sunrise core", async () => {
-    beamClient = await SplClient.get(beamClient.stateAddress, stakerIdentity);
+    beamClient = await SplClient.get(stakerIdentity, beamClient.stateAddress);
 
     const shouldFail = sendAndConfirmTransaction(
       stakerIdentity,
-      await beamClient.deposit(new BN(10)),
+      await beamClient.deposit(new BN(depositAmount)),
       [],
       {},
       false,
@@ -108,25 +104,31 @@ describe("SPL stake pool beam", () => {
 
   it("can deposit and mint gsol", async () => {
     // register the beam on sunrise
-    const coreClient = await SunriseClient.get(provider, SUNRISE_CORE_STATE);
+    coreClient = await coreClient.refresh();
     await sendAndConfirmTransaction(
       provider,
       await coreClient.registerBeam(beamClient.stateAddress),
     );
 
     // try depositing again
-    beamClient = await SplClient.get(beamClient.stateAddress, stakerIdentity);
+    beamClient = await beamClient.refresh();
+
+    const depositAmountBN = new BN(depositAmount);
 
     await sendAndConfirmTransaction(
       stakerIdentity,
-      await beamClient.deposit(new BN(10)),
+      await beamClient.deposit(depositAmountBN),
       [],
     );
 
-    const expectedGsol = stakerGsolBalance.addn(depositAmount);
-    const expectedBsol = vaultBsolBalance.addn(
-      Math.floor(depositAmount / (await beamClient.poolTokenPrice())),
+    const expectedGsol = stakerGsolBalance.add(depositAmountBN);
+    const depositAmountInStakePoolTokens = new BN(
+      "" + Math.floor(depositAmount / (await beamClient.poolTokenPrice())),
     );
+    const expectedStakePoolSol = vaultStakePoolSolBalance.add(
+      depositAmountInStakePoolTokens,
+    );
+
     await expectTokenBalance(
       beamClient.provider,
       beamClient.sunrise.gsolAssociatedTokenAccount(),
@@ -135,10 +137,10 @@ describe("SPL stake pool beam", () => {
     await expectTokenBalance(
       beamClient.provider,
       beamClient.spl.beamVault,
-      expectedBsol,
+      expectedStakePoolSol,
     );
     stakerGsolBalance = expectedGsol;
-    vaultBsolBalance = expectedBsol;
+    vaultStakePoolSolBalance = expectedStakePoolSol;
   });
 
   it("can't deposit due to exceeding allocation", async () => {
@@ -158,15 +160,18 @@ describe("SPL stake pool beam", () => {
   });
 
   it("can withdraw and burn gsol", async () => {
+    const withdrawalAmountBN = new BN(withdrawalAmount);
     await sendAndConfirmTransaction(
       stakerIdentity,
-      await beamClient.withdraw(new BN(withdrawalAmount)),
+      await beamClient.withdraw(withdrawalAmountBN),
       [],
     );
 
-    const expectedGsol = stakerGsolBalance.subn(withdrawalAmount);
-    const expectedBsol = vaultBsolBalance.subn(
-      Math.floor(withdrawalAmount / (await beamClient.poolTokenPrice())),
+    const expectedGsol = stakerGsolBalance.sub(withdrawalAmountBN);
+    const expectedBsol = vaultStakePoolSolBalance.sub(
+      new BN(
+        "" + Math.floor(withdrawalAmount / (await beamClient.poolTokenPrice())),
+      ),
     );
     await expectTokenBalance(
       beamClient.provider,
@@ -179,6 +184,6 @@ describe("SPL stake pool beam", () => {
       expectedBsol,
     );
     stakerGsolBalance = expectedGsol;
-    vaultBsolBalance = expectedBsol;
+    vaultStakePoolSolBalance = expectedBsol;
   });
 });

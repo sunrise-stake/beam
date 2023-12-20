@@ -3,18 +3,17 @@
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::{AssociatedToken, Create};
 use anchor_spl::token::{Mint, Token, TokenAccount};
+use cpi_interface::spl as spl_interface;
+use cpi_interface::sunrise as sunrise_interface;
+use state::{State, StateEntry};
 use std::ops::Deref;
+
+// TODO: Use actual CPI crate.
+use sunrise_core as sunrise_core_cpi;
 
 mod cpi_interface;
 mod state;
 mod utils;
-
-use cpi_interface::spl as spl_interface;
-use cpi_interface::sunrise as sunrise_interface;
-use state::{State, StateEntry};
-
-// TODO: Use actual CPI crate.
-use sunrise_core as sunrise_core_cpi;
 
 declare_id!("EUZfY4LePXSZVMvRuiVzbxazw9yBDYU99DpGJKCthxbS");
 
@@ -62,6 +61,7 @@ pub mod spl_beam {
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
             ctx.accounts.sunrise_state.key(),
+            ctx.accounts.stake_pool.key(),
             state_bump,
             lamports,
         )?;
@@ -87,6 +87,7 @@ pub mod spl_beam {
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
             ctx.accounts.sunrise_state.key(),
+            ctx.accounts.stake_pool.key(),
             state_bump,
             lamports,
         )?;
@@ -114,6 +115,7 @@ pub mod spl_beam {
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
             ctx.accounts.sunrise_state.key(),
+            ctx.accounts.stake_pool.key(),
             state_bump,
             lamports,
         )?;
@@ -142,6 +144,7 @@ pub mod spl_beam {
             ctx.accounts.deref(),
             ctx.accounts.beam_program.to_account_info(),
             ctx.accounts.sunrise_state.key(),
+            ctx.accounts.stake_pool.key(),
             state_bump,
             lamports,
         )?;
@@ -176,7 +179,7 @@ pub struct Initialize<'info> {
         init,
         space = State::SPACE,
         payer = payer,
-        seeds = [constants::STATE, input.sunrise_state.as_ref()],
+        seeds = [constants::STATE, input.sunrise_state.as_ref(), input.stake_pool.as_ref()],
         bump
     )]
     pub state: Account<'info, State>,
@@ -216,7 +219,7 @@ pub struct Deposit<'info> {
         mut,
         has_one = sunrise_state,
         has_one = stake_pool,
-        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        seeds = [constants::STATE, sunrise_state.key().as_ref(), stake_pool.key().as_ref()],
         bump
     )]
     pub state: Box<Account<'info, State>>,
@@ -369,7 +372,7 @@ pub struct Withdraw<'info> {
         mut,
         has_one = sunrise_state,
         has_one = stake_pool,
-        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        seeds = [constants::STATE, sunrise_state.key().as_ref(), stake_pool.key().as_ref()],
         bump
     )]
     pub state: Box<Account<'info, State>>,

@@ -34,13 +34,33 @@ program = "packages/tests/fixtures/marinade/marinade_finance.so"
 address = "SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy"
 program = "packages/tests/fixtures/spl/spl_stake_pool.so"
 
-# Sunrise accounts.
+# Core accounts.
 [[test.validator.account]] #empty-state (no beams added)
 address = "89wj5p56PTFiKQcHLTkx78jM3Cv4jVRCXgMKJvoFvvp"
 filename = "packages/tests/fixtures/core/empty-state.json"
 [[test.validator.account]] #gsol mint
 address = "HGFi2ubkrCKdxqeAHXDTRAMzyquKqWj3xdT9kz2ux7gi"
 filename = "packages/tests/fixtures/core/gsol-mint.json"
+
+# Beam Accounts
+[[test.validator.account]] # marinade lp beam
+address = "9zTJuFyLdctoqfbunxTkSPoSinzokDENvxBNLuNKfNci"
+filename = "packages/tests/fixtures/marinade/lp_beam_state.json"
+[[test.validator.account]] # marinade lp beam lp token vault
+address = "FrJMe5huu7cYr4zPDpVrC9cguf93U8dRFhJ3ozaFyXH8"
+filename = "packages/tests/fixtures/marinade/lp_vault.json"
+[[test.validator.account]] # marinade sp beam
+address = "C6MrjZbzkj5b6Ccq8kcxsrfEBsSSizEo3vmMyoxmu1K6"
+filename = "packages/tests/fixtures/marinade/sp_beam_state.json"
+[[test.validator.account]] # marinade sp beam msol vault
+address = "BQ5ojRgqnzbovEmMbwZPQv9sbrNWJ1yQGx2VnLXyjyzS"
+filename = "packages/tests/fixtures/marinade/msol_vault.json"
+[[test.validator.account]] # spl sp beam
+address = "EtT3RiG9zuUpSGSmGYfzCwPQ29VHgbNRxZCea4Rit9GZ"
+filename = "packages/tests/fixtures/spl/beam_state.json"
+[[test.validator.account]] # spl sp beam msol vault
+address = "AW8Wteu3x1puV8YwaWnAiDfurj7F7BnvEZsBXkg9DFN7"
+filename = "packages/tests/fixtures/spl/pool_token_vault.json"
 
 # Marinade accounts.
 [[test.validator.account]] #marinade-state

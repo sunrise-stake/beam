@@ -141,6 +141,8 @@ pub struct Initialize<'info> {
     /// CHECK: The liquidity pool token mint.
     pub liq_pool_mint: UncheckedAccount<'info>,
     #[account(mut)]
+
+    /// The token account of the liquidity pool tokens held by the beam.
     /// CHECK: Initialized as token account in handler.
     pub liq_pool_vault: UncheckedAccount<'info>,
     /// CHECK: PDA authority of the lp tokens.

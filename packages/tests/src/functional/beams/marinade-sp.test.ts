@@ -3,60 +3,73 @@
  * to generate yield.
  */
 import { MarinadeClient } from "@sunrisestake/beams-marinade-sp";
-import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import {
   createTokenAccount,
   expectStakerSolBalance,
   expectTokenBalance,
   fund,
+  logAtLevel,
+  registerSunriseState,
   sendAndConfirmTransaction,
   solBalance,
   tokenAccountBalance,
   waitForNextEpoch,
 } from "../../utils.js";
-import { sunriseStateKeypair } from "../setup.js";
+import { provider, staker, stakerIdentity } from "../setup.js";
 import { expect } from "chai";
-import { MSOL_MINT, SUNRISE_CORE_STATE } from "../consts.js";
+import { MSOL_MINT } from "../consts.js";
 import { SunriseClient } from "@sunrisestake/beams-core";
 
 describe("Marinade stake pool beam", () => {
+  let coreClient: SunriseClient;
   let beamClient: MarinadeClient;
-  const provider = AnchorProvider.env();
-
-  const staker = Keypair.generate();
-  const stakerIdentity = new AnchorProvider(
-    provider.connection,
-    new Wallet(staker),
-    {},
-  );
-
   let vaultMsolBalance: BN;
   let stakerGsolBalance: BN = new BN(0);
 
+  let sunriseStateAddress: PublicKey;
+
   let sunriseDelayedTicket: PublicKey;
-  let orderUnstakeLamports: number;
 
-  const depositAmount = 10;
-  const failedDepositAmount = 5;
-  const liquidWithdrawalAmount = 5;
-  const delayedWithdrawalAmount = 5;
+  const depositAmount = 10 * LAMPORTS_PER_SOL;
+  const failedDepositAmount = 5 * LAMPORTS_PER_SOL;
+  const liquidWithdrawalAmount = 5 * LAMPORTS_PER_SOL;
+  const delayedWithdrawalAmount = 5 * LAMPORTS_PER_SOL;
 
-  before("Fund the staker", () => fund(provider, staker.publicKey, 30));
+  before("Set up the sunrise state", async () => {
+    coreClient = await registerSunriseState();
+    sunriseStateAddress = coreClient.stateAddress;
+  });
+
+  before("Fund the staker", () => fund(provider, staker.publicKey, 100));
+
+  afterEach("Update balances", async () => {
+    stakerGsolBalance = await tokenAccountBalance(
+      stakerIdentity,
+      coreClient.gsolAssociatedTokenAccount(staker.publicKey),
+    ).catch(() => {
+      logAtLevel("info")("Balance not found");
+      return new BN(0);
+    });
+
+    vaultMsolBalance = await tokenAccountBalance(
+      provider,
+      beamClient.marinade.beamMsolVault,
+    ).catch(() => {
+      logAtLevel("info")("Balance not found");
+      return new BN(0);
+    });
+  });
 
   it("can initialize a state", async () => {
     // create an MSol token account for the beam.
-    await createTokenAccount(
-      provider,
-      sunriseStateKeypair.publicKey,
-      MSOL_MINT,
-    );
+    await createTokenAccount(provider, sunriseStateAddress, MSOL_MINT);
     const treasury = Keypair.generate();
     beamClient = await MarinadeClient.initialize(
       provider,
       provider.publicKey,
-      sunriseStateKeypair.publicKey,
+      sunriseStateAddress,
       treasury.publicKey,
     );
 
@@ -64,9 +77,7 @@ describe("Marinade stake pool beam", () => {
     expect(info.proxyState).to.equal(
       beamClient.marinade.state.marinadeStateAddress.toBase58(),
     );
-    expect(info.sunriseState).to.equal(
-      sunriseStateKeypair.publicKey.toBase58(),
-    );
+    expect(info.sunriseState).to.equal(sunriseStateAddress.toBase58());
     expect(info.vaultAuthorityBump).to.equal(
       beamClient.vaultAuthority[1].toString(),
     );
@@ -120,26 +131,28 @@ describe("Marinade stake pool beam", () => {
   });
 
   it("can deposit and mint gsol once the beam is registered", async () => {
+    const depositAmountBN = new BN(depositAmount);
+
     // register the beam on sunrise
-    const coreClient = await SunriseClient.get(provider, SUNRISE_CORE_STATE);
+    coreClient = await coreClient.refresh();
     await sendAndConfirmTransaction(
       provider,
       await coreClient.registerBeam(beamClient.stateAddress),
     );
 
     // try depositing again
-    beamClient = await MarinadeClient.get(
-      stakerIdentity,
-      beamClient.stateAddress,
-    );
+    beamClient = await beamClient.refresh();
+
     await sendAndConfirmTransaction(
       stakerIdentity,
-      await beamClient.deposit(new BN(10)),
+      await beamClient.deposit(depositAmountBN),
     );
 
-    const expectedGsol = stakerGsolBalance.addn(depositAmount);
-    const expectedMsol = vaultMsolBalance.addn(
-      Math.floor(depositAmount / beamClient.marinade.state.mSolPrice),
+    const expectedGsol = stakerGsolBalance.add(depositAmountBN);
+    const expectedMsol = vaultMsolBalance.add(
+      new BN(
+        "" + Math.floor(depositAmount / beamClient.marinade.state.mSolPrice),
+      ),
     );
     await expectTokenBalance(
       beamClient.provider,
@@ -150,6 +163,7 @@ describe("Marinade stake pool beam", () => {
       beamClient.provider,
       beamClient.marinade.beamMsolVault,
       expectedMsol,
+      5,
     );
     stakerGsolBalance = expectedGsol;
     vaultMsolBalance = expectedMsol;
@@ -172,15 +186,21 @@ describe("Marinade stake pool beam", () => {
   });
 
   it("can withdraw and burn gsol", async () => {
+    const liquidWithdrawalAmountBN = new BN(liquidWithdrawalAmount);
     await sendAndConfirmTransaction(
       stakerIdentity,
-      await beamClient.withdraw(new BN(liquidWithdrawalAmount)),
+      await beamClient.withdraw(liquidWithdrawalAmountBN),
       [],
     );
 
-    const expectedGsol = stakerGsolBalance.subn(liquidWithdrawalAmount);
-    const expectedMsol = vaultMsolBalance.subn(
-      Math.floor(liquidWithdrawalAmount / beamClient.marinade.state.mSolPrice),
+    const expectedGsol = stakerGsolBalance.sub(liquidWithdrawalAmountBN);
+    const expectedMsol = vaultMsolBalance.sub(
+      new BN(
+        "" +
+          Math.floor(
+            liquidWithdrawalAmount / beamClient.marinade.state.mSolPrice,
+          ),
+      ),
     );
     await expectTokenBalance(
       beamClient.provider,
@@ -191,12 +211,12 @@ describe("Marinade stake pool beam", () => {
       beamClient.provider,
       beamClient.marinade.beamMsolVault,
       expectedMsol,
+      5,
     );
-    stakerGsolBalance = expectedGsol;
-    vaultMsolBalance = expectedMsol;
   });
 
   it("can order a withdrawal and burn gsol", async () => {
+    const delayedWithdrawalAmountBN = new BN(delayedWithdrawalAmount);
     const {
       tx,
       sunriseTicket,
@@ -220,10 +240,16 @@ describe("Marinade stake pool beam", () => {
       beamClient.stateAddress.toBase58(),
     );
 
-    const expectedGsol = stakerGsolBalance.subn(delayedWithdrawalAmount);
-    const expectedMsol = vaultMsolBalance.subn(
-      Math.floor(delayedWithdrawalAmount / beamClient.marinade.state.mSolPrice),
+    const expectedGsol = stakerGsolBalance.sub(delayedWithdrawalAmountBN);
+    const expectedMsol = vaultMsolBalance.sub(
+      new BN(
+        "" +
+          Math.round(
+            delayedWithdrawalAmount / beamClient.marinade.state.mSolPrice,
+          ),
+      ),
     );
+
     await expectTokenBalance(
       beamClient.provider,
       beamClient.sunrise.gsolAssociatedTokenAccount(),
@@ -233,13 +259,14 @@ describe("Marinade stake pool beam", () => {
       beamClient.provider,
       beamClient.marinade.beamMsolVault,
       expectedMsol,
+      1,
     );
 
     sunriseDelayedTicket = sunriseTicket.publicKey;
-    orderUnstakeLamports = 5;
   });
 
   it("can redeem an unstake ticket after one epoch has passed", async () => {
+    const orderUnstakeLamportsBN = new BN(delayedWithdrawalAmount);
     const stakerPreSolBalance = await solBalance(beamClient.provider);
 
     // unfortunately with the test validator, it is impossible to move the epoch forward without just waiting.
@@ -258,7 +285,7 @@ describe("Marinade stake pool beam", () => {
 
     // the staker does not get the marinade ticket rent
     const expectedPostUnstakeBalance = stakerPreSolBalance
-      .addn(orderUnstakeLamports)
+      .add(orderUnstakeLamportsBN)
       .addn(sunriseLamports ?? 0)
       .subn(5000);
     await expectStakerSolBalance(

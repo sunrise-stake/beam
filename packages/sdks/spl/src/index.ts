@@ -56,8 +56,8 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
 
   /** Fetch an instance for an existing state account.*/
   public static async get(
-    stateAddress: PublicKey,
     provider: AnchorProvider,
+    stateAddress: PublicKey,
     programId = SPL_BEAM_PROGRAM_ID,
   ): Promise<SplClient> {
     const program = new Program<SplBeam.SplBeam>(
@@ -106,7 +106,11 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
       programId,
       provider,
     );
-    const stateAddress = Utils.deriveStateAddress(programId, sunriseState)[0];
+    const stateAddress = Utils.deriveStateAddress(
+      programId,
+      sunriseState,
+      stakePool,
+    )[0];
 
     const splClientParams = await Utils.getSplClientParams(
       provider,
@@ -143,7 +147,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
     await sendAndConfirmChecked(provider, register, [], {
       commitment: "confirmed",
     });
-    return SplClient.get(stateAddress, provider, programId);
+    return SplClient.get(provider, stateAddress, programId);
   }
 
   /**
@@ -172,8 +176,8 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
    */
   public refresh(): Promise<this> {
     return SplClient.get(
-      this.stateAddress,
       this.provider,
+      this.stateAddress,
       this.program.programId,
     ) as Promise<this>;
   }
@@ -426,13 +430,14 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
     );
   }
 
-  /** Utility method to derive the SPL-beam address from its sunrise state and program ID. */
+  /** Utility method to derive the SPL-beam address from the sunrise state, the stake pool and program ID. */
   public static deriveStateAddress = (
     sunriseState: PublicKey,
+    stakePool: PublicKey,
     programId?: PublicKey,
   ): [PublicKey, number] => {
     const PID = programId ?? SPL_BEAM_PROGRAM_ID;
-    return Utils.deriveStateAddress(PID, sunriseState);
+    return Utils.deriveStateAddress(PID, sunriseState, stakePool);
   };
 
   public async details() {

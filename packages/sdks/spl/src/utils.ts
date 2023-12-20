@@ -33,9 +33,10 @@ export class Utils {
   public static deriveStateAddress(
     pid: PublicKey,
     sunrise: PublicKey,
+    stakePool: PublicKey,
   ): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [Buffer.from(Seeds.STATE), sunrise.toBuffer()],
+      [Buffer.from(Seeds.STATE), sunrise.toBuffer(), stakePool.toBuffer()],
       pid,
     );
   }

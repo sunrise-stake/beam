@@ -3,7 +3,6 @@ import { Keypair, PublicKey } from "@solana/web3.js";
 import {
   createTokenAccount,
   initializeTestMint,
-  log,
   sendAndConfirmTransaction,
   transferMintAuthority,
 } from "../../utils.js";
@@ -68,9 +67,6 @@ describe("Sunrise core", () => {
       authority,
       client.gsolMintAuthority[0],
     );
-
-    log("state address", client.stateAddress.toBase58());
-    log("gsol mint", client.state.gsolMint.toBase58());
   });
 
   /**
@@ -99,7 +95,10 @@ describe("Sunrise core", () => {
    */
   it("can add beams to the state", async () => {
     mState = MarinadeClient.deriveStateAddress(client.stateAddress)[0];
-    splState = SplClient.deriveStateAddress(client.stateAddress)[0];
+    splState = SplClient.deriveStateAddress(
+      client.stateAddress,
+      PublicKey.default, // dummy stake pool address
+    )[0];
     beams = [mState, splState, tempBeam.publicKey];
 
     for (const beam of beams) {
@@ -113,6 +112,7 @@ describe("Sunrise core", () => {
       expect(beam.allocation).to.equal("0");
       expect(beam.partialGsolSupply).to.equal("0");
     }
+
     expect(account.beams[0].key).to.equal(mState.toBase58());
     expect(account.beams[1].key).to.equal(splState.toBase58());
     expect(account.beams[2].key).to.equal(tempBeam.publicKey.toBase58());

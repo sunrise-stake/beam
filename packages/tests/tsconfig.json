@@ -3,7 +3,7 @@
   "compilerOptions": {
     "lib": ["esnext", "dom"],
     "types": ["node","mocha", "chai"],
-    "noUncheckedIndexedAccess": false
+    "sourceMap": true
   }
 }
           

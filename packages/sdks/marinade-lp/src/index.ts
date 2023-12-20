@@ -319,6 +319,23 @@ export class MarinadeLpClient extends BeamInterface<
     return Utils.deriveStateAddress(PID, sunrise);
   };
 
+  private poolSolBalance = async (): Promise<number> => {
+    const lpSolLeg = await this.marinadeLp.marinade.solLeg();
+    const lpSolLegBalance = await this.provider.connection.getBalance(lpSolLeg);
+    const rentExemptReserveForTokenAccount = 2039280;
+    return lpSolLegBalance - rentExemptReserveForTokenAccount;
+  };
+
+  public proportionOfPool = async (lamports: BN): Promise<number> => {
+    const solBalance = await this.poolSolBalance();
+    return Number(lamports) / Number(solBalance);
+  };
+
+  public poolTokenSupply = async (): Promise<BN> => {
+    const lpMintInfo = await this.marinadeLp.marinade.lpMint.mintInfo();
+    return new BN("" + lpMintInfo.supply);
+  };
+
   /**
    * A convenience method for calculating the price of the stake-pool's token.
    * NOTE: This might not give the current price is refresh() isn't called first.
@@ -326,10 +343,7 @@ export class MarinadeLpClient extends BeamInterface<
   public poolTokenPrice = async () => {
     const lpMintInfo = await this.marinadeLp.marinade.lpMint.mintInfo();
     const lpSupply = lpMintInfo.supply;
-    const lpSolLeg = await this.marinadeLp.marinade.solLeg();
-    const lpSolLegBalance = await this.provider.connection.getBalance(lpSolLeg);
-    const rentExemptReserveForTokenAccount = 2039280;
-    const solBalance = lpSolLegBalance - rentExemptReserveForTokenAccount;
+    const solBalance = await this.poolSolBalance();
 
     const lpMsolLeg = this.marinadeLp.marinade.mSolLeg;
     const lpMsolLegBalance =

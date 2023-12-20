@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e             # Exit on error
 
-rm -r ../../mochawesome-report
+rm -r ../../mochawesome-report || true
 
 # Run tests
 find src/functional -name "*.test.ts" | while read test_file; do

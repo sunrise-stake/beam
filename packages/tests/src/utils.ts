@@ -17,9 +17,12 @@ import {
 import { type AnchorProvider, AnchorError } from "@coral-xyz/anchor";
 import chai from "chai";
 import BN from "bn.js";
+import Big from "big.js";
 
 import chaiAsPromised from "chai-as-promised";
 import { Idl } from "@coral-xyz/anchor";
+import { provider } from "./functional/setup.js";
+import { SunriseClient } from "@sunrisestake/beams-core";
 
 chai.use(chaiAsPromised);
 const { expect } = chai;
@@ -32,7 +35,7 @@ type LOG_LEVEL = (typeof LOG_LEVELS)[number];
 
 const logLevel: LOG_LEVEL = (process.env.LOG_LEVEL ?? "error") as LOG_LEVEL;
 
-const logAtLevel =
+export const logAtLevel =
   (level = logLevel) =>
   (...args: any[]) => {
     if (LOG_LEVELS.indexOf(level) <= LOG_LEVELS.indexOf(logLevel)) {
@@ -67,18 +70,8 @@ export const solBalance = async (
   return new BN(`${balance}`);
 };
 
-export const expectAssociatedTokenAccountBalanceA = async (
-  provider: AnchorProvider,
-  owner: PublicKey,
-  mint: PublicKey,
-  expectedAmount: number | BN,
-  tolerance = 0,
-) => {
-  expectAmount(
-    await tokenAccountBalance(provider, deriveATA(owner, mint)),
-    expectedAmount,
-    tolerance,
-  );
+export const bnToBD = (bn: BN): Big => {
+  return new Big(bn.toString());
 };
 
 export const expectTokenBalance = async (
@@ -111,8 +104,14 @@ export const expectAmount = (
   const minExpected = new BN(expectedAmount).subn(tolerance);
   const maxExpected = new BN(expectedAmount).addn(tolerance);
 
-  expect(actualAmountBN.gte(minExpected)).to.be.true;
-  expect(actualAmountBN.lte(maxExpected)).to.be.true;
+  expect(
+    actualAmountBN.gte(minExpected),
+    `Actual amount ${actualAmountBN.toString()} was less than ${minExpected}`,
+  ).to.be.true;
+  expect(
+    actualAmountBN.lte(maxExpected),
+    `Actual amount ${actualAmountBN.toString()} was more than ${maxExpected}`,
+  ).to.be.true;
 };
 
 export const waitForNextEpoch = async (provider: AnchorProvider) => {
@@ -237,6 +236,48 @@ export const expectAnchorError =
     expect(normalisedError!.program.equals(programId)).is.true;
   };
 
+export const confirmTx = async (txHash: string, provider: AnchorProvider) => {
+  const blockhash = await provider.connection.getLatestBlockhash("confirmed");
+  await provider.connection.confirmTransaction(
+    {
+      ...blockhash,
+      signature: txHash,
+    },
+    "confirmed",
+  );
+  const tx = await provider.connection.getTransaction(txHash, {
+    commitment: "confirmed",
+    maxSupportedTransactionVersion: 1,
+  });
+  if (!tx || !tx.meta) throw new Error("Transaction not found");
+
+  return tx;
+};
+
+export const registerSunriseState = async () => {
+  const yieldAccount = Keypair.generate();
+  const { mint, authority } = await initializeTestMint(provider);
+  const newSunriseStateKeypair = Keypair.generate();
+
+  const client = await SunriseClient.register(
+    provider,
+    newSunriseStateKeypair,
+    provider.publicKey,
+    yieldAccount.publicKey,
+    15,
+    mint,
+  );
+
+  await transferMintAuthority(
+    provider,
+    mint,
+    authority,
+    client.gsolMintAuthority[0],
+  );
+
+  return client;
+};
+
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Chai {
@@ -254,8 +295,8 @@ chai.Assertion.addMethod(
   function (idl: Idl, code: number, programId: PublicKey) {
     const name = idl.errors?.find((e) => e.code === code)?.name;
     if (!name) throw new Error(`No error with code ${code} found in IDL`);
-    return expect(this._obj)
-      .to.be.rejectedWith(/* some base class or message */)
-      .then(expectAnchorError(code, name, programId));
+    return expect(this._obj).to.be.rejected.then(
+      expectAnchorError(code, name, programId),
+    );
   },
 );
