@@ -1,5 +1,7 @@
 #!/bin/bash
-set -e             # Exit on error
+
+# Exit on error
+set -e
 
 rm -r ../../mochawesome-report || true
 
@@ -11,5 +13,5 @@ find src/functional -name "*.test.ts" | while read test_file; do
 done
 
 yarn -s mochawesome-merge ../../mochawesome-report/mocha-reports/*.json > ../../mochawesome-report/mergedReport.json
-#yarn marge ../../mochawesome-report/mergedReport.json -o ../../mochawesome-report
-#yarn tsx src/analyseReport.ts
+yarn marge ../../mochawesome-report/mergedReport.json -o ../../mochawesome-report
+yarn tsx src/analyseReport.ts

@@ -13,6 +13,7 @@ pub struct SunriseContext {
     pub update_authority: Keypair,
     pub state: Pubkey,
     pub gsol_mint_authority: Option<(Pubkey, u8)>,
+    pub epoch_report: Option<(Pubkey, u8)>,
 }
 
 impl SunriseContext {
@@ -25,10 +26,12 @@ impl SunriseContext {
         initial_capacity: u8,
     ) -> Result<Self> {
         let gsol_mint_authority = Self::find_gsol_mint_authority_pda(&state.pubkey());
+        let epoch_report = Self::find_epoch_report_pda(&state.pubkey());
 
         let (_, instruction) = register_state(
             &ctx.payer.pubkey(),
             &gsol_mint.pubkey(),
+            &epoch_report.0,
             update_authority,
             &state.pubkey(),
             yield_account,
@@ -40,6 +43,7 @@ impl SunriseContext {
             ctx: RefCell::new(ctx),
             state: state.pubkey(),
             gsol_mint_authority: Some(gsol_mint_authority),
+            epoch_report: Some(epoch_report),
             update_authority: Keypair::new(),
         };
 
@@ -173,7 +177,19 @@ impl SunriseContext {
     }
 
     pub fn find_gsol_mint_authority_pda(state: &Pubkey) -> (Pubkey, u8) {
-        let seeds = &[state.as_ref(), sunrise_core::GSOL_AUTHORITY];
+        let seeds = &[state.as_ref(), sunrise_core::seeds::GSOL_AUTHORITY];
+        Pubkey::find_program_address(seeds, &sunrise_core::id())
+    }
+
+    #[allow(dead_code)]
+    fn epoch_report(&self) -> Pubkey {
+        self.epoch_report
+            .map(|a| a.0)
+            .unwrap_or(Self::find_epoch_report_pda(&self.state).0)
+    }
+
+    pub fn find_epoch_report_pda(state: &Pubkey) -> (Pubkey, u8) {
+        let seeds = &[state.as_ref(), sunrise_core::seeds::EPOCH_REPORT];
         Pubkey::find_program_address(seeds, &sunrise_core::id())
     }
 }

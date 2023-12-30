@@ -85,7 +85,7 @@ filename = "packages/tests/fixtures/marinade/lp_mint.json"
 address = "Du3Ysj1wKbxPKkuPPnvzQLQh8oMSVifs3jGZjJWXFmHN"
 filename = "packages/tests/fixtures/marinade/reserve_pda.json"
 
-# Spl accounts(blaze devnet accounts)
+# Spl accounts (blaze devnet accounts)
 [[test.validator.account]] #stake-pool
 address = "azFVdHtAJN8BX3sbGAYkXvtdjdrT5U6rj9rovvUFos9"
 filename = "packages/tests/fixtures/spl/pool.json"

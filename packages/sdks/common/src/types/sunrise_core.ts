@@ -19,6 +19,11 @@ export type SunriseCore = {
           "isSigner": true
         },
         {
+          "name": "epochReport",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "gsolMint",
           "isMut": false,
           "isSigner": false
@@ -335,6 +340,82 @@ export type SunriseCore = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "updateEpochReport",
+      "docs": [
+        "Updates the Epoch Report Account, which stores the amount of yield extracted or extractable over time"
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "epochReport",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "gsolMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "clock",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "extractYield",
+      "docs": [
+        "CPI request from a beam program to extract yield from Sunrise"
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "beam",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The beam contributing the extracted yield.",
+            "This is verified in the handler to be a beam attached to this state."
+          ]
+        },
+        {
+          "name": "epochReport",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The epoch report account. This is updated with the latest extracted yield value.",
+            "It must be up to date with the current epoch. If not, run updateEpochReport before it."
+          ]
+        },
+        {
+          "name": "clock",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructionsSysvar",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amountInLamports",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -376,6 +457,13 @@ export type SunriseCore = {
             "type": "u8"
           },
           {
+            "name": "epochReportBump",
+            "docs": [
+              "Bump of the eppch report PDA."
+            ],
+            "type": "u8"
+          },
+          {
             "name": "yieldAccount",
             "docs": [
               "The Sunrise yield account."
@@ -395,6 +483,34 @@ export type SunriseCore = {
           }
         ]
       }
+    },
+    {
+      "name": "epochReport",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch",
+            "type": "u64"
+          },
+          {
+            "name": "extractableYield",
+            "type": "u64"
+          },
+          {
+            "name": "extractedYield",
+            "type": "u64"
+          },
+          {
+            "name": "currentGsolSupply",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
     }
   ],
   "types": [
@@ -409,7 +525,7 @@ export type SunriseCore = {
           {
             "name": "key",
             "docs": [
-              "Expected signer for mint and burn requests."
+              "The beam's signer for mint and burn requests."
             ],
             "type": "publicKey"
           },
@@ -560,6 +676,36 @@ export type SunriseCore = {
       "code": 6008,
       "name": "NonZeroAllocation",
       "msg": "Can't remove a beam with a non-zero allocation"
+    },
+    {
+      "code": 6009,
+      "name": "IncorrectBeamEpochReportCount",
+      "msg": "Incorrect amount of beam epoch reports"
+    },
+    {
+      "code": 6010,
+      "name": "IncorrectBeamEpochReportEpoch",
+      "msg": "Incorrect epoch for beam epoch reports"
+    },
+    {
+      "code": 6011,
+      "name": "IncorrectBeamEpochReport",
+      "msg": "Incorrect beam epoch report"
+    },
+    {
+      "code": 6012,
+      "name": "EpochReportAlreadyUpdated",
+      "msg": "Epoch report already updated"
+    },
+    {
+      "code": 6013,
+      "name": "EpochReportNotUpToDate",
+      "msg": "Epoch report not up to date"
+    },
+    {
+      "code": 6014,
+      "name": "Overflow",
+      "msg": "Overflow"
     }
   ]
 };
@@ -585,6 +731,11 @@ export const IDL: SunriseCore = {
           "isSigner": true
         },
         {
+          "name": "epochReport",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "gsolMint",
           "isMut": false,
           "isSigner": false
@@ -901,6 +1052,82 @@ export const IDL: SunriseCore = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "updateEpochReport",
+      "docs": [
+        "Updates the Epoch Report Account, which stores the amount of yield extracted or extractable over time"
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "epochReport",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "gsolMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "clock",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "extractYield",
+      "docs": [
+        "CPI request from a beam program to extract yield from Sunrise"
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "beam",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The beam contributing the extracted yield.",
+            "This is verified in the handler to be a beam attached to this state."
+          ]
+        },
+        {
+          "name": "epochReport",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The epoch report account. This is updated with the latest extracted yield value.",
+            "It must be up to date with the current epoch. If not, run updateEpochReport before it."
+          ]
+        },
+        {
+          "name": "clock",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructionsSysvar",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amountInLamports",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -942,6 +1169,13 @@ export const IDL: SunriseCore = {
             "type": "u8"
           },
           {
+            "name": "epochReportBump",
+            "docs": [
+              "Bump of the eppch report PDA."
+            ],
+            "type": "u8"
+          },
+          {
             "name": "yieldAccount",
             "docs": [
               "The Sunrise yield account."
@@ -961,6 +1195,34 @@ export const IDL: SunriseCore = {
           }
         ]
       }
+    },
+    {
+      "name": "epochReport",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch",
+            "type": "u64"
+          },
+          {
+            "name": "extractableYield",
+            "type": "u64"
+          },
+          {
+            "name": "extractedYield",
+            "type": "u64"
+          },
+          {
+            "name": "currentGsolSupply",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
     }
   ],
   "types": [
@@ -975,7 +1237,7 @@ export const IDL: SunriseCore = {
           {
             "name": "key",
             "docs": [
-              "Expected signer for mint and burn requests."
+              "The beam's signer for mint and burn requests."
             ],
             "type": "publicKey"
           },
@@ -1126,6 +1388,36 @@ export const IDL: SunriseCore = {
       "code": 6008,
       "name": "NonZeroAllocation",
       "msg": "Can't remove a beam with a non-zero allocation"
+    },
+    {
+      "code": 6009,
+      "name": "IncorrectBeamEpochReportCount",
+      "msg": "Incorrect amount of beam epoch reports"
+    },
+    {
+      "code": 6010,
+      "name": "IncorrectBeamEpochReportEpoch",
+      "msg": "Incorrect epoch for beam epoch reports"
+    },
+    {
+      "code": 6011,
+      "name": "IncorrectBeamEpochReport",
+      "msg": "Incorrect beam epoch report"
+    },
+    {
+      "code": 6012,
+      "name": "EpochReportAlreadyUpdated",
+      "msg": "Epoch report already updated"
+    },
+    {
+      "code": 6013,
+      "name": "EpochReportNotUpToDate",
+      "msg": "Epoch report not up to date"
+    },
+    {
+      "code": 6014,
+      "name": "Overflow",
+      "msg": "Overflow"
     }
   ]
 };

@@ -13,7 +13,11 @@ import {
 } from "@solana/spl-token";
 import { sendAndConfirmChecked, SunriseCore } from "@sunrisestake/beams-common";
 import { StateAccount } from "./state.js";
-import { GSOL_AUTHORITY_SEED, SUNRISE_PROGRAM_ID } from "./constants.js";
+import {
+  EPOCH_REPORT_SEED,
+  GSOL_AUTHORITY_SEED,
+  SUNRISE_PROGRAM_ID,
+} from "./constants.js";
 
 /** An instance of the Sunrise program that checks the validity of other
  * beams and regulates the minting and burning of GSOL.
@@ -73,11 +77,16 @@ export class SunriseClient {
       programId,
       provider,
     );
+    const epochReport = SunriseClient.deriveEpochReport(
+      state.publicKey,
+      programId,
+    )[0];
     const register = await program.methods
       .registerState({ updateAuthority, yieldAccount, initialCapacity })
       .accounts({
         payer: provider.publicKey,
         state: state.publicKey,
+        epochReport,
         gsolMint,
         gsolMintAuthority: SunriseClient.deriveGsolMintAuthority(
           state.publicKey,
@@ -228,9 +237,27 @@ export class SunriseClient {
     );
   }
 
+  private static deriveEpochReport(
+    stateAddress: PublicKey,
+    programId = SUNRISE_PROGRAM_ID,
+  ): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [stateAddress.toBuffer(), Buffer.from(EPOCH_REPORT_SEED)],
+      programId,
+    );
+  }
+
   /** Get the address of the gsol mint authority. */
   public get gsolMintAuthority(): [PublicKey, number] {
     return SunriseClient.deriveGsolMintAuthority(
+      this.stateAddress,
+      this.program.programId,
+    );
+  }
+
+  /** Gets the address of the epoch report account */
+  public get epochReport(): [PublicKey, number] {
+    return SunriseClient.deriveEpochReport(
       this.stateAddress,
       this.program.programId,
     );

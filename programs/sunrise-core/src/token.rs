@@ -1,4 +1,5 @@
-use crate::{state::State, GSOL_AUTHORITY};
+use crate::seeds::GSOL_AUTHORITY;
+use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 

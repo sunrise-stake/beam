@@ -1,6 +1,7 @@
 #![allow(clippy::result_large_err)]
 
 mod instructions;
+pub mod seeds;
 mod state;
 mod system;
 mod token;
@@ -10,9 +11,8 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::sysvar;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use instructions::*;
-pub use state::{AllocationUpdate, RegisterStateInput, State, UpdateStateInput};
-
-pub const GSOL_AUTHORITY: &[u8] = b"gsol_mint_authority";
+use seeds::*;
+pub use state::{AllocationUpdate, EpochReport, RegisterStateInput, State, UpdateStateInput};
 
 declare_id!("suncPB4RR39bMwnRhCym6ZLKqMfnFG83vjzVVuXNhCq");
 
@@ -82,6 +82,18 @@ pub mod sunrise_core {
     pub fn export_mint_authority(ctx: Context<ExportMintAuthority>) -> Result<()> {
         export_mint_authority::handler(ctx)
     }
+
+    /// Updates the Epoch Report Account, which stores the amount of yield extracted or extractable over time
+    pub fn update_epoch_report<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, UpdateEpochReport>,
+    ) -> Result<()> {
+        update_epoch_report::handler(ctx)
+    }
+
+    /// CPI request from a beam program to extract yield from Sunrise
+    pub fn extract_yield(ctx: Context<ExtractYield>, amount_in_lamports: u64) -> Result<()> {
+        extract_yield::handler(ctx, amount_in_lamports)
+    }
 }
 
 #[derive(Accounts)]
@@ -96,6 +108,18 @@ pub struct RegisterState<'info> {
         space = State::size(input.initial_capacity as usize),
     )]
     pub state: Account<'info, State>,
+
+    #[account(
+        init,
+        payer = payer,
+        space = EpochReport::SIZE,
+        seeds = [
+            state.key().as_ref(),
+            EPOCH_REPORT
+        ],
+        bump
+    )]
+    pub epoch_report: Account<'info, EpochReport>,
 
     pub gsol_mint: Account<'info, Mint>,
 
@@ -179,6 +203,7 @@ pub struct BurnGsol<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(amount_in_lamports: u64)]
 pub struct MintGsol<'info> {
     #[account(
         mut,
@@ -262,6 +287,56 @@ pub struct ResizeAllocations<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct UpdateEpochReport<'info> {
+    #[account(
+        has_one = gsol_mint,
+    )]
+    pub state: Box<Account<'info, State>>,
+
+    #[account(
+        mut,
+        seeds = [
+            state.key().as_ref(),
+            EPOCH_REPORT
+        ],
+        bump = state.epoch_report_bump
+    )]
+    pub epoch_report: Account<'info, EpochReport>,
+
+    pub gsol_mint: Box<Account<'info, Mint>>,
+
+    pub clock: Sysvar<'info, Clock>,
+}
+
+#[derive(Accounts)]
+#[instruction(amount_in_lamports: u64)]
+pub struct ExtractYield<'info> {
+    pub state: Box<Account<'info, State>>,
+
+    /// The beam contributing the extracted yield.
+    /// This is verified in the handler to be a beam attached to this state.
+    pub beam: Signer<'info>,
+
+    /// The epoch report account. This is updated with the latest extracted yield value.
+    /// It must be up to date with the current epoch. If not, run updateEpochReport before it.
+    #[account(
+    mut,
+    seeds = [
+        state.key().as_ref(),
+        EPOCH_REPORT
+    ],
+    bump = state.epoch_report_bump
+    )]
+    pub epoch_report: Account<'info, EpochReport>,
+
+    pub clock: Sysvar<'info, Clock>,
+
+    /// CHECK: Verified Instructions Sysvar.
+    #[account(address = sysvar::instructions::ID)]
+    pub instructions_sysvar: UncheckedAccount<'info>,
+}
+
 #[error_code]
 pub enum BeamError {
     /// Thrown if an instruction parameter could cause invalid behaviour.
@@ -299,4 +374,28 @@ pub enum BeamError {
     /// Thrown on an attempt to remove a beam with a non-zero allocation.
     #[msg("Can't remove a beam with a non-zero allocation")]
     NonZeroAllocation,
+
+    /// Thrown if the epoch report is updated with an incorrect amount of beam epoch reports
+    #[msg("Incorrect amount of beam epoch reports")]
+    IncorrectBeamEpochReportCount,
+
+    /// Thrown if the epoch report is updated with beam epoch reports from the wrong epoch
+    #[msg("Incorrect epoch for beam epoch reports")]
+    IncorrectBeamEpochReportEpoch,
+
+    /// Thrown if the epoch report is updated by an incorrect beam epoch report
+    #[msg("Incorrect beam epoch report")]
+    IncorrectBeamEpochReport,
+
+    /// Thrown if the epoch report is already updated for this epoch
+    #[msg("Epoch report already updated")]
+    EpochReportAlreadyUpdated,
+
+    /// Thrown when attempting to extract yield but the epoch report is not up to date
+    #[msg("Epoch report not up to date")]
+    EpochReportNotUpToDate,
+
+    /// Overflow error
+    #[msg("Overflow")]
+    Overflow,
 }

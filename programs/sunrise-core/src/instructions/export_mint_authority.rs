@@ -2,7 +2,8 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::spl_token::instruction::AuthorityType;
 use anchor_spl::token::{self, SetAuthority};
 
-use crate::{ExportMintAuthority, GSOL_AUTHORITY};
+use crate::seeds::GSOL_AUTHORITY;
+use crate::ExportMintAuthority;
 
 pub fn handler(ctx: Context<ExportMintAuthority>) -> Result<()> {
     let state = &ctx.accounts.state;

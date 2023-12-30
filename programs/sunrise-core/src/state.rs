@@ -18,6 +18,9 @@ pub struct State {
     /// Bump of the gSol mint authority PDA.
     pub gsol_mint_authority_bump: u8,
 
+    /// Bump of the eppch report PDA.
+    pub epoch_report_bump: u8,
+
     /// The Sunrise yield account.
     pub yield_account: Pubkey,
 
@@ -28,7 +31,7 @@ pub struct State {
 /// Holds information about a registed beam.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct BeamDetails {
-    /// Expected signer for mint and burn requests.
+    /// The beam's signer for mint and burn requests.
     pub key: Pubkey,
 
     /// This beam's allocation expressed as a percentage.
@@ -66,6 +69,7 @@ impl State {
         32 + // gsol_mint
         8 +  // pre_supply
         1 +  // gsol_mint_authority_bump
+        1 +  // epoch_report_bump
         32 + // yield_account
         4; // vec size
 
@@ -86,6 +90,7 @@ impl State {
         gsol_mint_auth_bump: u8,
         gsol_mint: &Pubkey,
         gsol_mint_supply: u64,
+        epoch_report_bump: u8,
     ) {
         self.update_authority = input.update_authority;
         self.yield_account = input.yield_account;
@@ -95,6 +100,10 @@ impl State {
         // accuracy is maintained in tracking allocations.
         self.pre_supply = gsol_mint_supply;
         self.gsol_mint_authority_bump = gsol_mint_auth_bump;
+
+        // The epoch report bump is used to derive the PDA of this state's epoch report account.
+        // Storing it here reduces the cost of subsequent update operations.
+        self.epoch_report_bump = epoch_report_bump;
 
         // We fill up the vec because deserialization of an empty vec would result
         // in the active capacity being lost. i.e a vector with capacity 10 but length
@@ -214,6 +223,23 @@ pub struct AllocationUpdate {
     pub new_allocation: u8,
 }
 
+#[account]
+pub struct EpochReport {
+    pub epoch: u64,
+    pub extractable_yield: u64,
+    pub extracted_yield: u64,
+    pub current_gsol_supply: u64,
+    pub bump: u8,
+}
+impl EpochReport {
+    pub const SIZE: usize = 8 + // discriminator
+        8 + // epoch
+        8 +  // extractable_yield
+        8 +  // extracted_yield
+        8 +  // current_gsol_supply
+        1; // bump
+}
+
 #[cfg(test)]
 mod internal_tests {
     use super::*;
@@ -224,12 +250,14 @@ mod internal_tests {
         let mut input = RegisterStateInput::default();
         input.initial_capacity = 10;
 
-        state.register(input, 0, &Pubkey::default(), 1000);
+        state.register(input, 0, &Pubkey::default(), 1000, 0);
         assert_eq!(state.allocations, vec![BeamDetails::default(); 10]);
     }
     #[test]
     fn test_contains_beam() {
         let mut state = State::default();
+
+        let beam_program_id = Pubkey::new_unique();
 
         let key1 = Pubkey::new_unique();
         let key2 = Pubkey::new_unique();
@@ -244,6 +272,9 @@ mod internal_tests {
     #[test]
     fn test_beam_count() {
         let mut state = State::default();
+
+        let beam_program_id = Pubkey::new_unique();
+
         let key1 = Pubkey::new_unique();
         let key2 = Pubkey::new_unique();
 
@@ -254,7 +285,7 @@ mod internal_tests {
             BeamDetails::default(),
         ];
 
-        assert!(state.beam_count() == 2);
+        assert_eq!(state.beam_count(), 2);
     }
     #[test]
     fn test_add_beam() {
@@ -262,7 +293,7 @@ mod internal_tests {
         let mut input = RegisterStateInput::default();
 
         input.initial_capacity = 2;
-        state.register(input, 0, &Pubkey::new_unique(), 1000);
+        state.register(input, 0, &Pubkey::new_unique(), 1000, 0);
 
         let beam_key = Pubkey::new_unique();
         let new_beam = BeamDetails::new(beam_key, 10);
@@ -299,6 +330,8 @@ mod internal_tests {
     #[test]
     fn test_remove_beam() {
         let mut state = State::default();
+        let beam_program_id = Pubkey::new_unique();
+
         let keys = vec![
             Pubkey::new_unique(),
             Pubkey::new_unique(),
@@ -336,6 +369,7 @@ mod internal_tests {
     #[test]
     fn test_get_beam_details() {
         let mut state = State::default();
+        let beam_program_id = Pubkey::new_unique();
         let key = Pubkey::new_unique();
 
         state.allocations = vec![
