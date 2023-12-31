@@ -471,6 +471,18 @@ export type SunriseCore = {
             "type": "publicKey"
           },
           {
+            "name": "reservedSpace",
+            "docs": [
+              "Reserved space for adding future fields."
+            ],
+            "type": {
+              "array": [
+                "u32",
+                32
+              ]
+            }
+          },
+          {
             "name": "allocations",
             "docs": [
               "Holds [BeamDetails] for all supported beams."
@@ -549,6 +561,18 @@ export type SunriseCore = {
               "A beam in drain accepts withdrawals but not deposits."
             ],
             "type": "bool"
+          },
+          {
+            "name": "reservedSpace",
+            "docs": [
+              "Reserved space for adding future fields."
+            ],
+            "type": {
+              "array": [
+                "u32",
+                32
+              ]
+            }
           }
         ]
       }
@@ -1183,6 +1207,18 @@ export const IDL: SunriseCore = {
             "type": "publicKey"
           },
           {
+            "name": "reservedSpace",
+            "docs": [
+              "Reserved space for adding future fields."
+            ],
+            "type": {
+              "array": [
+                "u32",
+                32
+              ]
+            }
+          },
+          {
             "name": "allocations",
             "docs": [
               "Holds [BeamDetails] for all supported beams."
@@ -1261,6 +1297,18 @@ export const IDL: SunriseCore = {
               "A beam in drain accepts withdrawals but not deposits."
             ],
             "type": "bool"
+          },
+          {
+            "name": "reservedSpace",
+            "docs": [
+              "Reserved space for adding future fields."
+            ],
+            "type": {
+              "array": [
+                "u32",
+                32
+              ]
+            }
           }
         ]
       }

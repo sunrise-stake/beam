@@ -12,7 +12,7 @@ import BN from "bn.js";
 import { provider } from "../setup.js";
 import { expect } from "chai";
 
-const BEAM_DETAILS_LEN: number = 42;
+const BEAM_DETAILS_LEN: number = 170;
 
 describe("Sunrise core", () => {
   let gsolMint: PublicKey;

@@ -24,6 +24,9 @@ pub struct State {
     /// The Sunrise yield account.
     pub yield_account: Pubkey,
 
+    /// Reserved space for adding future fields.
+    pub reserved_space: [u32; 32], // 128 bytes - used u32;32 over u8;128 to take advantage of rust's built-in default trait implementation for 32-sized arrays
+
     /// Holds [BeamDetails] for all supported beams.
     pub allocations: Vec<BeamDetails>,
 }
@@ -42,6 +45,9 @@ pub struct BeamDetails {
 
     /// A beam in drain accepts withdrawals but not deposits.
     pub draining_mode: bool,
+
+    /// Reserved space for adding future fields.
+    pub reserved_space: [u32; 32], // 128 bytes - used u32;32 over u8;128 to take advantage of rust's built-in default trait implementation for 32-sized arrays
 }
 
 impl BeamDetails {
@@ -49,7 +55,8 @@ impl BeamDetails {
     pub const SIZE: usize = 32 + // key
         1 +  // allocation
         8 +  // minted
-        1; // draining_mode
+        1 + // draining_mode
+        128; // reserved_space
 
     /// Create a new instance of Self.
     pub fn new(key: Pubkey, allocation: u8) -> Self {
@@ -58,6 +65,7 @@ impl BeamDetails {
             allocation,
             partial_gsol_supply: 0,
             draining_mode: false, // initially set draining_mode to false.
+            reserved_space: Default::default(),
         }
     }
 }
@@ -71,6 +79,7 @@ impl State {
         1 +  // gsol_mint_authority_bump
         1 +  // epoch_report_bump
         32 + // yield_account
+        128 + // reserved_space
         4; // vec size
 
     /// Calculate the borsh-serialized size of a state with `beam_count` number of beams.
