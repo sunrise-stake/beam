@@ -39,7 +39,7 @@ program = "packages/tests/fixtures/spl/spl_stake_pool.so"
 address = "89wj5p56PTFiKQcHLTkx78jM3Cv4jVRCXgMKJvoFvvp"
 filename = "packages/tests/fixtures/core/empty-state.json"
 [[test.validator.account]] #gsol mint
-address = "HGFi2ubkrCKdxqeAHXDTRAMzyquKqWj3xdT9kz2ux7gi"
+address = "EqhYZpTHLvfKgn5oBz1jxLVB3kQH33W8eDLbBNCJqfzS"
 filename = "packages/tests/fixtures/core/gsol-mint.json"
 
 # Beam Accounts
