@@ -6,7 +6,7 @@
   "scripts": {
     "build": "echo NOOP",
     "lint": "tsc --noEmit && eslint --ext .ts,.tsx src",
-    "test": "./run-all.sh",
+    "test": "tsc --noEmit && ./run-all.sh",
     "test-one": "yarn anchor test --skip-build"
   },
   "dependencies": {

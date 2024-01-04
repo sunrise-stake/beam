@@ -21,8 +21,8 @@ export type SplClientParams = {
  * All the constant seeds used for the PDAs of the on-chain program.
  */
 const enum Seeds {
-  STATE = "sunrise-spl",
-  VAULT_AUTHORITY = "vault-authority",
+  STATE = "sunrise_spl",
+  VAULT_AUTHORITY = "vault_authority",
 }
 
 /**
@@ -58,7 +58,6 @@ export class Utils {
     stateAddress: PublicKey,
     stakePoolAddress: PublicKey,
   ): Promise<SplClientParams> => {
-    // const marinadeState = await this.loadMarinadeState(provider);
     const vaultAuthority = Utils.deriveAuthorityAddress(
       beamProgramId,
       stateAddress,

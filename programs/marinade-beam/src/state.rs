@@ -15,9 +15,6 @@ pub struct State {
     /// that holds pool tokens (msol in this case).
     pub vault_authority_bump: u8,
 
-    /// This state's SOL vault.
-    pub treasury: Pubkey,
-
     /// The amount of the current gsol supply this beam is responsible for.
     /// This field is also tracked in the matching beam-details struct in the
     /// sunrise program's state and is expected to match that value.
@@ -35,7 +32,6 @@ pub struct StateEntry {
     pub marinade_state: Pubkey,
     pub sunrise_state: Pubkey,
     pub vault_authority_bump: u8,
-    pub treasury: Pubkey,
 }
 
 impl From<StateEntry> for State {
@@ -45,7 +41,6 @@ impl From<StateEntry> for State {
             marinade_state: se.marinade_state,
             sunrise_state: se.sunrise_state,
             vault_authority_bump: se.vault_authority_bump,
-            treasury: se.treasury,
             partial_gsol_supply: 0,
         }
     }
@@ -57,6 +52,5 @@ impl State {
         32 + /*marinade_state*/
         32 + /*sunrise_state*/
         1  + /*vault_authority_bump*/
-        32 + /*treasury*/
         8; /*partial_gsol_supply*/
 }

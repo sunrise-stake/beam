@@ -38,12 +38,10 @@ describe("SPL stake pool beam", () => {
   before("Fund the staker", () => fund(provider, staker.publicKey, 100));
 
   it("can initialize a state", async () => {
-    const treasury = Keypair.generate();
     beamClient = await SplClient.initialize(
       provider,
       provider.publicKey,
       sunriseStateAddress,
-      treasury.publicKey,
       stakePool,
     );
 
@@ -64,12 +62,11 @@ describe("SPL stake pool beam", () => {
   });
 
   it("can update a state", async () => {
-    const newTreasury = Keypair.generate();
+    const newUpdateAuthority = Keypair.generate();
     const updateParams = {
-      updateAuthority: beamClient.state.updateAuthority,
+      updateAuthority: newUpdateAuthority.publicKey,
       sunriseState: beamClient.state.sunriseState,
       vaultAuthorityBump: beamClient.state.vaultAuthorityBump,
-      treasury: newTreasury.publicKey,
       stakePool: beamClient.spl.stakePoolAddress,
     };
     await sendAndConfirmTransaction(
@@ -79,8 +76,8 @@ describe("SPL stake pool beam", () => {
     );
 
     beamClient = await beamClient.refresh();
-    expect(beamClient.state.treasury.toBase58()).to.equal(
-      newTreasury.publicKey.toBase58(),
+    expect(beamClient.state.updateAuthority.toBase58()).to.equal(
+      newUpdateAuthority.publicKey.toBase58(),
     );
   });
 

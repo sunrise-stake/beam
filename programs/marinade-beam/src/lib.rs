@@ -259,7 +259,7 @@ pub mod marinade_beam {
         Ok(())
     }
 
-    pub fn extract_yield(ctx: Context<ExtractToTreasury>) -> Result<()> {
+    pub fn extract_yield(ctx: Context<ExtractYield>) -> Result<()> {
         let yield_lamports = utils::extractable_yield(
             &ctx.accounts.state,
             &ctx.accounts.marinade_state,
@@ -272,7 +272,7 @@ pub mod marinade_beam {
             utils::calc_msol_from_lamports(&ctx.accounts.marinade_state, yield_lamports)?;
 
         // TODO: Change to use delayed unstake so as not to incur fees.
-        msg!("Withdrawing {} msol to treasury", yield_msol);
+        msg!("Withdrawing {} msol to yield account", yield_msol);
         // TODO: Legacy code uses liquid-unstake but leaves the note above.
         // Move to delayed-unstakes here?
         Ok(())
@@ -653,9 +653,16 @@ pub struct RedeemTicket<'info> {
 }
 
 #[derive(Accounts, Clone)]
-pub struct ExtractToTreasury<'info> {
-    #[account(has_one = marinade_state)]
+pub struct ExtractYield<'info> {
+    #[account(
+    has_one = marinade_state,
+    has_one = sunrise_state
+    )]
     pub state: Box<Account<'info, State>>,
+    #[account(
+    has_one = yield_account
+    )]
+    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
     #[account(mut)]
     pub marinade_state: Box<Account<'info, MarinadeState>>,
 
@@ -681,9 +688,9 @@ pub struct ExtractToTreasury<'info> {
     )]
     pub vault_authority: UncheckedAccount<'info>,
 
-    #[account(mut,constraint = treasury.key() == state.treasury)]
-    /// CHECK: Matches the treasury key stored in the state.
-    pub treasury: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: Matches the yield account key stored in the state.
+    pub yield_account: UncheckedAccount<'info>,
 
     #[account(
     mut,

@@ -693,6 +693,11 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
+          "name": "sunriseState",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "marinadeState",
           "isMut": true,
           "isSigner": false
@@ -718,7 +723,7 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "treasury",
+          "name": "yieldAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -770,13 +775,6 @@ export type MarinadeBeam = {
               "that holds pool tokens (msol in this case)."
             ],
             "type": "u8"
-          },
-          {
-            "name": "treasury",
-            "docs": [
-              "This state's SOL vault."
-            ],
-            "type": "publicKey"
           },
           {
             "name": "partialGsolSupply",
@@ -875,10 +873,6 @@ export type MarinadeBeam = {
           {
             "name": "vaultAuthorityBump",
             "type": "u8"
-          },
-          {
-            "name": "treasury",
-            "type": "publicKey"
           }
         ]
       }
@@ -1613,6 +1607,11 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
+          "name": "sunriseState",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "marinadeState",
           "isMut": true,
           "isSigner": false
@@ -1638,7 +1637,7 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "treasury",
+          "name": "yieldAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -1690,13 +1689,6 @@ export const IDL: MarinadeBeam = {
               "that holds pool tokens (msol in this case)."
             ],
             "type": "u8"
-          },
-          {
-            "name": "treasury",
-            "docs": [
-              "This state's SOL vault."
-            ],
-            "type": "publicKey"
           },
           {
             "name": "partialGsolSupply",
@@ -1795,10 +1787,6 @@ export const IDL: MarinadeBeam = {
           {
             "name": "vaultAuthorityBump",
             "type": "u8"
-          },
-          {
-            "name": "treasury",
-            "type": "publicKey"
           }
         ]
       }

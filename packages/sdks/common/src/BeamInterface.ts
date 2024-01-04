@@ -70,8 +70,6 @@ export interface BeamState {
   sunriseState: PublicKey;
   /** Bump of the PDA account that owns the vault where tokens are stored.*/
   vaultAuthorityBump: number;
-  /** SOL treasury account for the beam. */
-  treasury: PublicKey;
 }
 
 /** @type {BeamCapability}: supports sol deposits.*/

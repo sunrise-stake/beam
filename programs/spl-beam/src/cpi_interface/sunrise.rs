@@ -1,5 +1,5 @@
+use crate::seeds::*;
 use anchor_lang::prelude::*;
-// TODO: Use actual CPI crate.
 use sunrise_core as sunrise_core_cpi;
 use sunrise_core_cpi::cpi::{
     accounts::{BurnGsol, MintGsol},
@@ -16,7 +16,7 @@ pub fn mint_gsol<'a>(
 ) -> Result<()> {
     let accounts: MintGsol<'a> = accounts.into();
     let seeds = [
-        crate::constants::STATE,
+        STATE,
         sunrise_key.as_ref(),
         stake_pool.as_ref(),
         &[state_bump],
@@ -66,7 +66,7 @@ pub fn burn_gsol<'a>(
 ) -> Result<()> {
     let accounts: BurnGsol<'a> = accounts.into();
     let seeds = [
-        crate::constants::STATE,
+        STATE,
         sunrise_key.as_ref(),
         stake_pool.as_ref(),
         &[state_bump],

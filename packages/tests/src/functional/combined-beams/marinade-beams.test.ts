@@ -34,6 +34,9 @@ describe("Marinade beams", () => {
     // Get core client
     coreClient = await SunriseClient.get(provider, SUNRISE_CORE_STATE);
 
+    // Update capacity
+    await sendAsAdmin(await coreClient.resizeAllocations(15));
+
     // register marinade stake pool & marinade liquidity pool beams
     marinadeLPClient = await MarinadeLpClient.get(
       provider,

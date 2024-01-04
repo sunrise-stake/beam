@@ -68,7 +68,6 @@ export class MarinadeClient extends BeamInterface<
     provider: AnchorProvider,
     updateAuthority: PublicKey,
     sunriseState: PublicKey,
-    treasury: PublicKey,
     programId = MARINADE_BEAM_PROGRAM_ID,
   ): Promise<MarinadeClient> {
     const program = new Program<MarinadeBeam.MarinadeBeam>(
@@ -95,7 +94,6 @@ export class MarinadeClient extends BeamInterface<
         marinadeState,
         sunriseState,
         vaultAuthorityBump,
-        treasury,
       })
       .accounts({
         payer: provider.publicKey,
