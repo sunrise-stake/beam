@@ -25,7 +25,7 @@ anchor-spl = '0.29.0'
 solana-program-test = { git = "https://github.com/dankelleher/solana.git", branch = "program-test-hack" }
 #solana-program-test = "1.17.12"
 solana-sdk = "1.17.12"
-thiserror = "1.0.43"
+thiserror = "1.0.56"
 
 [[test]]
 name = "sunrise-beam-integration"

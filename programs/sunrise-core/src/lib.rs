@@ -12,7 +12,8 @@ use anchor_lang::solana_program::sysvar;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use instructions::*;
 use seeds::*;
-pub use state::{AllocationUpdate, EpochReport, RegisterStateInput, State, UpdateStateInput};
+
+pub use state::{AllocationUpdate, EpochReport, RegisterStateInput, State, UpdateStateInput, BeamDetails};
 
 declare_id!("suncPB4RR39bMwnRhCym6ZLKqMfnFG83vjzVVuXNhCq");
 

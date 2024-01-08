@@ -174,6 +174,8 @@ impl State {
 
     /// Get a shared reference to a [BeamDetails] given its key.
     pub fn get_beam_details(&self, key: &Pubkey) -> Option<&BeamDetails> {
+        msg!("get_beam_details");
+        msg!("{:?}", self.allocations);
         self.allocations.iter().find(|x| x.key == *key)
     }
 

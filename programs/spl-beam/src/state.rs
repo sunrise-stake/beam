@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[account]
+#[derive(Debug, Default)]
 pub struct State {
     /// The update authority of the state.
     pub update_authority: Pubkey,
