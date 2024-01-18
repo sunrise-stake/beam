@@ -10,7 +10,7 @@ let passedTests = 0;
 let failedTests = 0;
 
 report.results.forEach(
-  (suite: { suites: { tests: { state: string }[] }[] }) => {
+  (suite: { suites: { tests: { state: string | null }[] }[] }) => {
     suite.suites.forEach((testSuite) => {
       testSuite.tests.forEach((test) => {
         totalTests++;

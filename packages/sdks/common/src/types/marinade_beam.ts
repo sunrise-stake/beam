@@ -162,7 +162,7 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -281,7 +281,7 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -390,7 +390,7 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -484,7 +484,7 @@ export type MarinadeBeam = {
           "isSigner": true
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -510,6 +510,75 @@ export type MarinadeBeam = {
         },
         {
           "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "lamports",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "burn",
+      "docs": [
+        "Burning is withdrawing without redeeming the pool tokens. The result is a beam that is \"worth more\"",
+        "than the SOL that has been staked into it, i.e. the pool tokens are more valuable than the SOL.",
+        "This allows yield extraction and can be seen as a form of \"donation\"."
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "burner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "gsolTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gsolMint",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Verified in CPI to Sunrise program."
+          ]
+        },
+        {
+          "name": "instructionsSysvar",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -586,6 +655,11 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
+          "name": "sunriseState",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "marinadeState",
           "isMut": false,
           "isSigner": false
@@ -643,6 +717,11 @@ export type MarinadeBeam = {
       "accounts": [
         {
           "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseState",
           "isMut": false,
           "isSigner": false
         },
@@ -775,15 +854,6 @@ export type MarinadeBeam = {
               "that holds pool tokens (msol in this case)."
             ],
             "type": "u8"
-          },
-          {
-            "name": "partialGsolSupply",
-            "docs": [
-              "The amount of the current gsol supply this beam is responsible for.",
-              "This field is also tracked in the matching beam-details struct in the",
-              "sunrise program's state and is expected to match that value."
-            ],
-            "type": "u64"
           }
         ]
       }
@@ -838,10 +908,6 @@ export type MarinadeBeam = {
           },
           {
             "name": "extractedYield",
-            "type": "u64"
-          },
-          {
-            "name": "partialGsolSupply",
             "type": "u64"
           },
           {
@@ -1076,7 +1142,7 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -1195,7 +1261,7 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -1304,7 +1370,7 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -1398,7 +1464,7 @@ export const IDL: MarinadeBeam = {
           "isSigner": true
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -1424,6 +1490,75 @@ export const IDL: MarinadeBeam = {
         },
         {
           "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "lamports",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "burn",
+      "docs": [
+        "Burning is withdrawing without redeeming the pool tokens. The result is a beam that is \"worth more\"",
+        "than the SOL that has been staked into it, i.e. the pool tokens are more valuable than the SOL.",
+        "This allows yield extraction and can be seen as a form of \"donation\"."
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "burner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "gsolTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gsolMint",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Verified in CPI to Sunrise program."
+          ]
+        },
+        {
+          "name": "instructionsSysvar",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -1500,6 +1635,11 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
+          "name": "sunriseState",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "marinadeState",
           "isMut": false,
           "isSigner": false
@@ -1557,6 +1697,11 @@ export const IDL: MarinadeBeam = {
       "accounts": [
         {
           "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseState",
           "isMut": false,
           "isSigner": false
         },
@@ -1689,15 +1834,6 @@ export const IDL: MarinadeBeam = {
               "that holds pool tokens (msol in this case)."
             ],
             "type": "u8"
-          },
-          {
-            "name": "partialGsolSupply",
-            "docs": [
-              "The amount of the current gsol supply this beam is responsible for.",
-              "This field is also tracked in the matching beam-details struct in the",
-              "sunrise program's state and is expected to match that value."
-            ],
-            "type": "u64"
           }
         ]
       }
@@ -1752,10 +1888,6 @@ export const IDL: MarinadeBeam = {
           },
           {
             "name": "extractedYield",
-            "type": "u64"
-          },
-          {
-            "name": "partialGsolSupply",
             "type": "u64"
           },
           {

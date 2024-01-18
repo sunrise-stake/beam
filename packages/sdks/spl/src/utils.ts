@@ -23,6 +23,7 @@ export type SplClientParams = {
 const enum Seeds {
   STATE = "sunrise_spl",
   VAULT_AUTHORITY = "vault_authority",
+  EXTRACT_YIELD_STAKE_ACCOUNT = "extract_yield_stake_account",
 }
 
 /**
@@ -48,6 +49,16 @@ export class Utils {
   ): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
       [state.toBuffer(), Buffer.from(Seeds.VAULT_AUTHORITY)],
+      pid,
+    );
+  }
+
+  public static deriveExtractYieldStakeAccount(
+    pid: PublicKey,
+    state: PublicKey,
+  ): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [state.toBuffer(), Buffer.from(Seeds.EXTRACT_YIELD_STAKE_ACCOUNT)],
       pid,
     );
   }

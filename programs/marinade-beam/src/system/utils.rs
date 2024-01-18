@@ -5,16 +5,22 @@ use anchor_lang::solana_program::{
 };
 use anchor_spl::token::TokenAccount;
 use marinade_cpi::state::State as MarinadeState;
+use sunrise_core::BeamError;
 
 /// Calculates the amount that can be extracted as yield, in lamports.
-pub fn extractable_yield(
-    state: &State,
+pub fn calculate_extractable_yield(
+    sunrise_state: &sunrise_core::State,
+    beam_state: &Account<State>,
     marinade_state: &MarinadeState,
     msol_vault: &TokenAccount,
 ) -> Result<u64> {
     let staked_value =
         super::utils::calc_lamports_from_msol_amount(marinade_state, msol_vault.amount)?;
-    Ok(staked_value.saturating_sub(state.partial_gsol_supply))
+    let details = sunrise_state
+        .get_beam_details(&beam_state.key())
+        .ok_or(BeamError::UnidentifiedBeam)?;
+    let staked_sol = details.partial_gsol_supply;
+    Ok(staked_value.saturating_sub(staked_sol))
 }
 
 /// calculate amount*numerator/denominator

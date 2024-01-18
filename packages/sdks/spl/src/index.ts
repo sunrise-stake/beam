@@ -262,7 +262,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
         nativeStakeProgram: StakeProgram.programId,
         gsolMint,
         instructionsSysvar,
-        beamProgram: this.sunrise.program.programId,
+        sunriseProgram: this.sunrise.program.programId,
         splStakePoolProgram: SPL_STAKE_POOL_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -393,6 +393,74 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
     throw new Error(
       `Delayed withdrawals are unimplemented for SPL beam. Requested: ${lamports}`,
     ); // TODO
+  }
+
+  public async burnGSol(
+    lamports: BN,
+    gsolTokenAccount?: PublicKey,
+  ): Promise<Transaction> {
+    const burner = this.provider.publicKey;
+    const { gsolMint, instructionsSysvar, burnGsolFrom } =
+      this.sunrise.burnGsolAccounts(
+        this.stateAddress,
+        burner,
+        gsolTokenAccount,
+      );
+
+    const instruction = await this.program.methods
+      .burn(lamports)
+      .accounts({
+        state: this.stateAddress,
+        sunriseState: this.state.sunriseState,
+        stakePool: this.spl.stakePoolAddress,
+        burner,
+        gsolTokenAccount: burnGsolFrom,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        gsolMint,
+        instructionsSysvar,
+        sunriseProgram: this.sunrise.program.programId,
+      })
+      .instruction();
+
+    return new Transaction().add(instruction);
+  }
+
+  /**
+   * Return a transaction to extract any yield from this beam into the yield account
+   */
+  public async extractYield(): Promise<Transaction> {
+    const [newStakeAccount] = Utils.deriveExtractYieldStakeAccount(
+      this.program.programId,
+      this.stateAddress,
+    );
+
+    const instruction = await this.program.methods
+      .extractYield()
+      .accounts({
+        state: this.stateAddress,
+        stakePool: this.spl.stakePoolAddress,
+        sunriseState: this.state.sunriseState,
+        poolMint: this.spl.stakePoolState.poolMint,
+        yieldAccount: this.sunrise.state.yieldAccount,
+        newStakeAccount,
+        vaultAuthority: this.vaultAuthority[0],
+        poolTokenVault: this.spl.beamVault,
+        stakePoolWithdrawAuthority: this.spl.withdrawAuthority,
+        validatorStakeList: this.spl.stakePoolState.validatorList,
+        stakeAccountToSplit: this.spl.stakePoolState.reserveStake,
+        managerFeeAccount: this.spl.stakePoolState.managerFeeAccount,
+        sysvarClock: SYSVAR_CLOCK_PUBKEY,
+        nativeStakeProgram: StakeProgram.programId,
+        // instructionsSysvar,
+        sunriseProgram: this.sunrise.program.programId,
+        splStakePoolProgram: SPL_STAKE_POOL_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .instruction();
+
+    return new Transaction().add(instruction);
   }
 
   /**

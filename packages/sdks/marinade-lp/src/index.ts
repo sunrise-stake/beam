@@ -174,7 +174,7 @@ export class MarinadeLpClient extends BeamInterface<
 
   /** Return a transaction to deposit to a marinade liquidity pool. */
   public async deposit(
-    amount: BN,
+    lamports: BN,
     recipient?: PublicKey,
   ): Promise<Transaction> {
     const depositor = this.provider.publicKey;
@@ -190,7 +190,7 @@ export class MarinadeLpClient extends BeamInterface<
     }
 
     const instruction = await this.program.methods
-      .deposit(amount)
+      .deposit(lamports)
       .accounts({
         state: this.stateAddress,
         marinadeState: this.state.proxyState,
@@ -210,7 +210,7 @@ export class MarinadeLpClient extends BeamInterface<
         liqPoolMintAuthority: await this.marinadeLp.marinade.lpMintAuthority(),
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
-        beamProgram: this.sunrise.program.programId,
+        sunriseProgram: this.sunrise.program.programId,
         marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
       })
       .instruction();
@@ -226,12 +226,9 @@ export class MarinadeLpClient extends BeamInterface<
 
   /** Return a transaction to withdraw from a marinade liquidity-pool. */
   public async withdraw(
-    amount: BN,
+    lamports: BN,
     gsolTokenAccount?: PublicKey,
   ): Promise<Transaction> {
-    if (!this.sunrise || !this.marinadeLp) {
-      await this.refresh();
-    }
     const withdrawer = this.provider.publicKey;
     const { gsolMint, instructionsSysvar, burnGsolFrom } =
       this.sunrise.burnGsolAccounts(
@@ -241,7 +238,7 @@ export class MarinadeLpClient extends BeamInterface<
       );
 
     const instruction = await this.program.methods
-      .withdraw(amount)
+      .withdraw(lamports)
       .accounts({
         state: this.stateAddress,
         marinadeState: this.state.proxyState,
@@ -260,7 +257,7 @@ export class MarinadeLpClient extends BeamInterface<
         tokenProgram: TOKEN_PROGRAM_ID,
         gsolMint,
         instructionsSysvar,
-        beamProgram: this.sunrise.program.programId,
+        sunriseProgram: this.sunrise.program.programId,
         marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
       })
       .instruction();
@@ -281,6 +278,55 @@ export class MarinadeLpClient extends BeamInterface<
       "Delayed withdrawals are unimplemented for Marinade-lp beam",
     );
   }
+
+  /**
+   * Return a transaction to burn gsol. This is essentially a "donation" to the sunrise instance
+   */
+  public async burnGSol(
+    lamports: BN,
+    gsolTokenAccount?: PublicKey,
+  ): Promise<Transaction> {
+    const burner = this.provider.publicKey;
+    const { gsolMint, instructionsSysvar, burnGsolFrom } =
+      this.sunrise.burnGsolAccounts(
+        this.stateAddress,
+        burner,
+        gsolTokenAccount,
+      );
+
+    const instruction = await this.program.methods
+      .burn(lamports)
+      .accounts({
+        state: this.stateAddress,
+        sunriseState: this.state.sunriseState,
+        burner,
+        gsolTokenAccount: burnGsolFrom,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        gsolMint,
+        instructionsSysvar,
+        sunriseProgram: this.sunrise.program.programId,
+      })
+      .instruction();
+
+    return new Transaction().add(instruction);
+  }
+
+  // public async extractYield(): Promise<Transaction> {
+  //   const instruction = await this.program.methods
+  //     .extractYield()
+  //     .accounts({
+  //       state: this.stateAddress,
+  //       sunriseState: this.state.sunriseState,
+  //       systemProgram: SystemProgram.programId,
+  //       tokenProgram: TOKEN_PROGRAM_ID,
+  //       instructionsSysvar,
+  //       sunriseProgram: this.sunrise.program.programId,
+  //     })
+  //     .instruction();
+  //
+  //   return new Transaction().add(instruction);
+  // }
 
   /**
    * Return a transaction to redeem a ticket received from ordering a withdrawal from a marinade-lp.

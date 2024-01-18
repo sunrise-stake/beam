@@ -16,6 +16,7 @@ pub fn handler(ctx: Context<BurnGsol>, amount_in_lamports: u64) -> Result<()> {
 
     // Can't burn more gsol than this beam is responsible for.
     if details.partial_gsol_supply < amount {
+        msg!("Beam supply {}, requested burn {}", details.partial_gsol_supply, amount);
         return Err(BeamError::BurnWindowExceeded.into());
     }
 

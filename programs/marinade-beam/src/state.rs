@@ -14,13 +14,6 @@ pub struct State {
     /// The bump of the PDA that can authorize spending from the vault
     /// that holds pool tokens (msol in this case).
     pub vault_authority_bump: u8,
-
-    /// The amount of the current gsol supply this beam is responsible for.
-    /// This field is also tracked in the matching beam-details struct in the
-    /// sunrise program's state and is expected to match that value.
-    // TODO: Consider removing this and always use the value from the sunrise
-    // state instead.
-    pub partial_gsol_supply: u64,
 }
 
 // Anchor-ts only supports deserialization(in instruction arguments) for types
@@ -41,7 +34,6 @@ impl From<StateEntry> for State {
             marinade_state: se.marinade_state,
             sunrise_state: se.sunrise_state,
             vault_authority_bump: se.vault_authority_bump,
-            partial_gsol_supply: 0,
         }
     }
 }
@@ -51,6 +43,5 @@ impl State {
         32 + /*update_authority*/
         32 + /*marinade_state*/
         32 + /*sunrise_state*/
-        1  + /*vault_authority_bump*/
-        8; /*partial_gsol_supply*/
+        1; /*vault_authority_bump*/
 }

@@ -40,9 +40,7 @@ pub mod spl_beam {
     }
 
     pub fn update(ctx: Context<Update>, update_input: StateEntry) -> Result<()> {
-        let mut updated_state: State = update_input.into();
-        // Make sure the partial gsol supply remains consistent.
-        updated_state.partial_gsol_supply = ctx.accounts.state.partial_gsol_supply;
+        let updated_state: State = update_input.into();
         ctx.accounts.state.set_inner(updated_state);
         Ok(())
     }
@@ -62,12 +60,6 @@ pub mod spl_beam {
             lamports,
         )?;
 
-        // Update the partial gsol supply for this beam.
-        let state_account = &mut ctx.accounts.state;
-        state_account.partial_gsol_supply = state_account
-            .partial_gsol_supply
-            .checked_add(lamports)
-            .unwrap();
         Ok(())
     }
 
@@ -88,12 +80,6 @@ pub mod spl_beam {
             lamports,
         )?;
 
-        // Update the partial gsol supply for this beam.
-        let state_account = &mut ctx.accounts.state;
-        state_account.partial_gsol_supply = state_account
-            .partial_gsol_supply
-            .checked_add(lamports)
-            .unwrap();
         Ok(())
     }
 
@@ -110,19 +96,31 @@ pub mod spl_beam {
         let state_bump = ctx.bumps.state;
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
-            ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_program.to_account_info(),
             ctx.accounts.sunrise_state.key(),
             pool.key(),
             state_bump,
             lamports,
         )?;
 
-        // Update the partial gsol supply for this beam.
-        let state_account = &mut ctx.accounts.state;
-        state_account.partial_gsol_supply = state_account
-            .partial_gsol_supply
-            .checked_sub(lamports)
-            .unwrap();
+        Ok(())
+    }
+    
+    /// Burning is withdrawing without redeeming the pool tokens. The result is a beam that is "worth more"
+    /// than the SOL that has been staked into it, i.e. the pool tokens are more valuable than the SOL.
+    /// This allows yield extraction and can be seen as a form of "donation". 
+    pub fn burn(ctx: Context<Burn>, lamports: u64) -> Result<()> {
+        let pool = &ctx.accounts.stake_pool;
+
+        let state_bump = ctx.bumps.state;
+        sunrise_interface::burn_gsol(
+            ctx.accounts.deref(),
+            ctx.accounts.sunrise_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
+            pool.key(),
+            state_bump,
+            lamports,
+        )?;
 
         Ok(())
     }
@@ -147,13 +145,6 @@ pub mod spl_beam {
             state_bump,
             lamports,
         )?;
-
-        // Update the partial gsol supply for this beam.
-        let state_account = &mut ctx.accounts.state;
-        state_account.partial_gsol_supply = state_account
-            .partial_gsol_supply
-            .checked_sub(lamports)
-            .unwrap();
 
         Ok(())
     }
@@ -430,12 +421,8 @@ pub struct Withdraw<'info> {
     /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_core_cpi::ID)]
-    /// CHECK: The Sunrise program ID.
-    pub beam_program: UncheckedAccount<'info>,
-    #[account(address = spl_stake_pool::ID)]
-    /// CHECK: The SPL StakePool ProgramID.
-    pub spl_stake_pool_program: UncheckedAccount<'info>,
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
+    pub spl_stake_pool_program: Program<'info, SplStakePool>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -589,6 +576,37 @@ pub struct ExtractYield<'info> {
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
     pub spl_stake_pool_program: Program<'info, SplStakePool>,
+
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct Burn<'info> {
+    #[account(
+    mut,
+    has_one = sunrise_state,
+    has_one = stake_pool,
+    seeds = [STATE, sunrise_state.key().as_ref(), stake_pool.key().as_ref()],
+    bump
+    )]
+    pub state: Box<Account<'info, State>>,
+    #[account(mut)]
+    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
+    pub stake_pool: Box<Account<'info, StakePool>>,
+
+    #[account(mut)]
+    pub burner: Signer<'info>,
+    #[account(mut, token::mint = gsol_mint)]
+    pub gsol_token_account: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    /// Verified in CPI to Sunrise program.
+    pub gsol_mint: Account<'info, Mint>,
+    /// CHECK: Checked by CPI to Sunrise.
+    pub instructions_sysvar: UncheckedAccount<'info>,
+
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,

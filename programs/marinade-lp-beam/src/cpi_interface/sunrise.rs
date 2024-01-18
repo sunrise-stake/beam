@@ -67,3 +67,17 @@ impl<'a> From<&crate::Withdraw<'a>> for BurnGsol<'a> {
         }
     }
 }
+
+impl<'a> From<&crate::Burn<'a>> for BurnGsol<'a> {
+    fn from(accounts: &crate::Burn<'a>) -> Self {
+        Self {
+            state: accounts.sunrise_state.to_account_info(),
+            beam: accounts.state.to_account_info(),
+            gsol_mint: accounts.gsol_mint.to_account_info(),
+            burn_gsol_from_owner: accounts.burner.to_account_info(),
+            burn_gsol_from: accounts.gsol_token_account.to_account_info(),
+            instructions_sysvar: accounts.instructions_sysvar.to_account_info(),
+            token_program: accounts.token_program.to_account_info(),
+        }
+    }
+}

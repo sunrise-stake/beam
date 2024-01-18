@@ -28,7 +28,7 @@ describe("SPL stake pool beam", () => {
 
   const depositAmount = 10 * LAMPORTS_PER_SOL;
   const failedDepositAmount = 5 * LAMPORTS_PER_SOL;
-  const withdrawalAmount = 10 * LAMPORTS_PER_SOL;
+  const withdrawalAmount = 5 * LAMPORTS_PER_SOL;
 
   before("Set up the sunrise state", async () => {
     coreClient = await registerSunriseState();
@@ -182,5 +182,35 @@ describe("SPL stake pool beam", () => {
     );
     stakerGsolBalance = expectedGsol;
     vaultStakePoolSolBalance = expectedBsol;
+
+    console.log("Remaining gSOL: " + stakerGsolBalance.toString());
+  });
+
+  it("can burn gsol", async () => {
+    // burn some gsol to simulate the creation of yield
+    const burnAmount = new BN(1 * LAMPORTS_PER_SOL);
+    await sendAndConfirmTransaction(
+      stakerIdentity,
+      await beamClient.burnGSol(burnAmount),
+    );
+
+    const expectedGsol = stakerGsolBalance.sub(burnAmount);
+
+    await expectTokenBalance(
+      beamClient.provider,
+      beamClient.sunrise.gsolAssociatedTokenAccount(),
+      expectedGsol,
+    );
+  });
+
+  it("can extract yield", async () => {
+    // since we burned some sol - we now have yield to extract (the value of the LPs is higher than the value of the GSOL staked)
+
+    await sendAndConfirmTransaction(
+      // anyone can extract yield to the yield account, but let's use the staker provider (rather than the admin provider) for this test
+      // to show that it doesn't have to be an admin
+      stakerIdentity,
+      await beamClient.extractYield(),
+    );
   });
 });

@@ -38,6 +38,7 @@ export abstract class BeamInterface<
     proxyTicket: Keypair;
   }>;
   abstract redeemTicket(sunriseTicket: PublicKey): Promise<Transaction>;
+  abstract burnGSol(lamports: BN): Promise<Transaction>;
 
   public supportsSolDeposit(): boolean {
     return this.caps.find((cap) => canDepositSol(cap)) !== undefined;

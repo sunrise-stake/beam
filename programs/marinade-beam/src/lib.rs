@@ -57,10 +57,7 @@ pub mod marinade_beam {
     }
 
     pub fn update(ctx: Context<Update>, update_input: StateEntry) -> Result<()> {
-        let mut updated_state: State = update_input.into();
-        // Make sure the partial gsol supply remains consistent.
-        updated_state.partial_gsol_supply = ctx.accounts.state.partial_gsol_supply;
-        ctx.accounts.state.set_inner(updated_state);
+        ctx.accounts.state.set_inner(update_input.into());
         Ok(())
     }
 
@@ -73,18 +70,11 @@ pub mod marinade_beam {
         // CPI: Mint GSOL of the same proportion as the lamports deposited to the depositor.
         sunrise_interface::mint_gsol(
             ctx.accounts.deref(),
-            ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_program.to_account_info(),
             ctx.accounts.sunrise_state.key(),
             bump,
             lamports,
         )?;
-
-        // Update the partial gsol supply for this beam.
-        let state_account = &mut ctx.accounts.state;
-        state_account.partial_gsol_supply = state_account
-            .partial_gsol_supply
-            .checked_add(lamports)
-            .unwrap();
 
         Ok(())
     }
@@ -100,18 +90,11 @@ pub mod marinade_beam {
         // CPI: Mint GSOL of the same proportion as the stake amount to the depositor.
         sunrise_interface::mint_gsol(
             ctx.accounts.deref(),
-            ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_program.to_account_info(),
             ctx.accounts.sunrise_state.key(),
             bump,
             lamports,
         )?;
-
-        // Update the partial gsol supply for this beam.
-        let state_account = &mut ctx.accounts.state;
-        state_account.partial_gsol_supply = state_account
-            .partial_gsol_supply
-            .checked_add(lamports)
-            .unwrap();
 
         Ok(())
     }
@@ -128,18 +111,11 @@ pub mod marinade_beam {
         // CPI: Burn GSOL of the same proportion as the number of lamports withdrawn.
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
-            ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_program.to_account_info(),
             ctx.accounts.sunrise_state.key(),
             bump,
             lamports,
         )?;
-
-        // Update the partial gsol supply for this beam.
-        let state_account = &mut ctx.accounts.state;
-        state_account.partial_gsol_supply = state_account
-            .partial_gsol_supply
-            .checked_sub(lamports)
-            .unwrap();
 
         Ok(())
     }
@@ -161,18 +137,27 @@ pub mod marinade_beam {
         // CPI: Burn GSOL of the same proportion as the number of lamports withdrawn.
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
-            ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_program.to_account_info(),
             ctx.accounts.sunrise_state.key(),
             bump,
             lamports,
         )?;
 
-        // Update the partial gsol supply for this beam.
-        let state_account = &mut ctx.accounts.state;
-        state_account.partial_gsol_supply = state_account
-            .partial_gsol_supply
-            .checked_sub(lamports)
-            .unwrap();
+        Ok(())
+    }
+
+    /// Burning is withdrawing without redeeming the pool tokens. The result is a beam that is "worth more"
+    /// than the SOL that has been staked into it, i.e. the pool tokens are more valuable than the SOL.
+    /// This allows yield extraction and can be seen as a form of "donation".
+    pub fn burn(ctx: Context<Burn>, lamports: u64) -> Result<()> {
+        let state_bump = ctx.bumps.state;
+        sunrise_interface::burn_gsol(
+            ctx.accounts.deref(),
+            ctx.accounts.sunrise_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
+            state_bump,
+            lamports,
+        )?;
 
         Ok(())
     }
@@ -205,7 +190,8 @@ pub mod marinade_beam {
     }
 
     pub fn init_epoch_report(ctx: Context<InitEpochReport>, extracted_yield: u64) -> Result<()> {
-        let extractable_yield = utils::extractable_yield(
+        let extractable_yield = utils::calculate_extractable_yield(
+            &ctx.accounts.sunrise_state,
             &ctx.accounts.state,
             &ctx.accounts.marinade_state,
             &ctx.accounts.msol_vault,
@@ -217,7 +203,6 @@ pub mod marinade_beam {
             total_ordered_lamports: 0,
             extractable_yield,
             extracted_yield: 0, // modified below with remarks
-            partial_gsol_supply: ctx.accounts.state.partial_gsol_supply,
             bump: ctx.bumps.epoch_report_account,
         };
         // we have to trust that the extracted amount is accurate,
@@ -246,10 +231,9 @@ pub mod marinade_beam {
         );
 
         ctx.accounts.epoch_report_account.epoch = ctx.accounts.clock.epoch;
-        ctx.accounts.epoch_report_account.partial_gsol_supply =
-            ctx.accounts.state.partial_gsol_supply;
 
-        let extractable_yield = utils::extractable_yield(
+        let extractable_yield = utils::calculate_extractable_yield(
+            &ctx.accounts.sunrise_state,
             &ctx.accounts.state,
             &ctx.accounts.marinade_state,
             &ctx.accounts.msol_vault,
@@ -260,7 +244,8 @@ pub mod marinade_beam {
     }
 
     pub fn extract_yield(ctx: Context<ExtractYield>) -> Result<()> {
-        let yield_lamports = utils::extractable_yield(
+        let yield_lamports = utils::calculate_extractable_yield(
+            &ctx.accounts.sunrise_state,
             &ctx.accounts.state,
             &ctx.accounts.marinade_state,
             &ctx.accounts.msol_vault,
@@ -385,9 +370,7 @@ pub struct Deposit<'info> {
     /// CHECK: Checked by Marinade CPI.
     pub reserve_pda: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_core::ID)]
-    /// CHECK: The Sunrise program ID.
-    pub beam_program: UncheckedAccount<'info>,
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
     #[account(address = marinade_cpi::ID)]
     /// CHECK: The Marinade program ID.
     pub marinade_program: UncheckedAccount<'info>,
@@ -462,9 +445,7 @@ pub struct DepositStake<'info> {
     /// CHECK: Checked by Marinade CPI.
     pub stake_program: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_core_cpi::ID)]
-    /// CHECK: The Sunrise program ID.
-    pub beam_program: UncheckedAccount<'info>,
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
     #[account(address = marinade_cpi::ID)]
     /// CHECK: The Marinade program ID.
     pub marinade_program: UncheckedAccount<'info>,
@@ -531,9 +512,7 @@ pub struct Withdraw<'info> {
     /// CHECK: Checked by Sunrise CPI.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_core_cpi::ID)]
-    /// CHECK: The Sunrise Program ID.
-    pub beam_program: UncheckedAccount<'info>,
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
     #[account(address = marinade_cpi::ID)]
     /// CHECK: The Marinade Program ID.
     pub marinade_program: UncheckedAccount<'info>,
@@ -598,9 +577,7 @@ pub struct OrderWithdrawal<'info> {
     )]
     pub proxy_ticket_account: Box<Account<'info, ProxyTicket>>,
 
-    #[account(address = sunrise_core_cpi::ID)]
-    /// CHECK: The Sunrise Program ID.
-    pub beam_program: UncheckedAccount<'info>,
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
     #[account(address = marinade_cpi::ID)]
     /// CHECK: The Marinade Program ID.
     pub marinade_program: UncheckedAccount<'info>,
@@ -650,6 +627,48 @@ pub struct RedeemTicket<'info> {
 
     pub clock: Sysvar<'info, Clock>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Burn<'info> {
+    #[account(
+    mut,
+    has_one = sunrise_state,
+    seeds = [constants::STATE, sunrise_state.key().as_ref()],
+    bump
+    )]
+    pub state: Box<Account<'info, State>>,
+    #[account(mut)]
+    /// CHECK: The main Sunrise beam state.
+    pub sunrise_state: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub burner: Signer<'info>,
+    #[account(mut, token::mint = gsol_mint)]
+    pub gsol_token_account: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+    seeds = [
+    state.key().as_ref(),
+    constants::VAULT_AUTHORITY
+    ],
+    bump = state.vault_authority_bump
+    )]
+    /// CHECK: The vault authority PDA with verified seeds.
+    pub vault_authority: UncheckedAccount<'info>,
+
+    /// CHECK: Checked by Marinade CPI.
+    pub system_program: UncheckedAccount<'info>,
+    /// CHECK: Checked by Marinade CPI.
+    pub token_program: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    /// Verified in CPI to Sunrise program.
+    pub gsol_mint: Box<Account<'info, Mint>>,
+    /// CHECK: Checked by Sunrise CPI.
+    pub instructions_sysvar: UncheckedAccount<'info>,
+
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
 }
 
 #[derive(Accounts, Clone)]
@@ -708,8 +727,13 @@ pub struct ExtractYield<'info> {
 
 #[derive(Accounts, Clone)]
 pub struct InitEpochReport<'info> {
-    #[account(has_one = marinade_state, has_one = update_authority)]
+    #[account(
+    has_one = marinade_state,
+    has_one = sunrise_state,
+    has_one = update_authority
+    )]
     pub state: Box<Account<'info, State>>,
+    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
     #[account(has_one = msol_mint)]
     pub marinade_state: Box<Account<'info, MarinadeState>>,
 
@@ -750,8 +774,12 @@ pub struct InitEpochReport<'info> {
 
 #[derive(Accounts)]
 pub struct UpdateEpochReport<'info> {
-    #[account(has_one = marinade_state)]
+    #[account(
+    has_one = marinade_state,
+    has_one = sunrise_state
+    )]
     pub state: Box<Account<'info, State>>,
+    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
     #[account(has_one = msol_mint)]
     pub marinade_state: Box<Account<'info, MarinadeState>>,
 
@@ -785,6 +813,7 @@ pub struct UpdateEpochReport<'info> {
 
     pub clock: Sysvar<'info, Clock>,
 }
+
 
 #[error_code]
 pub enum MarinadeBeamError {
