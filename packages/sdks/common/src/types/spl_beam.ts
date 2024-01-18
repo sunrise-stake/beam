@@ -668,7 +668,7 @@ export type SplBeam = {
         },
         {
           "name": "newStakeAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -688,7 +688,7 @@ export type SplBeam = {
         },
         {
           "name": "validatorStakeList",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1489,7 +1489,7 @@ export const IDL: SplBeam = {
         },
         {
           "name": "newStakeAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1509,7 +1509,7 @@ export const IDL: SplBeam = {
         },
         {
           "name": "validatorStakeList",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {

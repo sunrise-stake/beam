@@ -18,6 +18,7 @@ import {
 import {
   BeamInterface,
   getParsedStakeAccountInfo,
+  logAccounts,
   sendAndConfirmChecked,
   SPL_STAKE_POOL_PROGRAM_ID,
   SplBeam,
@@ -434,30 +435,31 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
       this.program.programId,
       this.stateAddress,
     );
-
+    const accounts = {
+      state: this.stateAddress,
+      stakePool: this.spl.stakePoolAddress,
+      sunriseState: this.state.sunriseState,
+      poolMint: this.spl.stakePoolState.poolMint,
+      yieldAccount: this.sunrise.state.yieldAccount,
+      newStakeAccount,
+      vaultAuthority: this.vaultAuthority[0],
+      poolTokenVault: this.spl.beamVault,
+      stakePoolWithdrawAuthority: this.spl.withdrawAuthority,
+      validatorStakeList: this.spl.stakePoolState.validatorList,
+      stakeAccountToSplit: this.spl.stakePoolState.reserveStake,
+      managerFeeAccount: this.spl.stakePoolState.managerFeeAccount,
+      sysvarClock: SYSVAR_CLOCK_PUBKEY,
+      nativeStakeProgram: StakeProgram.programId,
+      // instructionsSysvar,
+      sunriseProgram: this.sunrise.program.programId,
+      splStakePoolProgram: SPL_STAKE_POOL_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    };
+    logAccounts(accounts);
     const instruction = await this.program.methods
       .extractYield()
-      .accounts({
-        state: this.stateAddress,
-        stakePool: this.spl.stakePoolAddress,
-        sunriseState: this.state.sunriseState,
-        poolMint: this.spl.stakePoolState.poolMint,
-        yieldAccount: this.sunrise.state.yieldAccount,
-        newStakeAccount,
-        vaultAuthority: this.vaultAuthority[0],
-        poolTokenVault: this.spl.beamVault,
-        stakePoolWithdrawAuthority: this.spl.withdrawAuthority,
-        validatorStakeList: this.spl.stakePoolState.validatorList,
-        stakeAccountToSplit: this.spl.stakePoolState.reserveStake,
-        managerFeeAccount: this.spl.stakePoolState.managerFeeAccount,
-        sysvarClock: SYSVAR_CLOCK_PUBKEY,
-        nativeStakeProgram: StakeProgram.programId,
-        // instructionsSysvar,
-        sunriseProgram: this.sunrise.program.programId,
-        splStakePoolProgram: SPL_STAKE_POOL_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
+      .accounts(accounts)
       .instruction();
 
     return new Transaction().add(instruction);

@@ -504,7 +504,7 @@ pub struct WithdrawStake<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-#[derive(Accounts)]
+#[derive(Accounts, Clone)]
 pub struct ExtractYield<'info> {
     #[account(
         has_one = stake_pool,
@@ -529,13 +529,14 @@ pub struct ExtractYield<'info> {
     pub yield_account: UncheckedAccount<'info>,
 
     #[account(
+    mut,
     seeds = [
         state.key().as_ref(),
         EXTRACT_YIELD_STAKE_ACCOUNT
     ],
     bump
     )]
-    /// CHECK: The uninitialized new stake account.
+    /// CHECK: The uninitialized new stake account. Will be initialised by CPI to the SPL StakePool program.
     pub new_stake_account: UncheckedAccount<'info>,
 
     #[account(
@@ -558,6 +559,7 @@ pub struct ExtractYield<'info> {
     /// CHECK: Checked by CPI to SPL StakePool Program.
     pub stake_pool_withdraw_authority: UncheckedAccount<'info>,
 
+    #[account(mut)]
     /// CHECK: Checked by CPI to SPL StakePool program.
     pub validator_stake_list: UncheckedAccount<'info>,
     #[account(mut)]

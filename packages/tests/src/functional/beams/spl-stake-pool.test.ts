@@ -29,6 +29,7 @@ describe("SPL stake pool beam", () => {
   const depositAmount = 10 * LAMPORTS_PER_SOL;
   const failedDepositAmount = 5 * LAMPORTS_PER_SOL;
   const withdrawalAmount = 5 * LAMPORTS_PER_SOL;
+  const burnAmount = new BN(1 * LAMPORTS_PER_SOL);
 
   before("Set up the sunrise state", async () => {
     coreClient = await registerSunriseState();
@@ -188,7 +189,6 @@ describe("SPL stake pool beam", () => {
 
   it("can burn gsol", async () => {
     // burn some gsol to simulate the creation of yield
-    const burnAmount = new BN(1 * LAMPORTS_PER_SOL);
     await sendAndConfirmTransaction(
       stakerIdentity,
       await beamClient.burnGSol(burnAmount),
@@ -211,6 +211,13 @@ describe("SPL stake pool beam", () => {
       // to show that it doesn't have to be an admin
       stakerIdentity,
       await beamClient.extractYield(),
+    );
+
+    // we burned `burnAmount` gsol, so we should have `burnAmount` gsol in the yield account
+    await expectTokenBalance(
+      beamClient.provider,
+      beamClient.sunrise.state.yieldAccount,
+      burnAmount,
     );
   });
 });

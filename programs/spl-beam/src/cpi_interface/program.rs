@@ -8,6 +8,7 @@ pub const SPL_STAKE_POOL_PROGRAM_ID: Pubkey = Pubkey::new_from_array([
     29, 68, 183, 34, 147, 246, 219, 219, 0, 22, 80,
 ]);
 
+#[derive(Clone)]
 pub struct SplStakePool;
 
 impl Id for SplStakePool {
@@ -16,6 +17,7 @@ impl Id for SplStakePool {
     }
 }
 
+#[derive(Clone)]
 pub struct NativeStakeProgram;
 
 impl Id for NativeStakeProgram {
