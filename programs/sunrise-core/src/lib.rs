@@ -13,7 +13,9 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use instructions::*;
 use seeds::*;
 
-pub use state::{AllocationUpdate, EpochReport, RegisterStateInput, State, UpdateStateInput, BeamDetails};
+pub use state::{
+    AllocationUpdate, BeamDetails, EpochReport, RegisterStateInput, State, UpdateStateInput,
+};
 
 declare_id!("suncPB4RR39bMwnRhCym6ZLKqMfnFG83vjzVVuXNhCq");
 

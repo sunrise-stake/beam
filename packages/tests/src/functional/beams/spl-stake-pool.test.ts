@@ -6,11 +6,13 @@ import { SplClient } from "@sunrisestake/beams-spl";
 import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import {
+  expectStakeAccountBalance,
   expectTokenBalance,
   fund,
   registerSunriseState,
   sendAndConfirmTransaction,
   tokenAccountBalance,
+  waitForNextEpoch,
 } from "../../utils.js";
 import { provider, staker, stakerIdentity } from "../setup.js";
 import { expect } from "chai";
@@ -183,8 +185,6 @@ describe("SPL stake pool beam", () => {
     );
     stakerGsolBalance = expectedGsol;
     vaultStakePoolSolBalance = expectedBsol;
-
-    console.log("Remaining gSOL: " + stakerGsolBalance.toString());
   });
 
   it("can burn gsol", async () => {
@@ -203,8 +203,9 @@ describe("SPL stake pool beam", () => {
     );
   });
 
-  it("can extract yield", async () => {
+  it("can extract yield into a stake account", async () => {
     // since we burned some sol - we now have yield to extract (the value of the LPs is higher than the value of the GSOL staked)
+    // The beam performs a delayed unstake to reduce fees, so the result is a stake account with the yield in it.
 
     await sendAndConfirmTransaction(
       // anyone can extract yield to the yield account, but let's use the staker provider (rather than the admin provider) for this test
@@ -213,7 +214,35 @@ describe("SPL stake pool beam", () => {
       await beamClient.extractYield(),
     );
 
-    // we burned `burnAmount` gsol, so we should have `burnAmount` gsol in the yield account
+    // we burned `burnAmount` gsol, so we should have `burnAmount` - fee in the stake account
+    const expectedFee = burnAmount
+      .mul(beamClient.spl.stakePoolState.stakeWithdrawalFee.numerator)
+      .div(beamClient.spl.stakePoolState.stakeWithdrawalFee.denominator);
+    const expectedStakeAmount = burnAmount.sub(expectedFee);
+
+    // there is no yield yet, but we have created a stake account for the yield
+    await expectStakeAccountBalance(
+      beamClient.provider,
+      beamClient.yieldStakeAccount,
+      expectedStakeAmount,
+      1,
+    );
+  });
+
+  it.skip("can claim stake account into yield account after cooldown", async () => {
+    // wait an epoch for the stake account to cool down
+    await waitForNextEpoch(beamClient.provider);
+
+    // TODO enable
+    // await sendAndConfirmTransaction(
+    //   // anyone can extract yield to the yield account, but let's use the staker provider (rather than the admin provider) for this test
+    //   // to show that it doesn't have to be an admin
+    //   stakerIdentity,
+    //   // TODO move this and extract yield into "management" object to make it clear that these
+    //   // do not need to be executed by end-users
+    //   await beamClient.claimExtractedYieldStakeAcccount(),
+    // );
+
     await expectTokenBalance(
       beamClient.provider,
       beamClient.sunrise.state.yieldAccount,

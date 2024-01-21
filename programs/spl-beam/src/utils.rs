@@ -48,10 +48,16 @@ pub fn calculate_extractable_yield(
     // Calculate the beam's ownership of the stake pool state
     let total_lamports = stake_pool.total_lamports; // the total number of lamports staked in the pool
     let token_supply = stake_pool.pool_token_supply; // the total number of pool tokens in existence
-    let balance = pool_token_vault.amount;  // how many pool tokens the beam owns
+    let balance = pool_token_vault.amount; // how many pool tokens the beam owns
     let owned_pool_value = proportional(balance, total_lamports, token_supply)?; // the value in lamports of the pool tokens owned by the beam
 
-    msg!("owned_pool_value: {}, total_lamports: {}, token_supply: {}, balance: {}", owned_pool_value, total_lamports, token_supply, balance);
+    msg!(
+        "owned_pool_value: {}, total_lamports: {}, token_supply: {}, balance: {}",
+        owned_pool_value,
+        total_lamports,
+        token_supply,
+        balance
+    );
 
     // Calculate the amount of SOL staked in the beam
     let details = sunrise_state
@@ -66,19 +72,22 @@ pub fn calculate_extractable_yield(
 
 #[cfg(test)]
 mod utils_tests {
-    use std::cell::RefCell;
-    use std::rc::Rc;
+    use super::*;
     use anchor_lang::__private::base64;
     use anchor_lang::solana_program::program_pack::Pack;
     use anchor_spl::token::spl_token;
     use anchor_spl::token::spl_token::state::AccountState;
-    use sunrise_core::BeamDetails;
     use rstest::rstest;
-    use super::*;
+    use std::cell::RefCell;
+    use std::rc::Rc;
+    use sunrise_core::BeamDetails;
 
     static mut LAMPORTS_STORAGE: u64 = 0;
 
-    fn clone_token_account_with_amount(token_account: &TokenAccount, new_amount: u64) -> Result<TokenAccount> {
+    fn clone_token_account_with_amount(
+        token_account: &TokenAccount,
+        new_amount: u64,
+    ) -> Result<TokenAccount> {
         let new_spl_account = spl_token::state::Account {
             mint: token_account.mint,
             owner: token_account.owner,
@@ -108,7 +117,11 @@ mod utils_tests {
         sunrise_core::State::try_deserialize(&mut &bytes[..]).unwrap()
     }
 
-    pub fn create_mock_account_info<'info, T: AccountSerialize + AccountDeserialize + Clone>(data: &'info T, owner: &'info Pubkey, key: &'info Pubkey) -> AccountInfo<'info> {
+    pub fn create_mock_account_info<'info, T: AccountSerialize + AccountDeserialize + Clone>(
+        data: &'info T,
+        owner: &'info Pubkey,
+        key: &'info Pubkey,
+    ) -> AccountInfo<'info> {
         // Serialize T into a byte vector
         let mut data_vec = Vec::new();
         data.try_serialize(&mut data_vec).unwrap();
@@ -121,9 +134,7 @@ mod utils_tests {
         let data_ref = Rc::new(RefCell::new(static_ref));
 
         // Get a mutable reference to the lamports storage (with a fixed dummy value)
-        let lamports = unsafe {
-            Rc::new(RefCell::new(&mut LAMPORTS_STORAGE))
-        };
+        let lamports = unsafe { Rc::new(RefCell::new(&mut LAMPORTS_STORAGE)) };
 
         // Create the AccountInfo
         AccountInfo {
@@ -138,7 +149,10 @@ mod utils_tests {
         }
     }
 
-    fn create_and_register_beam_state(sunrise_state: &mut sunrise_core::State, gsol_supply: u64 ) -> Result<(State, Pubkey)> {
+    fn create_and_register_beam_state(
+        sunrise_state: &mut sunrise_core::State,
+        gsol_supply: u64,
+    ) -> Result<(State, Pubkey)> {
         let beam_key = Pubkey::new_unique();
 
         // add the beam to the core state
@@ -151,7 +165,6 @@ mod utils_tests {
             .allocations
             .extend(std::iter::repeat(BeamDetails::default()).take(1));
         sunrise_state.add_beam(beam_details)?;
-
 
         let beam_state = State::default();
 
@@ -188,19 +201,31 @@ mod utils_tests {
     // 60 pool tokens are worth 60 * 1.029345 = 61.7607 lamports
     // 50 lamports are in the beam, so the extractable yield is 61.7607 - 50 = 11.7607, rounded down to 11.
     #[case::accrued_value(60, 50, 11)]
-    fn test_calculate_extractable_yield(#[case] pool_value: u64, #[case] issued_gsol: u64, #[case] expected_extractable_yield: u64) -> Result<()> {
+    fn test_calculate_extractable_yield(
+        #[case] pool_value: u64,
+        #[case] issued_gsol: u64,
+        #[case] expected_extractable_yield: u64,
+    ) -> Result<()> {
         let mut sunrise_state = create_sunrise_state();
         let stake_pool = create_stake_pool();
 
         // create a beam and register it against the sunrise state with the given issued_gsol (the amount of sol staked in the beam)
-        let (beam_state, beam_key) = create_and_register_beam_state(&mut sunrise_state, issued_gsol)?;
+        let (beam_state, beam_key) =
+            create_and_register_beam_state(&mut sunrise_state, issued_gsol)?;
         let beam_state_account_info = create_mock_account_info(&beam_state, &crate::ID, &beam_key);
         let beam_state_account = Account::try_from(&beam_state_account_info)?;
 
         // create a token account for the stake pool token vault with the given pool_value (the amount of pool tokens owned by the beam)
-        let pool_token_vault = clone_token_account_with_amount(&TokenAccount::default(), pool_value)?;
+        let pool_token_vault =
+            clone_token_account_with_amount(&TokenAccount::default(), pool_value)?;
 
-        let extractable_yield = calculate_extractable_yield(&sunrise_state, &beam_state_account, &stake_pool, &pool_token_vault).unwrap();
+        let extractable_yield = calculate_extractable_yield(
+            &sunrise_state,
+            &beam_state_account,
+            &stake_pool,
+            &pool_token_vault,
+        )
+        .unwrap();
         assert_eq!(extractable_yield, expected_extractable_yield);
 
         Ok(())

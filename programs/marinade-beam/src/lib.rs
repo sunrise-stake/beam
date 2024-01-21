@@ -814,7 +814,6 @@ pub struct UpdateEpochReport<'info> {
     pub clock: Sysvar<'info, Clock>,
 }
 
-
 #[error_code]
 pub enum MarinadeBeamError {
     #[msg("No delegation for stake account deposit")]

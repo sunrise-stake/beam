@@ -23,12 +23,14 @@ import chaiAsPromised from "chai-as-promised";
 import { Idl } from "@coral-xyz/anchor";
 import { provider } from "./functional/setup.js";
 import { SunriseClient } from "@sunrisestake/beams-core";
+import { getParsedStakeAccountInfo } from "@sunrisestake/beams-common";
 
 chai.use(chaiAsPromised);
 const { expect } = chai;
 
 // Set in anchor.toml
 const SLOTS_IN_EPOCH = 32;
+const STAKE_ACCOUNT_RENT_EXEMPT_AMOUNT = 2282880;
 
 const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"] as const;
 type LOG_LEVEL = (typeof LOG_LEVELS)[number];
@@ -81,6 +83,23 @@ export const expectTokenBalance = async (
   tolerance = 0,
 ) => {
   const actualAmount = await tokenAccountBalance(provider, address);
+  expectAmount(actualAmount, expectedAmount, tolerance);
+};
+
+export const expectStakeAccountBalance = async (
+  provider: AnchorProvider,
+  stakeAccountAddress: PublicKey,
+  expectedAmount: number | BN,
+  tolerance = 0,
+) => {
+  const stakeAccount = await getParsedStakeAccountInfo(
+    provider,
+    stakeAccountAddress,
+  );
+
+  const actualAmount = (stakeAccount.balanceLamports ?? new BN(0)).subn(
+    STAKE_ACCOUNT_RENT_EXEMPT_AMOUNT,
+  );
   expectAmount(actualAmount, expectedAmount, tolerance);
 };
 

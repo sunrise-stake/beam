@@ -1,18 +1,24 @@
 #![allow(clippy::result_large_err)]
 
 use anchor_lang::prelude::*;
+use anchor_lang::AnchorDeserialize;
 use anchor_spl::associated_token::{AssociatedToken, Create};
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use cpi_interface::spl as spl_interface;
-use cpi_interface::sunrise as sunrise_interface;
+use constants::STAKE_ACCOUNT_SIZE;
+use cpi_interface::{
+    program::{NativeStakeProgram, SplStakePool},
+    spl as spl_interface,
+    stake_pool::StakePool,
+    sunrise as sunrise_interface,
+};
 use seeds::*;
 use state::{State, StateEntry};
 use std::ops::Deref;
 
-use crate::cpi_interface::program::{NativeStakeProgram, SplStakePool};
-use cpi_interface::stake_pool::StakePool;
+use crate::cpi_interface::stake_account::StakeAccount;
 use sunrise_core as sunrise_core_cpi;
 
+mod constants;
 mod cpi_interface;
 mod seeds;
 mod state;
@@ -105,10 +111,10 @@ pub mod spl_beam {
 
         Ok(())
     }
-    
+
     /// Burning is withdrawing without redeeming the pool tokens. The result is a beam that is "worth more"
     /// than the SOL that has been staked into it, i.e. the pool tokens are more valuable than the SOL.
-    /// This allows yield extraction and can be seen as a form of "donation". 
+    /// This allows yield extraction and can be seen as a form of "donation".
     pub fn burn(ctx: Context<Burn>, lamports: u64) -> Result<()> {
         let pool = &ctx.accounts.stake_pool;
 
@@ -529,7 +535,10 @@ pub struct ExtractYield<'info> {
     pub yield_account: UncheckedAccount<'info>,
 
     #[account(
-    mut,
+    init_if_needed,
+    space = STAKE_ACCOUNT_SIZE,
+    payer = payer,
+    owner = anchor_lang::solana_program::stake::program::ID,
     seeds = [
         state.key().as_ref(),
         EXTRACT_YIELD_STAKE_ACCOUNT
@@ -537,7 +546,7 @@ pub struct ExtractYield<'info> {
     bump
     )]
     /// CHECK: The uninitialized new stake account. Will be initialised by CPI to the SPL StakePool program.
-    pub new_stake_account: UncheckedAccount<'info>,
+    pub new_stake_account: Account<'info, StakeAccount>,
 
     #[account(
     seeds = [

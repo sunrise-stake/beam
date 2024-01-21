@@ -18,7 +18,6 @@ import {
 import {
   BeamInterface,
   getParsedStakeAccountInfo,
-  logAccounts,
   sendAndConfirmChecked,
   SPL_STAKE_POOL_PROGRAM_ID,
   SplBeam,
@@ -450,13 +449,11 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
       managerFeeAccount: this.spl.stakePoolState.managerFeeAccount,
       sysvarClock: SYSVAR_CLOCK_PUBKEY,
       nativeStakeProgram: StakeProgram.programId,
-      // instructionsSysvar,
       sunriseProgram: this.sunrise.program.programId,
       splStakePoolProgram: SPL_STAKE_POOL_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
     };
-    logAccounts(accounts);
     const instruction = await this.program.methods
       .extractYield()
       .accounts(accounts)
@@ -499,14 +496,21 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
   }
 
   /** Utility method to derive the SPL-beam address from the sunrise state, the stake pool and program ID. */
-  public static deriveStateAddress = (
+  public static deriveStateAddress(
     sunriseState: PublicKey,
     stakePool: PublicKey,
     programId?: PublicKey,
-  ): [PublicKey, number] => {
+  ): [PublicKey, number] {
     const PID = programId ?? SPL_BEAM_PROGRAM_ID;
     return Utils.deriveStateAddress(PID, sunriseState, stakePool);
-  };
+  }
+
+  public get yieldStakeAccount() {
+    return Utils.deriveExtractYieldStakeAccount(
+      this.program.programId,
+      this.stateAddress,
+    )[0];
+  }
 
   public async details() {
     const balance = await this.provider.connection.getTokenAccountBalance(

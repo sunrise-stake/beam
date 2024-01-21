@@ -50,11 +50,7 @@ impl EpochReport {
         self.extracted_yield = self.extracted_yield.checked_add(extracted_yield).unwrap();
     }
 
-    pub fn update_report(
-        &mut self,
-        extractable_yield: u64,
-        add_extracted_yield: u64,
-    ) {
+    pub fn update_report(&mut self, extractable_yield: u64, add_extracted_yield: u64) {
         self.extractable_yield = extractable_yield;
         self.add_extracted_yield(add_extracted_yield);
     }

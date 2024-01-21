@@ -22,7 +22,7 @@ impl State {
         32 + /*update_authority*/
         32 + /*spl_state*/
         32 + /*sunrise_state*/
-        1;  /*vault_authority_bump*/
+        1; /*vault_authority_bump*/
 }
 
 // Anchor-ts only supports deserialization(in instruction arguments) for types
