@@ -7,16 +7,16 @@ jobs:
   install:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: ./.github/actions/cache-solana
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
 
       - name: Cache node dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Cache rust
         uses: Swatinem/rust-cache@v2
       - name: Run fmt
@@ -53,11 +53,11 @@ jobs:
     needs: install
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Cache rust
         uses: Swatinem/rust-cache@v2
       - uses: ./.github/actions/cache-solana
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -69,8 +69,8 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: target
-          path: target
+          name: target_deploy
+          path: target/deploy
           if-no-files-found: error
           retention-days: 1
 
@@ -79,11 +79,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Cache rust
         uses: Swatinem/rust-cache@v2
       - uses: ./.github/actions/cache-solana
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -99,14 +99,14 @@ jobs:
     needs: install
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Use Node ${{ matrix.node }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
       - name: Cache node dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
@@ -126,14 +126,14 @@ jobs:
     needs: yarn-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Use Node ${{ matrix.node }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
       - name: Cache node dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
@@ -150,19 +150,19 @@ jobs:
           yarn lint
 
   functional-test:
-    needs: [clippy-lint, yarn-lint, cargo-build]
+    needs: [yarn-build, cargo-build]
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Use Node ${{ matrix.node }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
       - name: Cache node dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
@@ -179,11 +179,17 @@ jobs:
       - name: Download Rust build artifacts
         uses: actions/download-artifact@v3
         with:
-          name: target
-          path: .
+          name: target_deploy
+          path: ./target
+
+      - name: Download TS build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dists
+          path: packages/sdks
 
       - uses: ./.github/actions/cache-solana
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -193,11 +199,21 @@ jobs:
       - name: run tests
         run: |
           ls target/deploy
+          cat packages/sdks/common/dist/cjs/types/spl_beam.js
+          cat node_modules/@sunrisestake/beams-common/dist/cjs/types/spl_beam.js
           #yarn anchor test --skip-build packages/tests/src/functional/beams/core.test.ts
           yarn test
 
-      - uses: actions/upload-artifact@v3
+      - name: upload program logs
+        uses: actions/upload-artifact@v3
         if: always()
         with:
           name: program-logs
           path: .anchor/program-logs/*
+
+      - name: upload test report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-report
+          path: mochawesome-report/*

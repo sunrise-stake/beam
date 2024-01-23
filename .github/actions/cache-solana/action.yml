@@ -8,7 +8,7 @@ description: install and Cache Solana binaries
 runs:
   using: composite
   steps:
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       id: cache-solana
       with:
         path: |

@@ -147,14 +147,14 @@ export const waitForNextEpoch = async (provider: AnchorProvider) => {
   const startSlot = startingEpoch.slotIndex;
   let subscriptionId = 0;
 
-  log("Waiting for epoch", nextEpoch);
+  logAtLevel("info")("Waiting for epoch", nextEpoch);
 
   await new Promise((resolve) => {
     subscriptionId = provider.connection.onSlotChange((slotInfo) => {
-      log("slot", slotInfo.slot, "startSlot", startSlot);
+      logAtLevel("trace")("slot", slotInfo.slot, "startSlot", startSlot);
       if (slotInfo.slot % SLOTS_IN_EPOCH === 1 && slotInfo.slot > startSlot) {
         void provider.connection.getEpochInfo().then((currentEpoch) => {
-          log("currentEpoch", currentEpoch);
+          logAtLevel("trace")("currentEpoch", currentEpoch);
           if (currentEpoch.epoch === nextEpoch) {
             resolve(slotInfo.slot);
           }
