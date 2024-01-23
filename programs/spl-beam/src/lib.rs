@@ -29,6 +29,7 @@ declare_id!("EUZfY4LePXSZVMvRuiVzbxazw9yBDYU99DpGJKCthxbS");
 #[program]
 pub mod spl_beam {
     use super::*;
+    use crate::cpi_interface::stake_account::claim_stake_account;
 
     pub fn initialize(ctx: Context<Initialize>, input: StateEntry) -> Result<()> {
         ctx.accounts.state.set_inner(input.into());
@@ -176,7 +177,18 @@ pub mod spl_beam {
 
         // CPI: Extract this yield into a new stake account.
         let extract_stake_account_accounts = ctx.accounts.deref().into();
-        spl_interface::extract_stake(&extract_stake_account_accounts, extractable_yield)
+        spl_interface::extract_stake(&extract_stake_account_accounts, extractable_yield)?;
+
+        // get the staked lamports amount
+        let stake_account = &mut ctx.accounts.new_stake_account;
+        stake_account.reload()?;
+        let lamports = stake_account.to_account_info().lamports();
+
+        // CPI: Withdraw the lamports from the stake account.
+        let claim_stake_account_accounts = ctx.accounts.deref().into();
+        claim_stake_account(&claim_stake_account_accounts, lamports)?;
+
+        Ok(())
     }
 }
 
@@ -545,7 +557,7 @@ pub struct ExtractYield<'info> {
     ],
     bump
     )]
-    /// CHECK: The uninitialized new stake account. Will be initialised by CPI to the SPL StakePool program.
+    /// The uninitialized new stake account. Will be initialised by CPI to the SPL StakePool program.
     pub new_stake_account: Account<'info, StakeAccount>,
 
     #[account(
@@ -584,6 +596,8 @@ pub struct ExtractYield<'info> {
 
     pub sysvar_clock: Sysvar<'info, Clock>,
     pub native_stake_program: Program<'info, NativeStakeProgram>,
+    /// CHECK: Checked by CPI to SPL Stake program.
+    pub sysvar_stake_history: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
     pub spl_stake_pool_program: Program<'info, SplStakePool>,
@@ -634,4 +648,8 @@ pub enum SplBeamError {
     CalculationFailure,
     #[msg("This feature is unimplemented for this beam")]
     Unimplemented,
+    #[msg("The yield stake account cannot yet be claimed")]
+    YieldStakeAccountNotCooledDown,
+    #[msg("The yield being extracted is insufficient to cover the rent of the stake account")]
+    InsufficientYieldToExtract,
 }

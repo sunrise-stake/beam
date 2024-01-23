@@ -1,8 +1,8 @@
 use crate::cpi_interface::stake_pool::StakePool;
 use crate::state::State;
-use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{
-    borsh0_10::try_from_slice_unchecked, stake::state::StakeStateV2,
+use anchor_lang::{
+    prelude::*, solana_program::borsh0_10::try_from_slice_unchecked,
+    solana_program::stake::state::StakeStateV2,
 };
 use anchor_spl::token::TokenAccount;
 use sunrise_core::BeamError;

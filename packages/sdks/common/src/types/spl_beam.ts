@@ -669,7 +669,10 @@ export type SplBeam = {
         {
           "name": "newStakeAccount",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The uninitialized new stake account. Will be initialised by CPI to the SPL StakePool program."
+          ]
         },
         {
           "name": "vaultAuthority",
@@ -708,6 +711,11 @@ export type SplBeam = {
         },
         {
           "name": "nativeStakeProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarStakeHistory",
           "isMut": false,
           "isSigner": false
         },
@@ -815,6 +823,16 @@ export type SplBeam = {
       "code": 6002,
       "name": "Unimplemented",
       "msg": "This feature is unimplemented for this beam"
+    },
+    {
+      "code": 6003,
+      "name": "YieldStakeAccountNotCooledDown",
+      "msg": "The yield stake account cannot yet be claimed"
+    },
+    {
+      "code": 6004,
+      "name": "InsufficientYieldToExtract",
+      "msg": "The yield being extracted is insufficient to cover the rent of the stake account"
     }
   ]
 };
@@ -1490,7 +1508,10 @@ export const IDL: SplBeam = {
         {
           "name": "newStakeAccount",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The uninitialized new stake account. Will be initialised by CPI to the SPL StakePool program."
+          ]
         },
         {
           "name": "vaultAuthority",
@@ -1529,6 +1550,11 @@ export const IDL: SplBeam = {
         },
         {
           "name": "nativeStakeProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarStakeHistory",
           "isMut": false,
           "isSigner": false
         },
@@ -1636,6 +1662,16 @@ export const IDL: SplBeam = {
       "code": 6002,
       "name": "Unimplemented",
       "msg": "This feature is unimplemented for this beam"
+    },
+    {
+      "code": 6003,
+      "name": "YieldStakeAccountNotCooledDown",
+      "msg": "The yield stake account cannot yet be claimed"
+    },
+    {
+      "code": 6004,
+      "name": "InsufficientYieldToExtract",
+      "msg": "The yield being extracted is insufficient to cover the rent of the stake account"
     }
   ]
 };

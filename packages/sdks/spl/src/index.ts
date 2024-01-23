@@ -449,6 +449,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
       managerFeeAccount: this.spl.stakePoolState.managerFeeAccount,
       sysvarClock: SYSVAR_CLOCK_PUBKEY,
       nativeStakeProgram: StakeProgram.programId,
+      sysvarStakeHistory: SYSVAR_STAKE_HISTORY_PUBKEY,
       sunriseProgram: this.sunrise.program.programId,
       splStakePoolProgram: SPL_STAKE_POOL_PROGRAM_ID,
       systemProgram: SystemProgram.programId,

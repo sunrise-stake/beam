@@ -1,7 +1,8 @@
+use crate::constants::STAKE_ACCOUNT_SIZE;
 use crate::cpi_interface::stake_pool::StakePool;
 use crate::seeds::*;
 use crate::state::State;
-use crate::{ExtractYield, WithdrawStake};
+use crate::{ExtractYield, SplBeamError, WithdrawStake};
 use anchor_lang::{
     prelude::*,
     solana_program::program::{invoke, invoke_signed},
@@ -222,9 +223,22 @@ pub fn extract_stake(accounts: &ExtractStakeAccount, lamports: u64) -> Result<()
     let state_address = accounts.state.key();
     let seeds = &[state_address.as_ref(), VAULT_AUTHORITY, bump][..];
 
+    let stake_account_rent = Rent::get()?.minimum_balance(STAKE_ACCOUNT_SIZE);
+    let mut total_extractable_lamports = lamports.saturating_sub(stake_account_rent);
+
+    if total_extractable_lamports > accounts.stake_to_split.lamports() {
+        total_extractable_lamports = accounts.stake_to_split.lamports();
+        msg!("Limiting the extraction to the amount of lamports in the reserve stake account of the pool: {}", total_extractable_lamports);
+    }
+    if total_extractable_lamports == 0 {
+        return Err(SplBeamError::InsufficientYieldToExtract.into());
+    }
+
     let pool = &accounts.stake_pool;
-    let pool_tokens =
-        crate::utils::pool_tokens_from_lamports(&pool.clone().into_inner(), lamports)?;
+    let pool_tokens = crate::utils::pool_tokens_from_lamports(
+        &pool.clone().into_inner(),
+        total_extractable_lamports,
+    )?;
 
     invoke_signed(
         &spl_stake_pool::instruction::withdraw_stake(

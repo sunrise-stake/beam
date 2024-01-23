@@ -16,7 +16,7 @@
         "dist"
     ],
     "scripts": {
-        "build": "rm -r dist; tsc --outDir dist/esm; tsc --module commonjs --moduleResolution node --outDir dist/cjs && yarn typedoc",
+        "build": "rm -rf dist; tsc --outDir dist/esm; tsc --module commonjs --moduleResolution node --outDir dist/cjs && yarn typedoc",
         "lint": "tsc --noEmit && eslint -c ../../../.eslintrc.yaml --ext .ts,.tsx src"
     },
     "dependencies": {

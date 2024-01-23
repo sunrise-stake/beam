@@ -109,8 +109,15 @@ export const expectStakerSolBalance = async (
   provider: AnchorProvider,
   expectedAmount: number | BN,
   tolerance = 0, // Allow for a tolerance as the balance depends on the fees which are unstable at the beginning of a test validator
+) => expectSolBalance(provider, provider.publicKey, expectedAmount, tolerance);
+
+export const expectSolBalance = async (
+  provider: AnchorProvider,
+  address = provider.publicKey,
+  expectedAmount: number | BN,
+  tolerance = 0, // Allow for a tolerance as the balance depends on the fees which are unstable at the beginning of a test validator
 ) => {
-  const actualAmount = await solBalance(provider);
+  const actualAmount = await solBalance(provider, address);
   expectAmount(actualAmount, expectedAmount, tolerance);
 };
 
@@ -140,10 +147,14 @@ export const waitForNextEpoch = async (provider: AnchorProvider) => {
   const startSlot = startingEpoch.slotIndex;
   let subscriptionId = 0;
 
+  log("Waiting for epoch", nextEpoch);
+
   await new Promise((resolve) => {
     subscriptionId = provider.connection.onSlotChange((slotInfo) => {
+      log("slot", slotInfo.slot, "startSlot", startSlot);
       if (slotInfo.slot % SLOTS_IN_EPOCH === 1 && slotInfo.slot > startSlot) {
         void provider.connection.getEpochInfo().then((currentEpoch) => {
+          log("currentEpoch", currentEpoch);
           if (currentEpoch.epoch === nextEpoch) {
             resolve(slotInfo.slot);
           }
