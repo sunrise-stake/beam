@@ -52,6 +52,8 @@ jobs:
   cargo-build:
     needs: install
     runs-on: ubuntu-latest
+    outputs:
+      target_deploy_artifact: ${{ steps.build-artifact-upload-step.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v4
       - name: Cache rust
@@ -64,10 +66,13 @@ jobs:
             ~/.cargo/git
             target
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
+
       - name: Build all programs
         run: cargo build-sbf
+
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        id: build-artifact-upload-step
+        uses: actions/upload-artifact@v4
         with:
           name: target_deploy
           path: target/deploy
@@ -115,7 +120,7 @@ jobs:
         run: yarn build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dists
           path: packages/sdks/*/dist
@@ -139,7 +144,7 @@ jobs:
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: dists
           path: packages/sdks
@@ -161,6 +166,15 @@ jobs:
         with:
           node-version: '18'
 
+      - uses: ./.github/actions/cache-solana
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
+
       - name: Cache node dependencies
         uses: actions/cache@v4
         with:
@@ -171,43 +185,29 @@ jobs:
         run: yarn --frozen-lockfile
 
       - name: Download JS build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: dists
           path: packages/sdks
 
       - name: Download Rust build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: target_deploy
-          path: ./target
+          path: ./target/deploy
 
-      - name: Download TS build artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: dists
-          path: packages/sdks
-
-      - uses: ./.github/actions/cache-solana
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
       - name: run tests
         run: yarn test
 
       - name: upload program logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: program-logs
           path: .anchor/program-logs/*
 
       - name: upload test report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-report
