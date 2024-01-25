@@ -5,6 +5,7 @@ import {
   StakeProgram,
   SystemProgram,
   SYSVAR_CLOCK_PUBKEY,
+  SYSVAR_INSTRUCTIONS_PUBKEY,
   SYSVAR_STAKE_HISTORY_PUBKEY,
   Transaction,
   type TransactionInstruction,
@@ -434,6 +435,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
       this.program.programId,
       this.stateAddress,
     );
+
     const accounts = {
       state: this.stateAddress,
       stakePool: this.spl.stakePoolAddress,
@@ -447,9 +449,11 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
       validatorStakeList: this.spl.stakePoolState.validatorList,
       stakeAccountToSplit: this.spl.stakePoolState.reserveStake,
       managerFeeAccount: this.spl.stakePoolState.managerFeeAccount,
+      epochReport: this.sunrise.epochReport[0],
       sysvarClock: SYSVAR_CLOCK_PUBKEY,
       nativeStakeProgram: StakeProgram.programId,
       sysvarStakeHistory: SYSVAR_STAKE_HISTORY_PUBKEY,
+      sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
       sunriseProgram: this.sunrise.program.programId,
       splStakePoolProgram: SPL_STAKE_POOL_PROGRAM_ID,
       systemProgram: SystemProgram.programId,

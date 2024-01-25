@@ -188,6 +188,17 @@ pub mod spl_beam {
         let claim_stake_account_accounts = ctx.accounts.deref().into();
         claim_stake_account(&claim_stake_account_accounts, lamports)?;
 
+        // CPI: update the epoch report with the extracted yield.
+        let state_bump = ctx.bumps.state;
+        sunrise_interface::extract_yield(
+            ctx.accounts.deref(),
+            ctx.accounts.sunrise_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
+            ctx.accounts.stake_pool.key(),
+            state_bump,
+            lamports,
+        )?;
+
         Ok(())
     }
 }
@@ -238,7 +249,6 @@ pub struct Update<'info> {
 #[derive(Accounts)]
 pub struct Deposit<'info> {
     #[account(
-        mut,
         has_one = sunrise_state,
         has_one = stake_pool,
         seeds = [STATE, sunrise_state.key().as_ref(), stake_pool.key().as_ref()],
@@ -303,7 +313,6 @@ pub struct Deposit<'info> {
 #[derive(Accounts)]
 pub struct DepositStake<'info> {
     #[account(
-        mut,
         has_one = sunrise_state,
         has_one = stake_pool,
         seeds = [STATE, sunrise_state.key().as_ref()],
@@ -382,7 +391,6 @@ pub struct DepositStake<'info> {
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
     #[account(
-        mut,
         has_one = sunrise_state,
         has_one = stake_pool,
         seeds = [STATE, sunrise_state.key().as_ref(), stake_pool.key().as_ref()],
@@ -449,7 +457,6 @@ pub struct Withdraw<'info> {
 #[derive(Accounts)]
 pub struct WithdrawStake<'info> {
     #[account(
-        mut,
         has_one = sunrise_state,
         has_one = stake_pool,
         seeds = [STATE, sunrise_state.key().as_ref()],
@@ -526,7 +533,9 @@ pub struct WithdrawStake<'info> {
 pub struct ExtractYield<'info> {
     #[account(
         has_one = stake_pool,
-        has_one = sunrise_state
+        has_one = sunrise_state,
+        seeds = [STATE, sunrise_state.key().as_ref(), stake_pool.key().as_ref()],
+        bump
     )]
     pub state: Box<Account<'info, State>>,
     #[account(
@@ -594,10 +603,18 @@ pub struct ExtractYield<'info> {
     /// CHECK: Checked by CPI to SPL StakePool Program.
     pub manager_fee_account: UncheckedAccount<'info>,
 
+    /// The epoch report account. This is updated with the latest extracted yield value.
+    /// It must be up to date with the current epoch. If not, run updateEpochReport before it.
+    /// CHECK: Address checked by CIP to the core Sunrise program.
+    #[account(mut)]
+    pub epoch_report: UncheckedAccount<'info>,
+
     pub sysvar_clock: Sysvar<'info, Clock>,
     pub native_stake_program: Program<'info, NativeStakeProgram>,
     /// CHECK: Checked by CPI to SPL Stake program.
     pub sysvar_stake_history: UncheckedAccount<'info>,
+    /// CHECK: Checked by CPI to Sunrise.
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
     pub spl_stake_pool_program: Program<'info, SplStakePool>,
@@ -609,7 +626,6 @@ pub struct ExtractYield<'info> {
 #[derive(Accounts)]
 pub struct Burn<'info> {
     #[account(
-    mut,
     has_one = sunrise_state,
     has_one = stake_pool,
     seeds = [STATE, sunrise_state.key().as_ref(), stake_pool.key().as_ref()],

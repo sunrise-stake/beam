@@ -83,7 +83,7 @@ export type SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -187,7 +187,7 @@ export type SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -321,7 +321,7 @@ export type SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -440,7 +440,7 @@ export type SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -504,7 +504,7 @@ export type SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -705,6 +705,15 @@ export type SplBeam = {
           "isSigner": false
         },
         {
+          "name": "epochReport",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The epoch report account. This is updated with the latest extracted yield value.",
+            "It must be up to date with the current epoch. If not, run updateEpochReport before it."
+          ]
+        },
+        {
           "name": "sysvarClock",
           "isMut": false,
           "isSigner": false
@@ -716,6 +725,11 @@ export type SplBeam = {
         },
         {
           "name": "sysvarStakeHistory",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -922,7 +936,7 @@ export const IDL: SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1026,7 +1040,7 @@ export const IDL: SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1160,7 +1174,7 @@ export const IDL: SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1279,7 +1293,7 @@ export const IDL: SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1343,7 +1357,7 @@ export const IDL: SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1544,6 +1558,15 @@ export const IDL: SplBeam = {
           "isSigner": false
         },
         {
+          "name": "epochReport",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The epoch report account. This is updated with the latest extracted yield value.",
+            "It must be up to date with the current epoch. If not, run updateEpochReport before it."
+          ]
+        },
+        {
           "name": "sysvarClock",
           "isMut": false,
           "isSigner": false
@@ -1555,6 +1578,11 @@ export const IDL: SplBeam = {
         },
         {
           "name": "sysvarStakeHistory",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },

@@ -333,11 +333,11 @@ pub struct ExtractYield<'info> {
     )]
     pub epoch_report: Account<'info, EpochReport>,
 
-    pub clock: Sysvar<'info, Clock>,
+    pub sysvar_clock: Sysvar<'info, Clock>,
 
     /// CHECK: Verified Instructions Sysvar.
     #[account(address = sysvar::instructions::ID)]
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 }
 
 #[error_code]

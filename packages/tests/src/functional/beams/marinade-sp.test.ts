@@ -41,6 +41,7 @@ describe("Marinade stake pool beam", () => {
   const failedDepositAmount = 5 * LAMPORTS_PER_SOL;
   const liquidWithdrawalAmount = 5 * LAMPORTS_PER_SOL;
   const delayedWithdrawalAmount = 5 * LAMPORTS_PER_SOL;
+  // const burnAmount = new BN(1 * LAMPORTS_PER_SOL);
 
   before("Set up the sunrise state", async () => {
     coreClient = await registerSunriseState();
@@ -296,4 +297,46 @@ describe("Marinade stake pool beam", () => {
       100,
     );
   });
+
+  //
+  // it("can burn gsol", async () => {
+  //   // burn some gsol to simulate the creation of yield
+  //   await sendAndConfirmTransaction(
+  //     stakerIdentity,
+  //     await beamClient.burnGSol(burnAmount),
+  //   );
+  //
+  //   const expectedGsol = stakerGsolBalance.sub(burnAmount);
+  //
+  //   await expectTokenBalance(
+  //     beamClient.provider,
+  //     beamClient.sunrise.gsolAssociatedTokenAccount(),
+  //     expectedGsol,
+  //   );
+  // });
+  //
+  // it("can extract yield into a stake account", async () => {
+  //   // since we burned some sol - we now have yield to extract (the value of the LPs is higher than the value of the GSOL staked)
+  //   // The beam performs a delayed unstake to reduce fees, so the result is a stake account with the yield in it.
+  //
+  //   await sendAndConfirmTransaction(
+  //     // anyone can extract yield to the yield account, but let's use the staker provider (rather than the admin provider) for this test
+  //     // to show that it doesn't have to be an admin
+  //     stakerIdentity,
+  //     await beamClient.extractYield(),
+  //   );
+  //
+  //   // we burned `burnAmount` gsol, so we should have `burnAmount` - fee in the stake account
+  //   const expectedFee = new BN(0); // TODO
+  //   const expectedExtractedYield = burnAmount.sub(expectedFee);
+  //
+  //   await expectSolBalance(
+  //     beamClient.provider,
+  //     beamClient.sunrise.state.yieldAccount,
+  //     expectedExtractedYield,
+  //     // // the calculation appears to be slightly inaccurate at present, but in our favour,
+  //     // // so we can leave this as a low priority TODO to improve the accuracy
+  //     // 3000,
+  //   );
+  // });
 });

@@ -9,11 +9,11 @@ use crate::{system, utils, BeamError, ExtractYield};
 pub fn handler(ctx: Context<ExtractYield>, amount_in_lamports: u64) -> Result<()> {
     let state = &ctx.accounts.state;
     let epoch_report = &mut ctx.accounts.epoch_report;
-    let current_epoch = ctx.accounts.clock.epoch;
+    let current_epoch = ctx.accounts.sysvar_clock.epoch;
 
     // Check that the executing program is valid.
     let cpi_program =
-        utils::get_cpi_program_id(&ctx.accounts.instructions_sysvar.to_account_info())?;
+        utils::get_cpi_program_id(&ctx.accounts.sysvar_instructions.to_account_info())?;
     system::check_beam_validity(state, &ctx.accounts.beam, &cpi_program)?;
 
     // The epoch report must be already updated for this epoch

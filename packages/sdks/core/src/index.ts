@@ -257,6 +257,7 @@ export class SunriseClient {
 
   /** Gets the address of the epoch report account */
   public get epochReport(): [PublicKey, number] {
+    console.log("this.stateAddress", this.stateAddress);
     return SunriseClient.deriveEpochReport(
       this.stateAddress,
       this.program.programId,
