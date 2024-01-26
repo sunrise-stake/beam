@@ -68,7 +68,6 @@ export class MarinadeClient extends BeamInterface<
     provider: AnchorProvider,
     updateAuthority: PublicKey,
     sunriseState: PublicKey,
-    treasury: PublicKey,
     programId = MARINADE_BEAM_PROGRAM_ID,
   ): Promise<MarinadeClient> {
     const program = new Program<MarinadeBeam.MarinadeBeam>(
@@ -95,7 +94,6 @@ export class MarinadeClient extends BeamInterface<
         marinadeState,
         sunriseState,
         vaultAuthorityBump,
-        treasury,
       })
       .accounts({
         payer: provider.publicKey,
@@ -215,7 +213,7 @@ export class MarinadeClient extends BeamInterface<
         liqPoolMsolLegAuthority: await this.marinade.state.mSolLegAuthority(),
         msolMintAuthority: await this.marinade.state.mSolMintAuthority(),
         reservePda: await this.marinade.state.reserveAddress(),
-        beamProgram: this.sunrise.program.programId,
+        sunriseProgram: this.sunrise.program.programId,
         marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -254,7 +252,7 @@ export class MarinadeClient extends BeamInterface<
         liqPoolMsolLeg: this.marinade.state.mSolLeg,
         treasuryMsolAccount: this.marinade.state.treasuryMsolAccount,
         instructionsSysvar,
-        beamProgram: this.sunrise.program.programId,
+        sunriseProgram: this.sunrise.program.programId,
         marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -316,7 +314,7 @@ export class MarinadeClient extends BeamInterface<
         instructionsSysvar,
         newTicketAccount: marinadeTicket.publicKey,
         proxyTicketAccount: sunriseTicket.publicKey,
-        beamProgram: this.sunrise.program.programId,
+        sunriseProgram: this.sunrise.program.programId,
         marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
         clock: SYSVAR_CLOCK_PUBKEY,
         rent: SYSVAR_RENT_PUBKEY,
@@ -331,6 +329,36 @@ export class MarinadeClient extends BeamInterface<
       sunriseTicket,
       proxyTicket: marinadeTicket,
     };
+  }
+
+  public async burnGSol(
+    lamports: BN,
+    gsolTokenAccount?: PublicKey,
+  ): Promise<Transaction> {
+    const burner = this.provider.publicKey;
+    const { gsolMint, instructionsSysvar, burnGsolFrom } =
+      this.sunrise.burnGsolAccounts(
+        this.stateAddress,
+        burner,
+        gsolTokenAccount,
+      );
+
+    const instruction = await this.program.methods
+      .burn(lamports)
+      .accounts({
+        state: this.stateAddress,
+        sunriseState: this.state.sunriseState,
+        burner,
+        gsolTokenAccount: burnGsolFrom,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        gsolMint,
+        instructionsSysvar,
+        sunriseProgram: this.sunrise.program.programId,
+      })
+      .instruction();
+
+    return new Transaction().add(instruction);
   }
 
   /**
@@ -415,7 +443,7 @@ export class MarinadeClient extends BeamInterface<
           await this.marinade.state.validatorDuplicationFlag(voterAddress),
         msolMintAuthority: await this.marinade.state.mSolMintAuthority(),
         stakeProgram: StakeProgram.programId,
-        beamProgram: this.sunrise.program.programId,
+        sunriseProgram: this.sunrise.program.programId,
         marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,

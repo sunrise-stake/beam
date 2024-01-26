@@ -1,11 +1,13 @@
 import { AnchorProvider } from "@coral-xyz/anchor";
 import BN from "bn.js";
 import {
+  ComputeBudgetProgram,
   type ConfirmOptions,
   Connection,
   PublicKey,
   type Signer,
   Transaction,
+  TransactionInstruction,
 } from "@solana/web3.js";
 import { STAKE_PROGRAM_ID } from "./constants.js";
 
@@ -133,5 +135,24 @@ export const sendAndConfirmChecked = async (
   } catch (err) {
     console.error(err);
     throw err;
+  }
+};
+
+/**
+ * If a transaction requires additional compute units, use this function to create an instruction that requests them.
+ * @param cusRequested
+ */
+export const requestIncreasedCUsIx = (
+  cusRequested: number,
+): TransactionInstruction => {
+  return ComputeBudgetProgram.setComputeUnitLimit({
+    units: cusRequested,
+  });
+};
+
+export const logAccounts = (accounts: Record<string, PublicKey>): void => {
+  console.log("Accounts:");
+  for (const [name, address] of Object.entries(accounts)) {
+    console.log(`  ${name}: ${address.toBase58()}`);
   }
 };

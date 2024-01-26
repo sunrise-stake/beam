@@ -12,7 +12,10 @@ use anchor_lang::solana_program::sysvar;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use instructions::*;
 use seeds::*;
-pub use state::{AllocationUpdate, EpochReport, RegisterStateInput, State, UpdateStateInput};
+
+pub use state::{
+    AllocationUpdate, BeamDetails, EpochReport, RegisterStateInput, State, UpdateStateInput,
+};
 
 declare_id!("suncPB4RR39bMwnRhCym6ZLKqMfnFG83vjzVVuXNhCq");
 
@@ -330,11 +333,11 @@ pub struct ExtractYield<'info> {
     )]
     pub epoch_report: Account<'info, EpochReport>,
 
-    pub clock: Sysvar<'info, Clock>,
+    pub sysvar_clock: Sysvar<'info, Clock>,
 
     /// CHECK: Verified Instructions Sysvar.
     #[account(address = sysvar::instructions::ID)]
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 }
 
 #[error_code]

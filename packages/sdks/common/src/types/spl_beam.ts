@@ -21,7 +21,7 @@ export type SplBeam = {
           "isSigner": false
         },
         {
-          "name": "poolTokensVault",
+          "name": "poolTokenVault",
           "isMut": true,
           "isSigner": false
         },
@@ -83,7 +83,7 @@ export type SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -112,7 +112,7 @@ export type SplBeam = {
           "isSigner": false
         },
         {
-          "name": "poolTokensVault",
+          "name": "poolTokenVault",
           "isMut": true,
           "isSigner": false
         },
@@ -155,7 +155,7 @@ export type SplBeam = {
           "isSigner": false
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -187,7 +187,7 @@ export type SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -221,7 +221,7 @@ export type SplBeam = {
           "isSigner": false
         },
         {
-          "name": "poolTokensVault",
+          "name": "poolTokenVault",
           "isMut": true,
           "isSigner": false
         },
@@ -294,7 +294,7 @@ export type SplBeam = {
           "isSigner": false
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -321,7 +321,7 @@ export type SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -350,7 +350,7 @@ export type SplBeam = {
           "isSigner": false
         },
         {
-          "name": "poolTokensVault",
+          "name": "poolTokenVault",
           "isMut": true,
           "isSigner": false
         },
@@ -403,7 +403,7 @@ export type SplBeam = {
           "isSigner": false
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -431,11 +431,80 @@ export type SplBeam = {
       ]
     },
     {
+      "name": "burn",
+      "docs": [
+        "Burning is withdrawing without redeeming the pool tokens. The result is a beam that is \"worth more\"",
+        "than the SOL that has been staked into it, i.e. the pool tokens are more valuable than the SOL.",
+        "This allows yield extraction and can be seen as a form of \"donation\"."
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stakePool",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "burner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "gsolTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "gsolMint",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Verified in CPI to Sunrise program."
+          ]
+        },
+        {
+          "name": "instructionsSysvar",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "lamports",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "withdrawStake",
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -469,7 +538,7 @@ export type SplBeam = {
           "isSigner": false
         },
         {
-          "name": "poolTokensVault",
+          "name": "poolTokenVault",
           "isMut": true,
           "isSigner": false
         },
@@ -527,7 +596,7 @@ export type SplBeam = {
           "isSigner": false
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -562,6 +631,129 @@ export type SplBeam = {
     {
       "name": "redeemTicket",
       "accounts": [],
+      "args": []
+    },
+    {
+      "name": "extractYield",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseState",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "stakePool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "poolMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "yieldAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "newStakeAccount",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The uninitialized new stake account. Will be initialised by CPI to the SPL StakePool program."
+          ]
+        },
+        {
+          "name": "vaultAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "poolTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stakePoolWithdrawAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "validatorStakeList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stakeAccountToSplit",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "managerFeeAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "epochReport",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The epoch report account. This is updated with the latest extracted yield value.",
+            "It must be up to date with the current epoch. If not, run updateEpochReport before it."
+          ]
+        },
+        {
+          "name": "sysvarClock",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nativeStakeProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarStakeHistory",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarInstructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "splStakePoolProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
       "args": []
     }
   ],
@@ -599,22 +791,6 @@ export type SplBeam = {
               "that holds pool tokens."
             ],
             "type": "u8"
-          },
-          {
-            "name": "treasury",
-            "docs": [
-              "This state's SOL vault."
-            ],
-            "type": "publicKey"
-          },
-          {
-            "name": "partialGsolSupply",
-            "docs": [
-              "The amount of the current gsol supply this beam is responsible for.",
-              "This field is also tracked in the matching beam-details struct in the",
-              "sunrise program's state and is expected to match that value."
-            ],
-            "type": "u64"
           }
         ]
       }
@@ -641,10 +817,6 @@ export type SplBeam = {
           {
             "name": "vaultAuthorityBump",
             "type": "u8"
-          },
-          {
-            "name": "treasury",
-            "type": "publicKey"
           }
         ]
       }
@@ -665,6 +837,16 @@ export type SplBeam = {
       "code": 6002,
       "name": "Unimplemented",
       "msg": "This feature is unimplemented for this beam"
+    },
+    {
+      "code": 6003,
+      "name": "YieldStakeAccountNotCooledDown",
+      "msg": "The yield stake account cannot yet be claimed"
+    },
+    {
+      "code": 6004,
+      "name": "InsufficientYieldToExtract",
+      "msg": "The yield being extracted is insufficient to cover the rent of the stake account"
     }
   ]
 };
@@ -692,7 +874,7 @@ export const IDL: SplBeam = {
           "isSigner": false
         },
         {
-          "name": "poolTokensVault",
+          "name": "poolTokenVault",
           "isMut": true,
           "isSigner": false
         },
@@ -754,7 +936,7 @@ export const IDL: SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -783,7 +965,7 @@ export const IDL: SplBeam = {
           "isSigner": false
         },
         {
-          "name": "poolTokensVault",
+          "name": "poolTokenVault",
           "isMut": true,
           "isSigner": false
         },
@@ -826,7 +1008,7 @@ export const IDL: SplBeam = {
           "isSigner": false
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -858,7 +1040,7 @@ export const IDL: SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -892,7 +1074,7 @@ export const IDL: SplBeam = {
           "isSigner": false
         },
         {
-          "name": "poolTokensVault",
+          "name": "poolTokenVault",
           "isMut": true,
           "isSigner": false
         },
@@ -965,7 +1147,7 @@ export const IDL: SplBeam = {
           "isSigner": false
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -992,7 +1174,7 @@ export const IDL: SplBeam = {
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1021,7 +1203,7 @@ export const IDL: SplBeam = {
           "isSigner": false
         },
         {
-          "name": "poolTokensVault",
+          "name": "poolTokenVault",
           "isMut": true,
           "isSigner": false
         },
@@ -1074,7 +1256,7 @@ export const IDL: SplBeam = {
           "isSigner": false
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -1102,11 +1284,80 @@ export const IDL: SplBeam = {
       ]
     },
     {
+      "name": "burn",
+      "docs": [
+        "Burning is withdrawing without redeeming the pool tokens. The result is a beam that is \"worth more\"",
+        "than the SOL that has been staked into it, i.e. the pool tokens are more valuable than the SOL.",
+        "This allows yield extraction and can be seen as a form of \"donation\"."
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stakePool",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "burner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "gsolTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "gsolMint",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Verified in CPI to Sunrise program."
+          ]
+        },
+        {
+          "name": "instructionsSysvar",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "lamports",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "withdrawStake",
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1140,7 +1391,7 @@ export const IDL: SplBeam = {
           "isSigner": false
         },
         {
-          "name": "poolTokensVault",
+          "name": "poolTokenVault",
           "isMut": true,
           "isSigner": false
         },
@@ -1198,7 +1449,7 @@ export const IDL: SplBeam = {
           "isSigner": false
         },
         {
-          "name": "beamProgram",
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -1233,6 +1484,129 @@ export const IDL: SplBeam = {
     {
       "name": "redeemTicket",
       "accounts": [],
+      "args": []
+    },
+    {
+      "name": "extractYield",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseState",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "stakePool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "poolMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "yieldAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "newStakeAccount",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The uninitialized new stake account. Will be initialised by CPI to the SPL StakePool program."
+          ]
+        },
+        {
+          "name": "vaultAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "poolTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stakePoolWithdrawAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "validatorStakeList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stakeAccountToSplit",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "managerFeeAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "epochReport",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The epoch report account. This is updated with the latest extracted yield value.",
+            "It must be up to date with the current epoch. If not, run updateEpochReport before it."
+          ]
+        },
+        {
+          "name": "sysvarClock",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nativeStakeProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarStakeHistory",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarInstructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "splStakePoolProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
       "args": []
     }
   ],
@@ -1270,22 +1644,6 @@ export const IDL: SplBeam = {
               "that holds pool tokens."
             ],
             "type": "u8"
-          },
-          {
-            "name": "treasury",
-            "docs": [
-              "This state's SOL vault."
-            ],
-            "type": "publicKey"
-          },
-          {
-            "name": "partialGsolSupply",
-            "docs": [
-              "The amount of the current gsol supply this beam is responsible for.",
-              "This field is also tracked in the matching beam-details struct in the",
-              "sunrise program's state and is expected to match that value."
-            ],
-            "type": "u64"
           }
         ]
       }
@@ -1312,10 +1670,6 @@ export const IDL: SplBeam = {
           {
             "name": "vaultAuthorityBump",
             "type": "u8"
-          },
-          {
-            "name": "treasury",
-            "type": "publicKey"
           }
         ]
       }
@@ -1336,6 +1690,16 @@ export const IDL: SplBeam = {
       "code": 6002,
       "name": "Unimplemented",
       "msg": "This feature is unimplemented for this beam"
+    },
+    {
+      "code": 6003,
+      "name": "YieldStakeAccountNotCooledDown",
+      "msg": "The yield stake account cannot yet be claimed"
+    },
+    {
+      "code": 6004,
+      "name": "InsufficientYieldToExtract",
+      "msg": "The yield being extracted is insufficient to cover the rent of the stake account"
     }
   ]
 };

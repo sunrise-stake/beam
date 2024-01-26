@@ -400,12 +400,12 @@ export type SunriseCore = {
           ]
         },
         {
-          "name": "clock",
+          "name": "sysvarClock",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         }
@@ -1136,12 +1136,12 @@ export const IDL: SunriseCore = {
           ]
         },
         {
-          "name": "clock",
+          "name": "sysvarClock",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         }

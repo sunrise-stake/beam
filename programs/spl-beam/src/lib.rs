@@ -1,32 +1,35 @@
 #![allow(clippy::result_large_err)]
 
 use anchor_lang::prelude::*;
+use anchor_lang::AnchorDeserialize;
 use anchor_spl::associated_token::{AssociatedToken, Create};
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use cpi_interface::spl as spl_interface;
-use cpi_interface::sunrise as sunrise_interface;
+use constants::STAKE_ACCOUNT_SIZE;
+use cpi_interface::{
+    program::{NativeStakeProgram, SplStakePool},
+    spl as spl_interface,
+    stake_pool::StakePool,
+    sunrise as sunrise_interface,
+};
+use seeds::*;
 use state::{State, StateEntry};
 use std::ops::Deref;
 
-// TODO: Use actual CPI crate.
+use crate::cpi_interface::stake_account::StakeAccount;
 use sunrise_core as sunrise_core_cpi;
 
+mod constants;
 mod cpi_interface;
+mod seeds;
 mod state;
 mod utils;
 
 declare_id!("EUZfY4LePXSZVMvRuiVzbxazw9yBDYU99DpGJKCthxbS");
 
-mod constants {
-    /// Seed of the PDA that can authorize spending from the vault that holds pool tokens.
-    pub const VAULT_AUTHORITY: &[u8] = b"vault-authority";
-    /// Seed of this program's state address.
-    pub const STATE: &[u8] = b"sunrise-spl";
-}
-
 #[program]
 pub mod spl_beam {
     use super::*;
+    use crate::cpi_interface::stake_account::claim_stake_account;
 
     pub fn initialize(ctx: Context<Initialize>, input: StateEntry) -> Result<()> {
         ctx.accounts.state.set_inner(input.into());
@@ -34,7 +37,7 @@ pub mod spl_beam {
         let cpi_accounts = Create {
             payer: ctx.accounts.payer.to_account_info(),
             authority: ctx.accounts.vault_authority.to_account_info(),
-            associated_token: ctx.accounts.pool_tokens_vault.to_account_info(),
+            associated_token: ctx.accounts.pool_token_vault.to_account_info(),
             mint: ctx.accounts.pool_mint.to_account_info(),
             system_program: ctx.accounts.system_program.to_account_info(),
             token_program: ctx.accounts.token_program.to_account_info(),
@@ -44,9 +47,7 @@ pub mod spl_beam {
     }
 
     pub fn update(ctx: Context<Update>, update_input: StateEntry) -> Result<()> {
-        let mut updated_state: State = update_input.into();
-        // Make sure the partial gsol supply remains consistent.
-        updated_state.partial_gsol_supply = ctx.accounts.state.partial_gsol_supply;
+        let updated_state: State = update_input.into();
         ctx.accounts.state.set_inner(updated_state);
         Ok(())
     }
@@ -59,19 +60,13 @@ pub mod spl_beam {
         // CPI: Mint GSOL of the same proportion as the lamports deposited to depositor.
         sunrise_interface::mint_gsol(
             ctx.accounts.deref(),
-            ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_program.to_account_info(),
             ctx.accounts.sunrise_state.key(),
             ctx.accounts.stake_pool.key(),
             state_bump,
             lamports,
         )?;
 
-        // Update the partial gsol supply for this beam.
-        let state_account = &mut ctx.accounts.state;
-        state_account.partial_gsol_supply = state_account
-            .partial_gsol_supply
-            .checked_add(lamports)
-            .unwrap();
         Ok(())
     }
 
@@ -85,26 +80,21 @@ pub mod spl_beam {
         // CPI: Mint Gsol of the same proportion as the stake amount.
         sunrise_interface::mint_gsol(
             ctx.accounts.deref(),
-            ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_program.to_account_info(),
             ctx.accounts.sunrise_state.key(),
             ctx.accounts.stake_pool.key(),
             state_bump,
             lamports,
         )?;
 
-        // Update the partial gsol supply for this beam.
-        let state_account = &mut ctx.accounts.state;
-        state_account.partial_gsol_supply = state_account
-            .partial_gsol_supply
-            .checked_add(lamports)
-            .unwrap();
         Ok(())
     }
 
     pub fn withdraw(ctx: Context<Withdraw>, lamports: u64) -> Result<()> {
         // Calculate the number of pool tokens needed to be burnt to withdraw `lamports` lamports.
+        let pool = &ctx.accounts.stake_pool;
         let pool_tokens_amount =
-            utils::pool_tokens_from_lamports(&ctx.accounts.stake_pool, lamports)?;
+            utils::pool_tokens_from_lamports(&pool.clone().into_inner(), lamports)?;
 
         // CPI: Withdraw SOL from SPL stake pool.
         spl_interface::withdraw(ctx.accounts.deref(), pool_tokens_amount)?;
@@ -113,48 +103,55 @@ pub mod spl_beam {
         let state_bump = ctx.bumps.state;
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
-            ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_program.to_account_info(),
             ctx.accounts.sunrise_state.key(),
-            ctx.accounts.stake_pool.key(),
+            pool.key(),
             state_bump,
             lamports,
         )?;
 
-        // Update the partial gsol supply for this beam.
-        let state_account = &mut ctx.accounts.state;
-        state_account.partial_gsol_supply = state_account
-            .partial_gsol_supply
-            .checked_sub(lamports)
-            .unwrap();
+        Ok(())
+    }
+
+    /// Burning is withdrawing without redeeming the pool tokens. The result is a beam that is "worth more"
+    /// than the SOL that has been staked into it, i.e. the pool tokens are more valuable than the SOL.
+    /// This allows yield extraction and can be seen as a form of "donation".
+    pub fn burn(ctx: Context<Burn>, lamports: u64) -> Result<()> {
+        let pool = &ctx.accounts.stake_pool;
+
+        let state_bump = ctx.bumps.state;
+        sunrise_interface::burn_gsol(
+            ctx.accounts.deref(),
+            ctx.accounts.sunrise_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
+            pool.key(),
+            state_bump,
+            lamports,
+        )?;
 
         Ok(())
     }
 
     pub fn withdraw_stake(ctx: Context<WithdrawStake>, lamports: u64) -> Result<()> {
         // Calculate the number of pool tokens needed to be burnt to withdraw `lamports` worth of stake.
+        let pool = &ctx.accounts.stake_pool;
         let pool_tokens_amount =
-            utils::pool_tokens_from_lamports(&ctx.accounts.stake_pool, lamports)?;
+            utils::pool_tokens_from_lamports(&pool.clone().into_inner(), lamports)?;
 
         // CPI: Withdraw SOL from SPL stake pool into a stake account.
-        spl_interface::withdraw_stake(ctx.accounts.deref(), pool_tokens_amount)?;
+        let extract_stake_account_accounts = ctx.accounts.deref().into();
+        spl_interface::extract_stake(&extract_stake_account_accounts, pool_tokens_amount)?;
 
         // CPI: Burn GSOL of the same proportion as the lamports withdrawn.
         let state_bump = ctx.bumps.state;
         sunrise_interface::burn_gsol(
             ctx.accounts.deref(),
-            ctx.accounts.beam_program.to_account_info(),
+            ctx.accounts.sunrise_program.to_account_info(),
             ctx.accounts.sunrise_state.key(),
             ctx.accounts.stake_pool.key(),
             state_bump,
             lamports,
         )?;
-
-        // Update the partial gsol supply for this beam.
-        let state_account = &mut ctx.accounts.state;
-        state_account.partial_gsol_supply = state_account
-            .partial_gsol_supply
-            .checked_sub(lamports)
-            .unwrap();
 
         Ok(())
     }
@@ -168,6 +165,42 @@ pub mod spl_beam {
         // spl stake pools only support immediate withdrawals.
         Err(SplBeamError::Unimplemented.into())
     }
+
+    pub fn extract_yield(ctx: Context<ExtractYield>) -> Result<()> {
+        // Calculate how much yield can be extracted from the pool.
+        let extractable_yield = utils::calculate_extractable_yield(
+            &ctx.accounts.sunrise_state,
+            &ctx.accounts.state,
+            &ctx.accounts.stake_pool,
+            &ctx.accounts.pool_token_vault,
+        )?;
+
+        // CPI: Extract this yield into a new stake account.
+        let extract_stake_account_accounts = ctx.accounts.deref().into();
+        spl_interface::extract_stake(&extract_stake_account_accounts, extractable_yield)?;
+
+        // get the staked lamports amount
+        let stake_account = &mut ctx.accounts.new_stake_account;
+        stake_account.reload()?;
+        let lamports = stake_account.to_account_info().lamports();
+
+        // CPI: Withdraw the lamports from the stake account.
+        let claim_stake_account_accounts = ctx.accounts.deref().into();
+        claim_stake_account(&claim_stake_account_accounts, lamports)?;
+
+        // CPI: update the epoch report with the extracted yield.
+        let state_bump = ctx.bumps.state;
+        sunrise_interface::extract_yield(
+            ctx.accounts.deref(),
+            ctx.accounts.sunrise_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
+            ctx.accounts.stake_pool.key(),
+            state_bump,
+            lamports,
+        )?;
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -179,7 +212,7 @@ pub struct Initialize<'info> {
         init,
         space = State::SPACE,
         payer = payer,
-        seeds = [constants::STATE, input.sunrise_state.as_ref(), input.stake_pool.as_ref()],
+        seeds = [STATE, input.sunrise_state.as_ref(), input.stake_pool.as_ref()],
         bump
     )]
     pub state: Account<'info, State>,
@@ -187,12 +220,12 @@ pub struct Initialize<'info> {
     pub pool_mint: UncheckedAccount<'info>,
     #[account(mut)]
     /// CHECK: Initialized as token account in handler.
-    pub pool_tokens_vault: UncheckedAccount<'info>,
+    pub pool_token_vault: UncheckedAccount<'info>,
     /// CHECK: PDA authority of the pool tokens.
     #[account(
         seeds = [
             state.key().as_ref(),
-            constants::VAULT_AUTHORITY
+            VAULT_AUTHORITY
         ],
         bump = input.vault_authority_bump
     )]
@@ -216,19 +249,18 @@ pub struct Update<'info> {
 #[derive(Accounts)]
 pub struct Deposit<'info> {
     #[account(
-        mut,
         has_one = sunrise_state,
         has_one = stake_pool,
-        seeds = [constants::STATE, sunrise_state.key().as_ref(), stake_pool.key().as_ref()],
+        seeds = [STATE, sunrise_state.key().as_ref(), stake_pool.key().as_ref()],
         bump
     )]
     pub state: Box<Account<'info, State>>,
+
     #[account(mut)]
-    /// CHECK: The registered SPL stake pool.
-    pub stake_pool: UncheckedAccount<'info>,
+    pub stake_pool: Box<Account<'info, StakePool>>,
+
     #[account(mut)]
-    /// CHECK: The main Sunrise beam state.
-    pub sunrise_state: UncheckedAccount<'info>,
+    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
 
     #[account(mut)]
     pub depositor: Signer<'info>,
@@ -242,11 +274,11 @@ pub struct Deposit<'info> {
         token::mint = pool_mint,
         token::authority = vault_authority
     )]
-    pub pool_tokens_vault: Box<Account<'info, TokenAccount>>,
+    pub pool_token_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         seeds = [
             state.key().as_ref(),
-            constants::VAULT_AUTHORITY
+            VAULT_AUTHORITY
         ],
         bump = state.vault_authority_bump
     )]
@@ -271,12 +303,8 @@ pub struct Deposit<'info> {
     /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_core_cpi::ID)]
-    /// CHECK: The Sunrise ProgramID.
-    pub beam_program: UncheckedAccount<'info>,
-    #[account(address = spl_stake_pool::ID)]
-    /// CHECK: The SPL StakePool ProgramID.
-    pub spl_stake_pool_program: UncheckedAccount<'info>,
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
+    pub spl_stake_pool_program: Program<'info, SplStakePool>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -285,10 +313,9 @@ pub struct Deposit<'info> {
 #[derive(Accounts)]
 pub struct DepositStake<'info> {
     #[account(
-        mut,
         has_one = sunrise_state,
         has_one = stake_pool,
-        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        seeds = [STATE, sunrise_state.key().as_ref()],
         bump
     )]
     pub state: Box<Account<'info, State>>,
@@ -314,11 +341,11 @@ pub struct DepositStake<'info> {
         token::mint = pool_mint,
         token::authority = vault_authority
     )]
-    pub pool_tokens_vault: Box<Account<'info, TokenAccount>>,
+    pub pool_token_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         seeds = [
             state.key().as_ref(),
-            constants::VAULT_AUTHORITY
+            VAULT_AUTHORITY
         ],
         bump = state.vault_authority_bump
     )]
@@ -342,10 +369,9 @@ pub struct DepositStake<'info> {
     pub manager_fee_account: UncheckedAccount<'info>,
     /// CHECK: Checked by CPI to SPL StakePool program.
     pub sysvar_stake_history: UncheckedAccount<'info>,
-    /// CHECK: Checked by CPI to SPL StakePool program.
-    pub sysvar_clock: UncheckedAccount<'info>,
-    /// CHECK: Checked by CPI to SPL StakePool program.
-    pub native_stake_program: UncheckedAccount<'info>,
+
+    pub sysvar_clock: Sysvar<'info, Clock>,
+    pub native_stake_program: Program<'info, NativeStakeProgram>,
 
     #[account(mut)]
     /// Verified in CPI to Sunrise program.
@@ -355,12 +381,8 @@ pub struct DepositStake<'info> {
     /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_core_cpi::ID)]
-    /// CHECK: The Sunrise ProgramID.
-    pub beam_program: UncheckedAccount<'info>,
-    #[account(address = spl_stake_pool::ID)]
-    /// CHECK: The SPL StakePool ProgramID.
-    pub spl_stake_pool_program: UncheckedAccount<'info>,
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
+    pub spl_stake_pool_program: Program<'info, SplStakePool>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -369,19 +391,16 @@ pub struct DepositStake<'info> {
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
     #[account(
-        mut,
         has_one = sunrise_state,
         has_one = stake_pool,
-        seeds = [constants::STATE, sunrise_state.key().as_ref(), stake_pool.key().as_ref()],
+        seeds = [STATE, sunrise_state.key().as_ref(), stake_pool.key().as_ref()],
         bump
     )]
     pub state: Box<Account<'info, State>>,
     #[account(mut)]
-    /// CHECK: The registered Spl stake pool.
-    pub stake_pool: UncheckedAccount<'info>,
+    pub stake_pool: Box<Account<'info, StakePool>>,
     #[account(mut)]
-    /// CHECK: The main Sunrise beam state.
-    pub sunrise_state: UncheckedAccount<'info>,
+    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
 
     #[account(mut)]
     pub withdrawer: Signer<'info>,
@@ -395,11 +414,11 @@ pub struct Withdraw<'info> {
         token::mint = pool_mint,
         token::authority = vault_authority
     )]
-    pub pool_tokens_vault: Box<Account<'info, TokenAccount>>,
+    pub pool_token_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         seeds = [
             state.key().as_ref(),
-            constants::VAULT_AUTHORITY
+            VAULT_AUTHORITY
         ],
         bump = state.vault_authority_bump
     )]
@@ -428,12 +447,8 @@ pub struct Withdraw<'info> {
     /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_core_cpi::ID)]
-    /// CHECK: The Sunrise program ID.
-    pub beam_program: UncheckedAccount<'info>,
-    #[account(address = spl_stake_pool::ID)]
-    /// CHECK: The SPL StakePool ProgramID.
-    pub spl_stake_pool_program: UncheckedAccount<'info>,
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
+    pub spl_stake_pool_program: Program<'info, SplStakePool>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -442,19 +457,18 @@ pub struct Withdraw<'info> {
 #[derive(Accounts)]
 pub struct WithdrawStake<'info> {
     #[account(
-        mut,
         has_one = sunrise_state,
         has_one = stake_pool,
-        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        seeds = [STATE, sunrise_state.key().as_ref()],
         bump
     )]
     pub state: Box<Account<'info, State>>,
     #[account(mut)]
     /// CHECK: The registered spl stake pool.
-    pub stake_pool: UncheckedAccount<'info>,
+    pub stake_pool: Box<Account<'info, StakePool>>,
     #[account(mut)]
     /// CHECK: The main Sunrise beam state.
-    pub sunrise_state: UncheckedAccount<'info>,
+    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
 
     #[account(mut)]
     pub withdrawer: Signer<'info>,
@@ -470,11 +484,11 @@ pub struct WithdrawStake<'info> {
         token::mint = pool_mint,
         token::authority = vault_authority
     )]
-    pub pool_tokens_vault: Box<Account<'info, TokenAccount>>,
+    pub pool_token_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         seeds = [
             state.key().as_ref(),
-            constants::VAULT_AUTHORITY
+            VAULT_AUTHORITY
         ],
         bump = state.vault_authority_bump
     )]
@@ -498,10 +512,9 @@ pub struct WithdrawStake<'info> {
     pub manager_fee_account: UncheckedAccount<'info>,
     /// CHECK: Checked by CPI to SPL StakePool Program.
     pub sysvar_stake_history: UncheckedAccount<'info>,
-    /// CHECK: Checked by CPI to SPL StakePool Program.
-    pub sysvar_clock: UncheckedAccount<'info>,
-    /// CHECK: Checked by CPI to SPL StakePool Program.
-    pub native_stake_program: UncheckedAccount<'info>,
+
+    pub sysvar_clock: Sysvar<'info, Clock>,
+    pub native_stake_program: Program<'info, NativeStakeProgram>,
 
     #[account(mut)]
     /// Verified in CPI to Sunrise program.
@@ -509,12 +522,132 @@ pub struct WithdrawStake<'info> {
     /// CHECK: Checked by CPI to Sunrise.
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    #[account(address = sunrise_core_cpi::ID)]
-    /// CHECK: The Sunrise ProgramID.
-    pub beam_program: UncheckedAccount<'info>,
-    #[account(address = spl_stake_pool::ID)]
-    /// CHECK: The SPL StakePool ProgramID.
-    pub spl_stake_pool_program: UncheckedAccount<'info>,
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
+    pub spl_stake_pool_program: Program<'info, SplStakePool>,
+
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts, Clone)]
+pub struct ExtractYield<'info> {
+    #[account(
+        has_one = stake_pool,
+        has_one = sunrise_state,
+        seeds = [STATE, sunrise_state.key().as_ref(), stake_pool.key().as_ref()],
+        bump
+    )]
+    pub state: Box<Account<'info, State>>,
+    #[account(
+        has_one = yield_account
+    )]
+    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
+    #[account(mut)]
+    pub stake_pool: Box<Account<'info, StakePool>>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    #[account(mut)]
+    pub pool_mint: Box<Account<'info, Mint>>,
+
+    #[account(mut)]
+    /// CHECK: Matches the yield key stored in the state.
+    pub yield_account: UncheckedAccount<'info>,
+
+    #[account(
+    init_if_needed,
+    space = STAKE_ACCOUNT_SIZE,
+    payer = payer,
+    owner = anchor_lang::solana_program::stake::program::ID,
+    seeds = [
+        state.key().as_ref(),
+        EXTRACT_YIELD_STAKE_ACCOUNT
+    ],
+    bump
+    )]
+    /// The uninitialized new stake account. Will be initialised by CPI to the SPL StakePool program.
+    pub new_stake_account: Account<'info, StakeAccount>,
+
+    #[account(
+    seeds = [
+        state.key().as_ref(),
+        VAULT_AUTHORITY
+    ],
+    bump = state.vault_authority_bump
+    )]
+    /// CHECK: The vault authority PDA with verified seeds.
+    pub vault_authority: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        token::mint = pool_mint,
+        token::authority = vault_authority
+    )]
+    pub pool_token_vault: Box<Account<'info, TokenAccount>>,
+
+    /// CHECK: Checked by CPI to SPL StakePool Program.
+    pub stake_pool_withdraw_authority: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    /// CHECK: Checked by CPI to SPL StakePool program.
+    pub validator_stake_list: UncheckedAccount<'info>,
+    #[account(mut)]
+    // The SPL StakePool program checks that this is either
+    // the stake account of a recognized validator, or the
+    // pool's reserve stake account.
+    /// CHECK: The stake account to split from. - Checked by CPI to SPL StakePool Program.
+    pub stake_account_to_split: UncheckedAccount<'info>,
+    /// CHECK: Checked by CPI to SPL StakePool Program.
+    #[account(mut)]
+    /// CHECK: Checked by CPI to SPL StakePool Program.
+    pub manager_fee_account: UncheckedAccount<'info>,
+
+    /// The epoch report account. This is updated with the latest extracted yield value.
+    /// It must be up to date with the current epoch. If not, run updateEpochReport before it.
+    /// CHECK: Address checked by CIP to the core Sunrise program.
+    #[account(mut)]
+    pub epoch_report: UncheckedAccount<'info>,
+
+    pub sysvar_clock: Sysvar<'info, Clock>,
+    pub native_stake_program: Program<'info, NativeStakeProgram>,
+    /// CHECK: Checked by CPI to SPL Stake program.
+    pub sysvar_stake_history: UncheckedAccount<'info>,
+    /// CHECK: Checked by CPI to Sunrise.
+    pub sysvar_instructions: UncheckedAccount<'info>,
+
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
+    pub spl_stake_pool_program: Program<'info, SplStakePool>,
+
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct Burn<'info> {
+    #[account(
+    has_one = sunrise_state,
+    has_one = stake_pool,
+    seeds = [STATE, sunrise_state.key().as_ref(), stake_pool.key().as_ref()],
+    bump
+    )]
+    pub state: Box<Account<'info, State>>,
+    #[account(mut)]
+    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
+    pub stake_pool: Box<Account<'info, StakePool>>,
+
+    #[account(mut)]
+    pub burner: Signer<'info>,
+    #[account(mut, token::mint = gsol_mint)]
+    pub gsol_token_account: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    /// Verified in CPI to Sunrise program.
+    pub gsol_mint: Account<'info, Mint>,
+    /// CHECK: Checked by CPI to Sunrise.
+    pub instructions_sysvar: UncheckedAccount<'info>,
+
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -531,4 +664,8 @@ pub enum SplBeamError {
     CalculationFailure,
     #[msg("This feature is unimplemented for this beam")]
     Unimplemented,
+    #[msg("The yield stake account cannot yet be claimed")]
+    YieldStakeAccountNotCooledDown,
+    #[msg("The yield being extracted is insufficient to cover the rent of the stake account")]
+    InsufficientYieldToExtract,
 }

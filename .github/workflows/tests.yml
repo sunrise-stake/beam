@@ -7,16 +7,16 @@ jobs:
   install:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: ./.github/actions/cache-solana
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
 
       - name: Cache node dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Cache rust
         uses: Swatinem/rust-cache@v2
       - name: Run fmt
@@ -52,25 +52,30 @@ jobs:
   cargo-build:
     needs: install
     runs-on: ubuntu-latest
+    outputs:
+      target_deploy_artifact: ${{ steps.build-artifact-upload-step.outputs.artifact-id }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Cache rust
         uses: Swatinem/rust-cache@v2
       - uses: ./.github/actions/cache-solana
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
+
       - name: Build all programs
         run: cargo build-sbf
+
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        id: build-artifact-upload-step
+        uses: actions/upload-artifact@v4
         with:
-          name: target
-          path: target
+          name: target_deploy
+          path: target/deploy
           if-no-files-found: error
           retention-days: 1
 
@@ -79,11 +84,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Cache rust
         uses: Swatinem/rust-cache@v2
       - uses: ./.github/actions/cache-solana
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -99,14 +104,14 @@ jobs:
     needs: install
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Use Node ${{ matrix.node }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
       - name: Cache node dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
@@ -115,7 +120,7 @@ jobs:
         run: yarn build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dists
           path: packages/sdks/*/dist
@@ -126,20 +131,20 @@ jobs:
     needs: yarn-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Use Node ${{ matrix.node }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
       - name: Cache node dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: dists
           path: packages/sdks
@@ -150,19 +155,28 @@ jobs:
           yarn lint
 
   functional-test:
-    needs: [clippy-lint, yarn-lint, cargo-build]
+    needs: [yarn-build, cargo-build]
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Use Node ${{ matrix.node }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
+      - uses: ./.github/actions/cache-solana
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
+
       - name: Cache node dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
@@ -171,33 +185,30 @@ jobs:
         run: yarn --frozen-lockfile
 
       - name: Download JS build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: dists
           path: packages/sdks
 
       - name: Download Rust build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: target
-          path: .
+          name: target_deploy
+          path: ./target/deploy
 
-      - uses: ./.github/actions/cache-solana
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
       - name: run tests
-        run: |
-          ls target/deploy
-          #yarn anchor test --skip-build packages/tests/src/functional/beams/core.test.ts
-          yarn test
+        run: yarn test
 
-      - uses: actions/upload-artifact@v3
+      - name: upload program logs
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: program-logs
           path: .anchor/program-logs/*
+
+      - name: upload test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-report
+          path: mochawesome-report/*

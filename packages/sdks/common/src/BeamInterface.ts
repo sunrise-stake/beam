@@ -38,6 +38,7 @@ export abstract class BeamInterface<
     proxyTicket: Keypair;
   }>;
   abstract redeemTicket(sunriseTicket: PublicKey): Promise<Transaction>;
+  abstract burnGSol(lamports: BN): Promise<Transaction>;
 
   public supportsSolDeposit(): boolean {
     return this.caps.find((cap) => canDepositSol(cap)) !== undefined;
@@ -70,8 +71,6 @@ export interface BeamState {
   sunriseState: PublicKey;
   /** Bump of the PDA account that owns the vault where tokens are stored.*/
   vaultAuthorityBump: number;
-  /** SOL treasury account for the beam. */
-  treasury: PublicKey;
 }
 
 /** @type {BeamCapability}: supports sol deposits.*/

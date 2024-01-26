@@ -266,8 +266,6 @@ mod internal_tests {
     fn test_contains_beam() {
         let mut state = State::default();
 
-        let beam_program_id = Pubkey::new_unique();
-
         let key1 = Pubkey::new_unique();
         let key2 = Pubkey::new_unique();
         state.allocations = vec![key1, key2]
@@ -281,8 +279,6 @@ mod internal_tests {
     #[test]
     fn test_beam_count() {
         let mut state = State::default();
-
-        let beam_program_id = Pubkey::new_unique();
 
         let key1 = Pubkey::new_unique();
         let key2 = Pubkey::new_unique();
@@ -339,7 +335,6 @@ mod internal_tests {
     #[test]
     fn test_remove_beam() {
         let mut state = State::default();
-        let beam_program_id = Pubkey::new_unique();
 
         let keys = vec![
             Pubkey::new_unique(),
@@ -378,7 +373,6 @@ mod internal_tests {
     #[test]
     fn test_get_beam_details() {
         let mut state = State::default();
-        let beam_program_id = Pubkey::new_unique();
         let key = Pubkey::new_unique();
 
         state.allocations = vec![

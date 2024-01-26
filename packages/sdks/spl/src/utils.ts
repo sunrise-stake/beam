@@ -21,8 +21,9 @@ export type SplClientParams = {
  * All the constant seeds used for the PDAs of the on-chain program.
  */
 const enum Seeds {
-  STATE = "sunrise-spl",
-  VAULT_AUTHORITY = "vault-authority",
+  STATE = "sunrise_spl",
+  VAULT_AUTHORITY = "vault_authority",
+  EXTRACT_YIELD_STAKE_ACCOUNT = "extract_yield_stake_account",
 }
 
 /**
@@ -52,13 +53,22 @@ export class Utils {
     );
   }
 
+  public static deriveExtractYieldStakeAccount(
+    pid: PublicKey,
+    state: PublicKey,
+  ): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [state.toBuffer(), Buffer.from(Seeds.EXTRACT_YIELD_STAKE_ACCOUNT)],
+      pid,
+    );
+  }
+
   public static getSplClientParams = async (
     provider: AnchorProvider,
     beamProgramId: PublicKey,
     stateAddress: PublicKey,
     stakePoolAddress: PublicKey,
   ): Promise<SplClientParams> => {
-    // const marinadeState = await this.loadMarinadeState(provider);
     const vaultAuthority = Utils.deriveAuthorityAddress(
       beamProgramId,
       stateAddress,

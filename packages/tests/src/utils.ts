@@ -23,12 +23,14 @@ import chaiAsPromised from "chai-as-promised";
 import { Idl } from "@coral-xyz/anchor";
 import { provider } from "./functional/setup.js";
 import { SunriseClient } from "@sunrisestake/beams-core";
+import { getParsedStakeAccountInfo } from "@sunrisestake/beams-common";
 
 chai.use(chaiAsPromised);
 const { expect } = chai;
 
 // Set in anchor.toml
 const SLOTS_IN_EPOCH = 32;
+const STAKE_ACCOUNT_RENT_EXEMPT_AMOUNT = 2282880;
 
 const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"] as const;
 type LOG_LEVEL = (typeof LOG_LEVELS)[number];
@@ -84,14 +86,38 @@ export const expectTokenBalance = async (
   expectAmount(actualAmount, expectedAmount, tolerance);
 };
 
+export const expectStakeAccountBalance = async (
+  provider: AnchorProvider,
+  stakeAccountAddress: PublicKey,
+  expectedAmount: number | BN,
+  tolerance = 0,
+) => {
+  const stakeAccount = await getParsedStakeAccountInfo(
+    provider,
+    stakeAccountAddress,
+  );
+
+  const actualAmount = (stakeAccount.balanceLamports ?? new BN(0)).subn(
+    STAKE_ACCOUNT_RENT_EXEMPT_AMOUNT,
+  );
+  expectAmount(actualAmount, expectedAmount, tolerance);
+};
+
 // These functions use string equality to allow large numbers.
 // BN(number) throws assertion errors if the number is large
 export const expectStakerSolBalance = async (
   provider: AnchorProvider,
   expectedAmount: number | BN,
   tolerance = 0, // Allow for a tolerance as the balance depends on the fees which are unstable at the beginning of a test validator
+) => expectSolBalance(provider, provider.publicKey, expectedAmount, tolerance);
+
+export const expectSolBalance = async (
+  provider: AnchorProvider,
+  address = provider.publicKey,
+  expectedAmount: number | BN,
+  tolerance = 0, // Allow for a tolerance as the balance depends on the fees which are unstable at the beginning of a test validator
 ) => {
-  const actualAmount = await solBalance(provider);
+  const actualAmount = await solBalance(provider, address);
   expectAmount(actualAmount, expectedAmount, tolerance);
 };
 
@@ -121,10 +147,14 @@ export const waitForNextEpoch = async (provider: AnchorProvider) => {
   const startSlot = startingEpoch.slotIndex;
   let subscriptionId = 0;
 
+  logAtLevel("info")("Waiting for epoch", nextEpoch);
+
   await new Promise((resolve) => {
     subscriptionId = provider.connection.onSlotChange((slotInfo) => {
+      logAtLevel("trace")("slot", slotInfo.slot, "startSlot", startSlot);
       if (slotInfo.slot % SLOTS_IN_EPOCH === 1 && slotInfo.slot > startSlot) {
         void provider.connection.getEpochInfo().then((currentEpoch) => {
+          logAtLevel("trace")("currentEpoch", currentEpoch);
           if (currentEpoch.epoch === nextEpoch) {
             resolve(slotInfo.slot);
           }

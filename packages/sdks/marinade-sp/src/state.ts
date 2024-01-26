@@ -9,7 +9,6 @@ export class StateAccount implements BeamState {
   public readonly proxyState: PublicKey;
   public readonly sunriseState: PublicKey;
   public readonly vaultAuthorityBump: number;
-  public readonly treasury: PublicKey;
 
   private constructor(
     _address: PublicKey,
@@ -20,7 +19,6 @@ export class StateAccount implements BeamState {
     this.proxyState = account.marinadeState;
     this.sunriseState = account.sunriseState;
     this.vaultAuthorityBump = account.vaultAuthorityBump;
-    this.treasury = account.treasury;
   }
 
   /** Create a new instance from an anchor-deserialized account. */
@@ -41,7 +39,6 @@ export class StateAccount implements BeamState {
       proxyState: this.proxyState.toBase58(),
       sunriseState: this.sunriseState.toBase58(),
       vaultAuthorityBump: this.vaultAuthorityBump.toString(),
-      treasury: this.treasury.toBase58(),
     };
   }
 }

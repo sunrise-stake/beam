@@ -20,12 +20,11 @@ pub struct EpochReport {
     pub total_ordered_lamports: u64,
     pub extractable_yield: u64,
     pub extracted_yield: u64,
-    pub partial_gsol_supply: u64, // TODO: Remove? Already tracked by state account.
     pub bump: u8,
 }
 
 impl EpochReport {
-    pub const SPACE: usize = 32 + 8 + 8 + 8 + 8 + 8 + 8 + 1 + 8 /* DISCRIMINATOR */ ;
+    pub const SPACE: usize = 32 + 8 + 8 + 8 + 8 + 8 + 1 + 8 /* DISCRIMINATOR */ ;
 
     pub fn all_extractable_yield(&self) -> u64 {
         self.extractable_yield
@@ -51,13 +50,7 @@ impl EpochReport {
         self.extracted_yield = self.extracted_yield.checked_add(extracted_yield).unwrap();
     }
 
-    pub fn update_report(
-        &mut self,
-        current_gsol_supply: u64,
-        extractable_yield: u64,
-        add_extracted_yield: u64,
-    ) {
-        self.partial_gsol_supply = current_gsol_supply;
+    pub fn update_report(&mut self, extractable_yield: u64, add_extracted_yield: u64) {
         self.extractable_yield = extractable_yield;
         self.add_extracted_yield(add_extracted_yield);
     }
