@@ -312,8 +312,7 @@ pub struct UpdateEpochReport<'info> {
     pub clock: Sysvar<'info, Clock>,
 }
 
-#[derive(Accounts)]
-#[instruction(amount_in_lamports: u64)]
+#[derive(Accounts, Clone)]
 pub struct ExtractYield<'info> {
     pub state: Box<Account<'info, State>>,
 

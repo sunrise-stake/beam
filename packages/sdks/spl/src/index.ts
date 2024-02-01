@@ -459,8 +459,6 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
       systemProgram: SystemProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
     };
-    console.log("EXTRACT YIELD ACCOUNTS");
-    console.log(accounts);
     const instruction = await this.program.methods
       .extractYield()
       .accounts(accounts)

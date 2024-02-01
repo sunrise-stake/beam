@@ -1,9 +1,11 @@
 use anchor_lang::prelude::*;
 // TODO: Use actual CPI crate.
+use crate::constants::STATE;
 use sunrise_core as sunrise_core_cpi;
+use sunrise_core::cpi::accounts::ExtractYield;
 use sunrise_core_cpi::cpi::{
     accounts::{BurnGsol, MintGsol},
-    burn_gsol as cpi_burn_gsol, mint_gsol as cpi_mint_gsol,
+    burn_gsol as cpi_burn_gsol, extract_yield as cpi_extract_yield, mint_gsol as cpi_mint_gsol,
 };
 
 pub fn mint_gsol<'a>(
@@ -106,6 +108,35 @@ impl<'a> From<&crate::Burn<'a>> for BurnGsol<'a> {
             burn_gsol_from: accounts.gsol_token_account.to_account_info(),
             instructions_sysvar: accounts.instructions_sysvar.to_account_info(),
             token_program: accounts.token_program.to_account_info(),
+        }
+    }
+}
+
+pub fn extract_yield<'a>(
+    accounts: impl Into<ExtractYield<'a>>,
+    cpi_program: AccountInfo<'a>,
+    sunrise_key: Pubkey,
+    state_bump: u8,
+    lamports: u64,
+) -> Result<()> {
+    let accounts: ExtractYield<'a> = accounts.into();
+    let seeds = [STATE, sunrise_key.as_ref(), &[state_bump]];
+    let signer = &[&seeds[..]];
+
+    cpi_extract_yield(
+        CpiContext::new(cpi_program, accounts).with_signer(signer),
+        lamports,
+    )
+}
+
+impl<'a> From<&crate::ExtractYield<'a>> for ExtractYield<'a> {
+    fn from(accounts: &crate::ExtractYield<'a>) -> Self {
+        Self {
+            state: accounts.sunrise_state.to_account_info(),
+            beam: accounts.state.to_account_info(),
+            epoch_report: accounts.epoch_report.to_account_info(),
+            sysvar_clock: accounts.sysvar_clock.to_account_info(),
+            sysvar_instructions: accounts.sysvar_instructions.to_account_info(),
         }
     }
 }

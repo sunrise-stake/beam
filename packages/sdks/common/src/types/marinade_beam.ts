@@ -807,12 +807,56 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "epochReportAccount",
+          "name": "liqPoolSolLegPda",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "clock",
+          "name": "liqPoolMsolLeg",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasuryMsolAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "epochReport",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The epoch report account. This is updated with the latest extracted yield value.",
+            "It must be up to date with the current epoch. If not, run updateEpochReport before it."
+          ]
+        },
+        {
+          "name": "sysvarClock",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarInstructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "marinadeProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -1787,12 +1831,56 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "epochReportAccount",
+          "name": "liqPoolSolLegPda",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "clock",
+          "name": "liqPoolMsolLeg",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasuryMsolAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "epochReport",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The epoch report account. This is updated with the latest extracted yield value.",
+            "It must be up to date with the current epoch. If not, run updateEpochReport before it."
+          ]
+        },
+        {
+          "name": "sysvarClock",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarInstructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "marinadeProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         }

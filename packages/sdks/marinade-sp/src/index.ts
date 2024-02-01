@@ -8,6 +8,7 @@ import {
   SYSVAR_CLOCK_PUBKEY,
   SYSVAR_RENT_PUBKEY,
   StakeProgram,
+  SYSVAR_INSTRUCTIONS_PUBKEY,
 } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -236,27 +237,29 @@ export class MarinadeClient extends BeamInterface<
         gsolTokenAccount,
       );
 
+    const accounts = {
+      state: this.stateAddress,
+      marinadeState: this.state.proxyState,
+      sunriseState: this.state.sunriseState,
+      withdrawer,
+      gsolTokenAccount: burnGsolFrom,
+      gsolMint,
+      msolMint: this.marinade.state.mSolMint.address,
+      msolVault: this.marinade.beamMsolVault,
+      vaultAuthority: this.vaultAuthority[0],
+      liqPoolSolLegPda: await this.marinade.state.solLeg(),
+      liqPoolMsolLeg: this.marinade.state.mSolLeg,
+      treasuryMsolAccount: this.marinade.state.treasuryMsolAccount,
+      instructionsSysvar,
+      sunriseProgram: this.sunrise.program.programId,
+      marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    };
+    console.log(accounts);
     const instruction = await this.program.methods
       .withdraw(amount)
-      .accounts({
-        state: this.stateAddress,
-        marinadeState: this.state.proxyState,
-        sunriseState: this.state.sunriseState,
-        withdrawer,
-        gsolTokenAccount: burnGsolFrom,
-        gsolMint,
-        msolMint: this.marinade.state.mSolMint.address,
-        msolVault: this.marinade.beamMsolVault,
-        vaultAuthority: this.vaultAuthority[0],
-        liqPoolSolLegPda: await this.marinade.state.solLeg(),
-        liqPoolMsolLeg: this.marinade.state.mSolLeg,
-        treasuryMsolAccount: this.marinade.state.treasuryMsolAccount,
-        instructionsSysvar,
-        sunriseProgram: this.sunrise.program.programId,
-        marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
+      .accounts(accounts)
       .instruction();
 
     return new Transaction().add(instruction);
@@ -477,4 +480,31 @@ export class MarinadeClient extends BeamInterface<
     const PID = programId ?? MARINADE_BEAM_PROGRAM_ID;
     return Utils.deriveStateAddress(PID, sunriseState);
   };
+
+  /**
+   * Return a transaction to extract any yield from this beam into the yield account
+   */
+  public async extractYield(): Promise<Transaction> {
+    const instruction = await this.program.methods
+      .extractYield()
+      .accounts({
+        state: this.stateAddress,
+        marinadeState: this.state.proxyState,
+        sunriseState: this.state.sunriseState,
+        msolMint: this.marinade.state.mSolMint.address,
+        msolVault: this.marinade.beamMsolVault,
+        vaultAuthority: this.vaultAuthority[0],
+        liqPoolSolLegPda: await this.marinade.state.solLeg(),
+        liqPoolMsolLeg: this.marinade.state.mSolLeg,
+        treasuryMsolAccount: this.marinade.state.treasuryMsolAccount,
+        sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+        sunriseProgram: this.sunrise.program.programId,
+        marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .instruction();
+
+    return new Transaction().add(instruction);
+  }
 }
