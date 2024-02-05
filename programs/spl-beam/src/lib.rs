@@ -605,7 +605,7 @@ pub struct ExtractYield<'info> {
 
     /// The epoch report account. This is updated with the latest extracted yield value.
     /// It must be up to date with the current epoch. If not, run updateEpochReport before it.
-    /// CHECK: Address checked by CIP to the core Sunrise program.
+    /// CHECK: Address checked by CPI to the core Sunrise program.
     #[account(mut)]
     pub epoch_report: UncheckedAccount<'info>,
 

@@ -16,12 +16,13 @@ mod system;
 use cpi_interface::marinade as marinade_interface;
 use cpi_interface::sunrise as sunrise_interface;
 use state::{State, StateEntry};
-use system::accounts::{EpochReport, ProxyTicket};
+use system::accounts::ProxyTicket;
 use system::utils;
 
 // TODO: Use actual CPI crate.
 use crate::cpi_interface::program::Marinade;
 use sunrise_core as sunrise_core_cpi;
+use sunrise_core::EpochReport;
 
 declare_id!("G9nMA5HvMa1HLXy1DBA3biH445Zxb2dkqsG4eDfcvgjm");
 
@@ -205,60 +206,6 @@ pub mod marinade_beam {
         Ok(())
     }
 
-    pub fn init_epoch_report(ctx: Context<InitEpochReport>, extracted_yield: u64) -> Result<()> {
-        let extractable_yield = utils::calculate_extractable_yield(
-            &ctx.accounts.sunrise_state,
-            &ctx.accounts.state,
-            &ctx.accounts.marinade_state,
-            &ctx.accounts.msol_vault,
-        )?;
-        let mut epoch_report = EpochReport {
-            state: ctx.accounts.state.key(),
-            epoch: ctx.accounts.clock.epoch,
-            tickets: 0,
-            total_ordered_lamports: 0,
-            extractable_yield,
-            extracted_yield: 0, // modified below with remarks
-            bump: ctx.bumps.epoch_report_account,
-        };
-        // we have to trust that the extracted amount is accurate,
-        // as extracted yield is no longer managed by the program.
-        // This is why this instruction is only callable by the update authority
-        epoch_report.extracted_yield = extracted_yield;
-
-        ctx.accounts.epoch_report_account.set_inner(epoch_report);
-        Ok(())
-    }
-
-    pub fn update_epoch_report(ctx: Context<UpdateEpochReport>) -> Result<()> {
-        // we can update the epoch report if either
-        // a) the account is at the current epoch or
-        // b) the account is at the previous epoch and there are no open tickets
-
-        let current_epoch = ctx.accounts.clock.epoch;
-        let is_previous_epoch = ctx.accounts.epoch_report_account.epoch == current_epoch - 1;
-        let is_current_epoch = ctx.accounts.epoch_report_account.epoch == current_epoch;
-        let is_previous_epoch_and_no_open_tickets =
-            is_previous_epoch && ctx.accounts.epoch_report_account.tickets == 0;
-
-        require!(
-            is_current_epoch || is_previous_epoch_and_no_open_tickets,
-            MarinadeBeamError::RemainingUnclaimableTicketAmount
-        );
-
-        ctx.accounts.epoch_report_account.epoch = ctx.accounts.clock.epoch;
-
-        let extractable_yield = utils::calculate_extractable_yield(
-            &ctx.accounts.sunrise_state,
-            &ctx.accounts.state,
-            &ctx.accounts.marinade_state,
-            &ctx.accounts.msol_vault,
-        )?;
-        msg!("Extractable yield: {}", extractable_yield);
-        ctx.accounts.epoch_report_account.extractable_yield = extractable_yield;
-        Ok(())
-    }
-
     pub fn extract_yield(ctx: Context<ExtractYield>) -> Result<()> {
         let yield_lamports = utils::calculate_extractable_yield(
             &ctx.accounts.sunrise_state,
@@ -266,9 +213,6 @@ pub mod marinade_beam {
             &ctx.accounts.marinade_state,
             &ctx.accounts.msol_vault,
         )?;
-        ctx.accounts
-            .epoch_report
-            .add_extracted_yield(yield_lamports);
         let yield_msol =
             utils::calc_msol_from_lamports(&ctx.accounts.marinade_state, yield_lamports)?;
 
@@ -744,7 +688,7 @@ pub struct ExtractYield<'info> {
 
     /// The epoch report account. This is updated with the latest extracted yield value.
     /// It must be up to date with the current epoch. If not, run updateEpochReport before it.
-    /// CHECK: Address checked by CIP to the core Sunrise program.
+    /// CHECK: Address checked by CPI to the core Sunrise program.
     #[account(mut)]
     pub epoch_report: Box<Account<'info, EpochReport>>,
 
@@ -757,95 +701,6 @@ pub struct ExtractYield<'info> {
     pub marinade_program: Program<'info, Marinade>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
-}
-
-#[derive(Accounts, Clone)]
-pub struct InitEpochReport<'info> {
-    #[account(
-    has_one = marinade_state,
-    has_one = sunrise_state,
-    has_one = update_authority
-    )]
-    pub state: Box<Account<'info, State>>,
-    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
-    #[account(has_one = msol_mint)]
-    pub marinade_state: Box<Account<'info, MarinadeState>>,
-
-    #[account(mut)]
-    pub payer: Signer<'info>,
-    pub update_authority: Signer<'info>,
-
-    #[account(
-        init,
-        space = EpochReport::SPACE,
-        payer = payer,
-        seeds = [state.key().as_ref(), constants::EPOCH_REPORT],
-        bump,
-    )]
-    pub epoch_report_account: Box<Account<'info, EpochReport>>,
-
-    #[account(mut)]
-    pub msol_mint: Box<Account<'info, Mint>>,
-    #[account(
-        mut,
-        token::mint = msol_mint,
-        token::authority = vault_authority,
-    )]
-    pub msol_vault: Box<Account<'info, TokenAccount>>,
-    /// CHECK: Seeds of the MSOL vault authority.
-    #[account(
-        seeds = [
-            state.key().as_ref(),
-            constants::VAULT_AUTHORITY
-        ],
-        bump = state.vault_authority_bump
-    )]
-    pub vault_authority: UncheckedAccount<'info>,
-
-    pub clock: Sysvar<'info, Clock>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct UpdateEpochReport<'info> {
-    #[account(
-    has_one = marinade_state,
-    has_one = sunrise_state
-    )]
-    pub state: Box<Account<'info, State>>,
-    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
-    #[account(has_one = msol_mint)]
-    pub marinade_state: Box<Account<'info, MarinadeState>>,
-
-    #[account(mut)]
-    pub payer: Signer<'info>,
-
-    #[account(
-        mut,
-        seeds = [state.key().as_ref(), constants::EPOCH_REPORT],
-        bump = epoch_report_account.bump,
-    )]
-    pub epoch_report_account: Box<Account<'info, EpochReport>>,
-
-    #[account(mut)]
-    pub msol_mint: Box<Account<'info, Mint>>,
-    #[account(
-        mut,
-        token::mint = msol_mint,
-        token::authority = vault_authority,
-    )]
-    pub msol_vault: Box<Account<'info, TokenAccount>>,
-    /// CHECK: Seeds of the MSOL vault authority.
-    #[account(
-        seeds = [
-            state.key().as_ref(),
-            constants::VAULT_AUTHORITY
-        ],
-        bump = state.vault_authority_bump
-    )]
-    pub vault_authority: UncheckedAccount<'info>,
-
-    pub clock: Sysvar<'info, Clock>,
 }
 
 #[error_code]

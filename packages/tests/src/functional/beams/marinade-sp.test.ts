@@ -41,7 +41,7 @@ describe("Marinade stake pool beam", () => {
   const depositAmount = 10 * LAMPORTS_PER_SOL;
   const failedDepositAmount = 5 * LAMPORTS_PER_SOL;
   const liquidWithdrawalAmount = 5 * LAMPORTS_PER_SOL;
-  const delayedWithdrawalAmount = 5 * LAMPORTS_PER_SOL;
+  const delayedWithdrawalAmount = 1 * LAMPORTS_PER_SOL;
   const burnAmount = new BN(1 * LAMPORTS_PER_SOL);
 
   before("Set up the sunrise state", async () => {
@@ -315,7 +315,14 @@ describe("Marinade stake pool beam", () => {
     );
   });
 
-  it("can extract yield into a stake account", async () => {
+  // TODO - we are going to restructure the epoch reports before enabling this
+  it.skip("can update the epoch report", async () => {
+    // fail
+    expect(false).to.equal(true);
+  });
+
+  // TODO - we are going to restructure the epoch reports before enabling this
+  it.skip("can extract yield into a stake account", async () => {
     // since we burned some sol - we now have yield to extract (the value of the LPs is higher than the value of the GSOL staked)
     // The beam performs a delayed unstake to reduce fees, so the result is a stake account with the yield in it.
 

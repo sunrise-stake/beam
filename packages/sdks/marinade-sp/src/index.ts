@@ -353,6 +353,7 @@ export class MarinadeClient extends BeamInterface<
         sunriseState: this.state.sunriseState,
         burner,
         gsolTokenAccount: burnGsolFrom,
+        vaultAuthority: this.vaultAuthority[0],
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         gsolMint,
@@ -485,24 +486,29 @@ export class MarinadeClient extends BeamInterface<
    * Return a transaction to extract any yield from this beam into the yield account
    */
   public async extractYield(): Promise<Transaction> {
+    const accounts = {
+      state: this.stateAddress,
+      marinadeState: this.state.proxyState,
+      sunriseState: this.state.sunriseState,
+      msolMint: this.marinade.state.mSolMint.address,
+      msolVault: this.marinade.beamMsolVault,
+      vaultAuthority: this.vaultAuthority[0],
+      liqPoolSolLegPda: await this.marinade.state.solLeg(),
+      liqPoolMsolLeg: this.marinade.state.mSolLeg,
+      treasuryMsolAccount: this.marinade.state.treasuryMsolAccount,
+      yieldAccount: this.sunrise.state.yieldAccount,
+      epochReport: this.sunrise.epochReport[0],
+      sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+      sysvarClock: SYSVAR_CLOCK_PUBKEY,
+      sunriseProgram: this.sunrise.program.programId,
+      marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    };
+    console.log(accounts);
     const instruction = await this.program.methods
       .extractYield()
-      .accounts({
-        state: this.stateAddress,
-        marinadeState: this.state.proxyState,
-        sunriseState: this.state.sunriseState,
-        msolMint: this.marinade.state.mSolMint.address,
-        msolVault: this.marinade.beamMsolVault,
-        vaultAuthority: this.vaultAuthority[0],
-        liqPoolSolLegPda: await this.marinade.state.solLeg(),
-        liqPoolMsolLeg: this.marinade.state.mSolLeg,
-        treasuryMsolAccount: this.marinade.state.treasuryMsolAccount,
-        sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
-        sunriseProgram: this.sunrise.program.programId,
-        marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
+      .accounts(accounts)
       .instruction();
 
     return new Transaction().add(instruction);
