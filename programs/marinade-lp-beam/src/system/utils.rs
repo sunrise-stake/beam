@@ -2,20 +2,9 @@ use super::balance::LiquidityPoolBalance;
 use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
+use marinade_common::proportional;
 use marinade_cpi::State as MarinadeState;
 use sunrise_core::BeamError;
-
-/// calculate amount*numerator/denominator
-/// as value  = shares * share_price where share_price=total_value/total_shares
-/// or shares = amount_value / share_price where share_price=total_value/total_shares
-///     => shares = amount_value * 1/share_price where 1/share_price=total_shares/total_value
-pub(super) fn proportional(amount: u64, numerator: u64, denominator: u64) -> Result<u64> {
-    if denominator == 0 {
-        return Ok(amount);
-    }
-    u64::try_from((amount as u128) * (numerator as u128) / (denominator as u128))
-        .map_err(|_| error!(crate::MarinadeLpBeamError::CalculationFailure))
-}
 
 /// Calculates the amount that can be extracted as yield, in lamports.
 pub fn calculate_extractable_yield(
@@ -95,7 +84,7 @@ fn total_liq_pool(
     )
 }
 
-pub fn liq_pool_tokens_from_lamports(
+pub fn calc_liq_pool_tokens_from_lamports(
     marinade_state: &MarinadeState,
     liq_pool_mint: &Mint,
     liq_pool_sol_leg_pda: &AccountInfo,
@@ -108,37 +97,5 @@ pub fn liq_pool_tokens_from_lamports(
     let liq_pool_mint_supply = liq_pool_mint.supply;
 
     proportional(liq_pool_mint_supply, lamports, liq_pool_lamports)
-}
-
-// The following are lifted from https://github.com/marinade-finance/liquid-staking-program/blob/447f9607a8c755cac7ad63223febf047142c6c8f/programs/marinade-finance/src/state.rs#L227
-pub fn calc_lamports_from_msol_amount(
-    marinade_state: &MarinadeState,
-    msol_amount: u64,
-) -> Result<u64> {
-    proportional(
-        msol_amount,
-        total_virtual_staked_lamports(marinade_state),
-        marinade_state.msol_supply,
-    )
-}
-fn total_lamports_under_control(marinade_state: &MarinadeState) -> u64 {
-    marinade_state
-        .validator_system
-        .total_active_balance
-        .checked_add(total_cooling_down(marinade_state))
-        .expect("Stake balance overflow")
-        .checked_add(marinade_state.available_reserve_balance) // reserve_pda.lamports() - self.rent_exempt_for_token_acc
-        .expect("Total SOLs under control overflow")
-}
-fn total_virtual_staked_lamports(marinade_state: &MarinadeState) -> u64 {
-    // if we get slashed it may be negative but we must use 0 instead
-    total_lamports_under_control(marinade_state)
-        .saturating_sub(marinade_state.circulating_ticket_balance) //tickets created -> cooling down lamports or lamports already in reserve and not claimed yet
-}
-fn total_cooling_down(marinade_state: &MarinadeState) -> u64 {
-    marinade_state
-        .stake_system
-        .delayed_unstake_cooling_down
-        .checked_add(marinade_state.emergency_cooling_down)
-        .expect("Total cooling down overflow")
+        .map_err(|_| error!(crate::MarinadeLpBeamError::CalculationFailure))
 }

@@ -309,8 +309,6 @@ pub struct ExtractYield<'info> {
     /// This is verified in the handler to be a beam attached to this state.
     pub beam: Signer<'info>,
 
-    pub sysvar_clock: Sysvar<'info, Clock>,
-
     /// CHECK: Verified Instructions Sysvar.
     #[account(address = sysvar::instructions::ID)]
     pub sysvar_instructions: UncheckedAccount<'info>,

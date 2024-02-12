@@ -398,11 +398,6 @@ export type SunriseCore = {
           ]
         },
         {
-          "name": "sysvarClock",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
@@ -1137,11 +1132,6 @@ export const IDL: SunriseCore = {
             "The beam contributing the extracted yield.",
             "This is verified in the handler to be a beam attached to this state."
           ]
-        },
-        {
-          "name": "sysvarClock",
-          "isMut": false,
-          "isSigner": false
         },
         {
           "name": "sysvarInstructions",

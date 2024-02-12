@@ -2272,8 +2272,17 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "marinade-common",
  "marinade-cpi",
  "sunrise-core",
+]
+
+[[package]]
+name = "marinade-common"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "marinade-cpi",
 ]
 
 [[package]]
@@ -2291,6 +2300,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "marinade-common",
  "marinade-cpi",
  "sunrise-core",
 ]

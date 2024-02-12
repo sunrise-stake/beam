@@ -1,5 +1,5 @@
-use super::utils::{calc_lamports_from_msol_amount, proportional};
 use anchor_lang::prelude::*;
+use marinade_common::{calc_lamports_from_msol_amount, proportional};
 use marinade_cpi::State as MarinadeState;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -18,8 +18,10 @@ impl LiquidityPoolBalance {
     }
 
     pub fn value_of(&self, liq_pool_token: u64) -> Result<Self> {
-        let lamports = proportional(self.lamports, liq_pool_token, self.liq_pool_token)?;
-        let msol = proportional(self.msol, liq_pool_token, self.liq_pool_token)?;
+        let lamports = proportional(self.lamports, liq_pool_token, self.liq_pool_token)
+            .map_err(|_| error!(crate::MarinadeLpBeamError::CalculationFailure))?;
+        let msol = proportional(self.msol, liq_pool_token, self.liq_pool_token)
+            .map_err(|_| error!(crate::MarinadeLpBeamError::CalculationFailure))?;
         Ok(LiquidityPoolBalance {
             lamports,
             msol,
@@ -42,9 +44,10 @@ impl LiquidityPoolBalance {
         if self.lamports < other_lamports {
             return Ok(*self);
         }
-        let other_liq_pool_token =
-            proportional(self.liq_pool_token, other_lamports, self.lamports)?;
-        let other_msol = proportional(self.msol, other_lamports, self.lamports)?;
+        let other_liq_pool_token = proportional(self.liq_pool_token, other_lamports, self.lamports)
+            .map_err(|_| error!(crate::MarinadeLpBeamError::CalculationFailure))?;
+        let other_msol = proportional(self.msol, other_lamports, self.lamports)
+            .map_err(|_| error!(crate::MarinadeLpBeamError::CalculationFailure))?;
         Ok(Self {
             lamports: other_lamports,
             msol: other_msol,
@@ -58,9 +61,11 @@ impl LiquidityPoolBalance {
             .lamports
             .checked_sub(other_lamports)
             .expect("checked_sub_lamports");
-        let new_liq_pool_token = proportional(self.liq_pool_token, new_lamports, self.lamports)?;
+        let new_liq_pool_token = proportional(self.liq_pool_token, new_lamports, self.lamports)
+            .map_err(|_| error!(crate::MarinadeLpBeamError::CalculationFailure))?;
 
-        let new_msol = proportional(self.msol, new_lamports, self.lamports)?;
+        let new_msol = proportional(self.msol, new_lamports, self.lamports)
+            .map_err(|_| error!(crate::MarinadeLpBeamError::CalculationFailure))?;
         Ok(Self {
             lamports: new_lamports,
             msol: new_msol,

@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use marinade_common::vault_authority_seed::HasVaultAuthority;
 
 #[account]
 pub struct State {
@@ -20,6 +21,12 @@ pub struct State {
 
     /// The token-account that receives msol when withdrawing liquidity.
     pub msol_token_account: Pubkey,
+}
+
+impl HasVaultAuthority for State {
+    fn vault_authority_bump(&self) -> u8 {
+        self.vault_authority_bump
+    }
 }
 
 impl State {

@@ -1,8 +1,8 @@
 use crate::cpi_interface::program::Marinade;
-use crate::cpi_interface::vault_authority_seed::VaultAuthoritySeed;
 use crate::state::State;
 use crate::{ExtractYield, OrderWithdrawal, Withdraw};
 use anchor_lang::prelude::*;
+use marinade_common::vault_authority_seed::VaultAuthoritySeed;
 use marinade_cpi::cpi::{
     accounts::{
         Claim as MarinadeClaim, Deposit as MarinadeDeposit,

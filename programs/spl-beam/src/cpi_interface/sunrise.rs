@@ -150,7 +150,6 @@ impl<'a> From<&crate::ExtractYield<'a>> for ExtractYield<'a> {
         Self {
             state: accounts.sunrise_state.to_account_info(),
             beam: accounts.state.to_account_info(),
-            sysvar_clock: accounts.sysvar_clock.to_account_info(),
             sysvar_instructions: accounts.sysvar_instructions.to_account_info(),
         }
     }

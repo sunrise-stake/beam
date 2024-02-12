@@ -8,7 +8,7 @@ use crate::{system, utils, BeamError, ExtractYield};
 /// It only updates the extracted yield on the epoch report.
 pub fn handler(ctx: Context<ExtractYield>, amount_in_lamports: u64) -> Result<()> {
     let state = &mut ctx.accounts.state;
-    let current_epoch = ctx.accounts.sysvar_clock.epoch;
+    let current_epoch = Clock::get()?.epoch;
 
     // Check that the executing program is valid.
     let cpi_program =

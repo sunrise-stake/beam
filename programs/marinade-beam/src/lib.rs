@@ -39,6 +39,7 @@ mod constants {
 pub mod marinade_beam {
     use super::*;
     use crate::cpi_interface::marinade;
+    use marinade_common::calc_msol_from_lamports;
 
     pub fn initialize(ctx: Context<Initialize>, input: StateEntry) -> Result<()> {
         ctx.accounts.state.set_inner(input.into());
@@ -100,8 +101,8 @@ pub mod marinade_beam {
 
     pub fn withdraw(ctx: Context<Withdraw>, lamports: u64) -> Result<()> {
         // Calculate how much msol_lamports need to be deposited to unstake `lamports` lamports.
-        let msol_lamports =
-            utils::calc_msol_from_lamports(ctx.accounts.marinade_state.as_ref(), lamports)?;
+        let msol_lamports = calc_msol_from_lamports(ctx.accounts.marinade_state.as_ref(), lamports)
+            .map_err(|_| error!(crate::MarinadeBeamError::CalculationFailure))?;
 
         msg!("Liquid Unstake {} msol", msol_lamports);
         // CPI: Liquid unstake.
@@ -129,8 +130,9 @@ pub mod marinade_beam {
 
     pub fn order_withdrawal(ctx: Context<OrderWithdrawal>, lamports: u64) -> Result<()> {
         // Calculate how much msol_lamports need to be deposited to unstake `lamports` lamports.
-        let msol_lamports =
-            utils::calc_msol_from_lamports(ctx.accounts.marinade_state.as_ref(), lamports)?;
+        let msol_lamports = calc_msol_from_lamports(ctx.accounts.marinade_state.as_ref(), lamports)
+            .map_err(|_| error!(crate::MarinadeBeamError::CalculationFailure))?;
+
         // CPI: Order unstake and receive a Marinade unstake ticket.
         let accounts = ctx.accounts.deref().into();
         marinade_interface::order_unstake(
@@ -209,8 +211,8 @@ pub mod marinade_beam {
             &ctx.accounts.marinade_state,
             &ctx.accounts.msol_vault,
         )?;
-        let yield_msol =
-            utils::calc_msol_from_lamports(&ctx.accounts.marinade_state, yield_lamports)?;
+        let yield_msol = calc_msol_from_lamports(&ctx.accounts.marinade_state, yield_lamports)
+            .map_err(|_| error!(crate::MarinadeBeamError::CalculationFailure))?;
 
         let yield_account_balance_before = ctx.accounts.yield_account.lamports();
 
