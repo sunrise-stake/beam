@@ -150,7 +150,7 @@ export type SplBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -289,7 +289,7 @@ export type SplBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -398,7 +398,7 @@ export type SplBeam = {
           ]
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -472,7 +472,7 @@ export type SplBeam = {
           ]
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -591,7 +591,7 @@ export type SplBeam = {
           ]
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -634,6 +634,61 @@ export type SplBeam = {
       "args": []
     },
     {
+      "name": "updateEpochReport",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stakePool",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "poolMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "poolTokenVault",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gsolMint",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Required to update the core state epoch report",
+            "Verified in CPI to Sunrise program."
+          ]
+        },
+        {
+          "name": "sunriseProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarInstructions",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "extractYield",
       "accounts": [
         {
@@ -643,7 +698,7 @@ export type SplBeam = {
         },
         {
           "name": "sunriseState",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -703,15 +758,6 @@ export type SplBeam = {
           "name": "managerFeeAccount",
           "isMut": true,
           "isSigner": false
-        },
-        {
-          "name": "epochReport",
-          "isMut": true,
-          "isSigner": false,
-          "docs": [
-            "The epoch report account. This is updated with the latest extracted yield value.",
-            "It must be up to date with the current epoch. If not, run updateEpochReport before it."
-          ]
         },
         {
           "name": "sysvarClock",
@@ -1003,7 +1049,7 @@ export const IDL: SplBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1142,7 +1188,7 @@ export const IDL: SplBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1251,7 +1297,7 @@ export const IDL: SplBeam = {
           ]
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1325,7 +1371,7 @@ export const IDL: SplBeam = {
           ]
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1444,7 +1490,7 @@ export const IDL: SplBeam = {
           ]
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1487,6 +1533,61 @@ export const IDL: SplBeam = {
       "args": []
     },
     {
+      "name": "updateEpochReport",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stakePool",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "poolMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "poolTokenVault",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gsolMint",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Required to update the core state epoch report",
+            "Verified in CPI to Sunrise program."
+          ]
+        },
+        {
+          "name": "sunriseProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarInstructions",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "extractYield",
       "accounts": [
         {
@@ -1496,7 +1597,7 @@ export const IDL: SplBeam = {
         },
         {
           "name": "sunriseState",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1556,15 +1657,6 @@ export const IDL: SplBeam = {
           "name": "managerFeeAccount",
           "isMut": true,
           "isSigner": false
-        },
-        {
-          "name": "epochReport",
-          "isMut": true,
-          "isSigner": false,
-          "docs": [
-            "The epoch report account. This is updated with the latest extracted yield value.",
-            "It must be up to date with the current epoch. If not, run updateEpochReport before it."
-          ]
         },
         {
           "name": "sysvarClock",

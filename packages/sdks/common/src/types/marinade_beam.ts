@@ -132,7 +132,7 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -251,7 +251,7 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -385,7 +385,7 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -469,7 +469,7 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -573,7 +573,7 @@ export type MarinadeBeam = {
           ]
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -656,7 +656,7 @@ export type MarinadeBeam = {
         },
         {
           "name": "sunriseState",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -705,15 +705,6 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "epochReport",
-          "isMut": true,
-          "isSigner": false,
-          "docs": [
-            "The epoch report account. This is updated with the latest extracted yield value.",
-            "It must be up to date with the current epoch. If not, run updateEpochReport before it."
-          ]
-        },
-        {
           "name": "sysvarClock",
           "isMut": false,
           "isSigner": false
@@ -740,6 +731,61 @@ export type MarinadeBeam = {
         },
         {
           "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "updateEpochReport",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "marinadeState",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "msolMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "msolVault",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gsolMint",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Required to update the core state epoch report",
+            "Verified in CPI to Sunrise program."
+          ]
+        },
+        {
+          "name": "sysvarInstructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -1003,7 +1049,7 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1122,7 +1168,7 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1256,7 +1302,7 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1340,7 +1386,7 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1444,7 +1490,7 @@ export const IDL: MarinadeBeam = {
           ]
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1527,7 +1573,7 @@ export const IDL: MarinadeBeam = {
         },
         {
           "name": "sunriseState",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1576,15 +1622,6 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "epochReport",
-          "isMut": true,
-          "isSigner": false,
-          "docs": [
-            "The epoch report account. This is updated with the latest extracted yield value.",
-            "It must be up to date with the current epoch. If not, run updateEpochReport before it."
-          ]
-        },
-        {
           "name": "sysvarClock",
           "isMut": false,
           "isSigner": false
@@ -1611,6 +1648,61 @@ export const IDL: MarinadeBeam = {
         },
         {
           "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "updateEpochReport",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "marinadeState",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "msolMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "msolVault",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gsolMint",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Required to update the core state epoch report",
+            "Verified in CPI to Sunrise program."
+          ]
+        },
+        {
+          "name": "sysvarInstructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         }

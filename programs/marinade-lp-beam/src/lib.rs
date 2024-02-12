@@ -214,7 +214,7 @@ pub struct Deposit<'info> {
     /// CHECK: Checked by Sunrise CPI.
     pub gsol_mint_authority: UncheckedAccount<'info>,
     /// CHECK: Checked by Sunrise CPI.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     #[account(mut)]
     /// CHECK: Checked by Marinade CPI.
@@ -298,7 +298,7 @@ pub struct Withdraw<'info> {
     /// Verified in CPI to Sunrise program.
     pub gsol_mint: Box<Account<'info, Mint>>,
     /// CHECK: Checked by Sunrise CPI.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
     #[account(address = marinade_cpi::ID)]
@@ -333,7 +333,7 @@ pub struct Burn<'info> {
     /// Verified in CPI to Sunrise program.
     pub gsol_mint: Box<Account<'info, Mint>>,
     /// CHECK: Checked by Sunrise CPI.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
 }

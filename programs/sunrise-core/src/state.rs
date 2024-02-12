@@ -18,9 +18,6 @@ pub struct State {
     /// Bump of the gSol mint authority PDA.
     pub gsol_mint_authority_bump: u8,
 
-    /// Bump of the eppch report PDA.
-    pub epoch_report_bump: u8,
-
     /// The Sunrise yield account.
     pub yield_account: Pubkey,
 
@@ -29,9 +26,11 @@ pub struct State {
 
     /// Holds [BeamDetails] for all supported beams.
     pub allocations: Vec<BeamDetails>,
+
+    pub epoch_report: EpochReport,
 }
 
-/// Holds information about a registed beam.
+/// Holds information about a registered beam.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct BeamDetails {
     /// The beam's signer for mint and burn requests.
@@ -77,14 +76,16 @@ impl State {
         32 + // gsol_mint
         8 +  // pre_supply
         1 +  // gsol_mint_authority_bump
-        1 +  // epoch_report_bump
         32 + // yield_account
         128 + // reserved_space
-        4; // vec size
+        4; // allocations vec size
+           // Does not include epoch_report min size (included in size() and size
 
     /// Calculate the borsh-serialized size of a state with `beam_count` number of beams.
     pub fn size(beam_count: usize) -> usize {
-        Self::SIZE_WITH_ZERO_BEAMS + (BeamDetails::SIZE * beam_count) // allocations vec
+        Self::SIZE_WITH_ZERO_BEAMS +
+            (BeamDetails::SIZE * beam_count) +// allocations vec
+            EpochReport::size(beam_count) // epoch_reports
     }
 
     /// Calculate the size of a state account.
@@ -99,8 +100,7 @@ impl State {
         gsol_mint_auth_bump: u8,
         gsol_mint: &Pubkey,
         gsol_mint_supply: u64,
-        epoch_report_bump: u8,
-    ) {
+    ) -> Result<()> {
         self.update_authority = input.update_authority;
         self.yield_account = input.yield_account;
         self.gsol_mint = *gsol_mint;
@@ -110,11 +110,7 @@ impl State {
         self.pre_supply = gsol_mint_supply;
         self.gsol_mint_authority_bump = gsol_mint_auth_bump;
 
-        // The epoch report bump is used to derive the PDA of this state's epoch report account.
-        // Storing it here reduces the cost of subsequent update operations.
-        self.epoch_report_bump = epoch_report_bump;
-
-        // We fill up the vec because deserialization of an empty vec would result
+        // We fill up the vecs because deserialization of an empty vec would result
         // in the active capacity being lost. i.e a vector with capacity 10 but length
         // 4 would be deserialized as having both length and capacity of 4.
         //
@@ -125,6 +121,11 @@ impl State {
         // * Add a beam by finding and replacing a default BeamDetails struct.
         // * Remove a beam by replacing it with a default BeamDetails struct.
         self.allocations = vec![BeamDetails::default(); input.initial_capacity as usize];
+
+        let current_epoch = Clock::get()?.epoch;
+        self.epoch_report = EpochReport::new(input.initial_capacity as usize, current_epoch);
+
+        Ok(())
     }
 
     /// Update the fields of a [State] object.
@@ -206,6 +207,10 @@ impl State {
     pub fn contains_beam(&self, key: &Pubkey) -> bool {
         self.get_beam_details(key).is_some()
     }
+
+    pub fn find_beam_index(&self, key: &Pubkey) -> Option<usize> {
+        self.allocations.iter().position(|x| x.key == *key)
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
@@ -232,21 +237,110 @@ pub struct AllocationUpdate {
     pub new_allocation: u8,
 }
 
-#[account]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct EpochReport {
+    pub current_gsol_supply: u64,
+
+    /// Holds [BeamEpochDetails] for all supported beams.
+    pub beam_epoch_details: Vec<BeamEpochDetails>,
+}
+impl EpochReport {
+    pub const SIZE_WITH_ZERO_BEAMS: usize = 8 +  // current_gsol_supply
+        4; // vec size
+
+    pub fn new(beam_count: usize, current_epoch: u64) -> EpochReport {
+        EpochReport {
+            current_gsol_supply: 0,
+            // see details in the State::register method
+            beam_epoch_details: vec![BeamEpochDetails::new(current_epoch); beam_count],
+        }
+    }
+
+    /// Calculate the borsh-serialized size of a state with `beam_count` number of beams.
+    pub fn size(beam_count: usize) -> usize {
+        Self::SIZE_WITH_ZERO_BEAMS + (BeamEpochDetails::SIZE * beam_count) // allocations vec
+    }
+
+    /// Calculate the size of a state account.
+    pub fn size_inner(&self) -> usize {
+        EpochReport::size(self.beam_epoch_details.len())
+    }
+
+    pub fn extractable_yield(&self) -> u64 {
+        self.beam_epoch_details
+            .iter()
+            .map(|x| x.extractable_yield)
+            .sum()
+    }
+
+    pub fn extracted_yield(&self) -> u64 {
+        self.beam_epoch_details
+            .iter()
+            .map(|x| x.extracted_yield)
+            .sum()
+    }
+
+    pub fn is_epoch_reported(&self, epoch: u64) -> bool {
+        self.beam_epoch_details.iter().all(|x| x.epoch == epoch)
+    }
+
+    pub fn is_epoch_reported_for_beam_idx(&self, epoch: u64, beam_idx: usize) -> bool {
+        self.beam_epoch_details[beam_idx].epoch == epoch
+    }
+
+    pub fn extract_yield_for_beam(
+        &mut self,
+        beam_idx: usize,
+        yield_amount: u64,
+        epoch: u64,
+    ) -> Result<()> {
+        let beam_details = &mut self.beam_epoch_details[beam_idx];
+
+        // The epoch report must be already updated for this epoch and beam
+        require!(
+            beam_details.epoch == epoch,
+            BeamError::EpochReportNotUpToDate
+        );
+
+        beam_details.extracted_yield = beam_details
+            .extracted_yield
+            .checked_add(yield_amount)
+            .ok_or(BeamError::Overflow)
+            .unwrap();
+
+        Ok(())
+    }
+
+    pub fn update_extractable_yield_and_epoch_for_beam(
+        &mut self,
+        beam_idx: usize,
+        epoch: u64,
+        extractable_yield: u64,
+    ) {
+        self.beam_epoch_details[beam_idx].epoch = epoch;
+        self.beam_epoch_details[beam_idx].extractable_yield = extractable_yield;
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, Default, Eq, Hash, PartialEq)]
+pub struct BeamEpochDetails {
+    /// The most recent epoch that this beam has reported its extractable yield for
     pub epoch: u64,
     pub extractable_yield: u64,
     pub extracted_yield: u64,
-    pub current_gsol_supply: u64,
-    pub bump: u8,
 }
-impl EpochReport {
-    pub const SIZE: usize = 8 + // discriminator
-        8 + // epoch
-        8 +  // extractable_yield
-        8 +  // extracted_yield
-        8 +  // current_gsol_supply
-        1; // bump
+impl BeamEpochDetails {
+    pub const SIZE: usize = 8 + // epoch
+        8 + // extractable_yield
+        8; // extracted_yield
+
+    pub fn new(epoch: u64) -> BeamEpochDetails {
+        BeamEpochDetails {
+            epoch,
+            extractable_yield: 0,
+            extracted_yield: 0,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -259,7 +353,7 @@ mod internal_tests {
         let mut input = RegisterStateInput::default();
         input.initial_capacity = 10;
 
-        state.register(input, 0, &Pubkey::default(), 1000, 0);
+        state.register(input, 0, &Pubkey::default(), 1000);
         assert_eq!(state.allocations, vec![BeamDetails::default(); 10]);
     }
     #[test]
@@ -298,7 +392,7 @@ mod internal_tests {
         let mut input = RegisterStateInput::default();
 
         input.initial_capacity = 2;
-        state.register(input, 0, &Pubkey::new_unique(), 1000, 0);
+        state.register(input, 0, &Pubkey::new_unique(), 1000);
 
         let beam_key = Pubkey::new_unique();
         let new_beam = BeamDetails::new(beam_key, 10);
@@ -314,13 +408,13 @@ mod internal_tests {
             )
         );
 
-        assert!(state.contains_beam(&beam_key) == true);
-        assert!(state.beam_count() == 1);
+        assert_eq!(state.contains_beam(&beam_key), true);
+        assert_eq!(state.beam_count(), 1);
 
         assert!(state
             .add_beam(BeamDetails::new(Pubkey::new_unique(), 20))
             .is_ok());
-        assert!(state.beam_count() == 2);
+        assert_eq!(state.beam_count(), 2);
 
         // Should fail because no space
         let expect_to_fail2 = state.add_beam(BeamDetails::new(Pubkey::new_unique(), 20));
@@ -388,15 +482,15 @@ mod internal_tests {
         ));
 
         if let Some(res) = state.get_beam_details(&key) {
-            assert!(res.key == key);
-            assert!(res.allocation == 90);
+            assert_eq!(res.key, key);
+            assert_eq!(res.allocation, 90);
         } else {
             panic!("")
         }
 
         if let Some(res) = state.get_mut_beam_details(&key) {
-            assert!(res.key == key);
-            assert!(res.allocation == 90);
+            assert_eq!(res.key, key);
+            assert_eq!(res.allocation, 90);
         } else {
             panic!("")
         }
@@ -406,13 +500,13 @@ mod internal_tests {
         let mut state = State::default();
 
         let initial_size = state.size_inner();
-        assert!(state.allocations.len() == 0);
-        assert!(initial_size == State::SIZE_WITH_ZERO_BEAMS);
-        assert!(initial_size == State::size(0));
+        assert_eq!(state.allocations.len(), 0);
+        assert_eq!(initial_size, State::SIZE_WITH_ZERO_BEAMS);
+        assert_eq!(initial_size, State::size(0));
 
         state.allocations = vec![BeamDetails::default(); 10];
         let size = state.size_inner();
-        assert!(size == State::size(10));
-        assert!(size == initial_size + (10 * BeamDetails::SIZE))
+        assert_eq!(size, State::size(10));
+        assert_eq!(size, initial_size + (10 * BeamDetails::SIZE))
     }
 }

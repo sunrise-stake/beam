@@ -2,6 +2,15 @@ import { type PublicKey } from "@solana/web3.js";
 import { type IdlAccounts, type BN } from "@coral-xyz/anchor";
 import { SunriseCore } from "@sunrisestake/beams-common";
 
+export type EpochReport = {
+  currentGsolSupply: BN;
+  beamEpochDetails: Array<{
+    epoch: BN;
+    extractableYield: BN;
+    extractedYield: BN;
+  }>;
+};
+
 /** The deserialized state for the on-chain beam account.*/
 export class StateAccount {
   public readonly address: PublicKey;
@@ -11,6 +20,7 @@ export class StateAccount {
   public readonly gsolAuthBump: number;
   public readonly yieldAccount: PublicKey;
   public readonly beams: BeamDetails[];
+  public readonly epochReport: EpochReport;
 
   private constructor(
     _address: PublicKey,
@@ -23,6 +33,7 @@ export class StateAccount {
     this.gsolAuthBump = account.gsolMintAuthorityBump;
     this.yieldAccount = account.yieldAccount;
     this.beams = account.allocations;
+    this.epochReport = account.epochReport;
   }
 
   /** Create a new instance from an anchor-deserialized account. */
@@ -37,6 +48,8 @@ export class StateAccount {
   public pretty(): {
     [Property in keyof Omit<StateAccount, "pretty">]: Property extends "beams"
       ? Array<BeamDetailsPretty>
+      : Property extends "epochReport"
+      ? EpochReportPretty
       : string;
   } {
     return {
@@ -47,6 +60,7 @@ export class StateAccount {
       gsolAuthBump: this.gsolAuthBump.toString(),
       yieldAccount: this.yieldAccount.toBase58(),
       beams: this.beams.map((beam) => printBeamDetails(beam)),
+      epochReport: printEpochReport(this.epochReport),
     };
   }
 }
@@ -68,3 +82,21 @@ const printBeamDetails = (raw: BeamDetails): BeamDetailsPretty => {
     drainingMode: raw.drainingMode.toString(),
   };
 };
+
+type EpochReportPretty = {
+  currentGsolSupply: string;
+  beamEpochDetails: Array<{
+    epoch: string;
+    extractableYield: string;
+    extractedYield: string;
+  }>;
+};
+
+const printEpochReport = (raw: EpochReport): EpochReportPretty => ({
+  currentGsolSupply: raw.currentGsolSupply.toString(),
+  beamEpochDetails: raw.beamEpochDetails.map((epoch) => ({
+    epoch: epoch.epoch.toString(),
+    extractableYield: epoch.extractableYield.toString(),
+    extractedYield: epoch.extractedYield.toString(),
+  })),
+});

@@ -7,8 +7,8 @@ pub fn handler(ctx: Context<BurnGsol>, amount_in_lamports: u64) -> Result<()> {
 
     // Check that the requesting program is valid.
     let cpi_program =
-        utils::get_cpi_program_id(&ctx.accounts.instructions_sysvar.to_account_info())?;
-    system::check_beam_validity(state, &ctx.accounts.beam, &cpi_program)?;
+        utils::get_cpi_program_id(&ctx.accounts.sysvar_instructions.to_account_info())?;
+    system::checked_find_beam_idx(state, &ctx.accounts.beam, &cpi_program)?;
 
     let details = state
         .get_mut_beam_details(&ctx.accounts.beam.key())

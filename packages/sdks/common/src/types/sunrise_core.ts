@@ -19,11 +19,6 @@ export type SunriseCore = {
           "isSigner": true
         },
         {
-          "name": "epochReport",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "gsolMint",
           "isMut": false,
           "isSigner": false
@@ -208,7 +203,7 @@ export type SunriseCore = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -259,7 +254,7 @@ export type SunriseCore = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -349,13 +344,17 @@ export type SunriseCore = {
       "accounts": [
         {
           "name": "state",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
-          "name": "epochReport",
-          "isMut": true,
-          "isSigner": false
+          "name": "beam",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The beam updating its epoch report.",
+            "This is verified in the handler to be a beam attached to this state."
+          ]
         },
         {
           "name": "gsolMint",
@@ -363,12 +362,17 @@ export type SunriseCore = {
           "isSigner": false
         },
         {
-          "name": "clock",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "extractableYield",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "extractYield",
@@ -378,8 +382,11 @@ export type SunriseCore = {
       "accounts": [
         {
           "name": "state",
-          "isMut": false,
-          "isSigner": false
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The core sunrise state - will have its epoch report updated."
+          ]
         },
         {
           "name": "beam",
@@ -388,15 +395,6 @@ export type SunriseCore = {
           "docs": [
             "The beam contributing the extracted yield.",
             "This is verified in the handler to be a beam attached to this state."
-          ]
-        },
-        {
-          "name": "epochReport",
-          "isMut": true,
-          "isSigner": false,
-          "docs": [
-            "The epoch report account. This is updated with the latest extracted yield value.",
-            "It must be up to date with the current epoch. If not, run updateEpochReport before it."
           ]
         },
         {
@@ -457,13 +455,6 @@ export type SunriseCore = {
             "type": "u8"
           },
           {
-            "name": "epochReportBump",
-            "docs": [
-              "Bump of the eppch report PDA."
-            ],
-            "type": "u8"
-          },
-          {
             "name": "yieldAccount",
             "docs": [
               "The Sunrise yield account."
@@ -492,34 +483,12 @@ export type SunriseCore = {
                 "defined": "BeamDetails"
               }
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "epochReport",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "epoch",
-            "type": "u64"
           },
           {
-            "name": "extractableYield",
-            "type": "u64"
-          },
-          {
-            "name": "extractedYield",
-            "type": "u64"
-          },
-          {
-            "name": "currentGsolSupply",
-            "type": "u64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
+            "name": "epochReport",
+            "type": {
+              "defined": "EpochReport"
+            }
           }
         ]
       }
@@ -529,7 +498,7 @@ export type SunriseCore = {
     {
       "name": "BeamDetails",
       "docs": [
-        "Holds information about a registed beam."
+        "Holds information about a registered beam."
       ],
       "type": {
         "kind": "struct",
@@ -653,6 +622,52 @@ export type SunriseCore = {
           }
         ]
       }
+    },
+    {
+      "name": "EpochReport",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "currentGsolSupply",
+            "type": "u64"
+          },
+          {
+            "name": "beamEpochDetails",
+            "docs": [
+              "Holds [BeamEpochDetails] for all supported beams."
+            ],
+            "type": {
+              "vec": {
+                "defined": "BeamEpochDetails"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BeamEpochDetails",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch",
+            "docs": [
+              "The most recent epoch that this beam has reported its extractable yield for"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "extractableYield",
+            "type": "u64"
+          },
+          {
+            "name": "extractedYield",
+            "type": "u64"
+          }
+        ]
+      }
     }
   ],
   "errors": [
@@ -703,31 +718,21 @@ export type SunriseCore = {
     },
     {
       "code": 6009,
-      "name": "IncorrectBeamEpochReportCount",
-      "msg": "Incorrect amount of beam epoch reports"
-    },
-    {
-      "code": 6010,
-      "name": "IncorrectBeamEpochReportEpoch",
-      "msg": "Incorrect epoch for beam epoch reports"
-    },
-    {
-      "code": 6011,
       "name": "IncorrectBeamEpochReport",
       "msg": "Incorrect beam epoch report"
     },
     {
-      "code": 6012,
+      "code": 6010,
       "name": "EpochReportAlreadyUpdated",
       "msg": "Epoch report already updated"
     },
     {
-      "code": 6013,
+      "code": 6011,
       "name": "EpochReportNotUpToDate",
       "msg": "Epoch report not up to date"
     },
     {
-      "code": 6014,
+      "code": 6012,
       "name": "Overflow",
       "msg": "Overflow"
     }
@@ -755,11 +760,6 @@ export const IDL: SunriseCore = {
           "isSigner": true
         },
         {
-          "name": "epochReport",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "gsolMint",
           "isMut": false,
           "isSigner": false
@@ -944,7 +944,7 @@ export const IDL: SunriseCore = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -995,7 +995,7 @@ export const IDL: SunriseCore = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1085,13 +1085,17 @@ export const IDL: SunriseCore = {
       "accounts": [
         {
           "name": "state",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
-          "name": "epochReport",
-          "isMut": true,
-          "isSigner": false
+          "name": "beam",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The beam updating its epoch report.",
+            "This is verified in the handler to be a beam attached to this state."
+          ]
         },
         {
           "name": "gsolMint",
@@ -1099,12 +1103,17 @@ export const IDL: SunriseCore = {
           "isSigner": false
         },
         {
-          "name": "clock",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "extractableYield",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "extractYield",
@@ -1114,8 +1123,11 @@ export const IDL: SunriseCore = {
       "accounts": [
         {
           "name": "state",
-          "isMut": false,
-          "isSigner": false
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The core sunrise state - will have its epoch report updated."
+          ]
         },
         {
           "name": "beam",
@@ -1124,15 +1136,6 @@ export const IDL: SunriseCore = {
           "docs": [
             "The beam contributing the extracted yield.",
             "This is verified in the handler to be a beam attached to this state."
-          ]
-        },
-        {
-          "name": "epochReport",
-          "isMut": true,
-          "isSigner": false,
-          "docs": [
-            "The epoch report account. This is updated with the latest extracted yield value.",
-            "It must be up to date with the current epoch. If not, run updateEpochReport before it."
           ]
         },
         {
@@ -1193,13 +1196,6 @@ export const IDL: SunriseCore = {
             "type": "u8"
           },
           {
-            "name": "epochReportBump",
-            "docs": [
-              "Bump of the eppch report PDA."
-            ],
-            "type": "u8"
-          },
-          {
             "name": "yieldAccount",
             "docs": [
               "The Sunrise yield account."
@@ -1228,34 +1224,12 @@ export const IDL: SunriseCore = {
                 "defined": "BeamDetails"
               }
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "epochReport",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "epoch",
-            "type": "u64"
           },
           {
-            "name": "extractableYield",
-            "type": "u64"
-          },
-          {
-            "name": "extractedYield",
-            "type": "u64"
-          },
-          {
-            "name": "currentGsolSupply",
-            "type": "u64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
+            "name": "epochReport",
+            "type": {
+              "defined": "EpochReport"
+            }
           }
         ]
       }
@@ -1265,7 +1239,7 @@ export const IDL: SunriseCore = {
     {
       "name": "BeamDetails",
       "docs": [
-        "Holds information about a registed beam."
+        "Holds information about a registered beam."
       ],
       "type": {
         "kind": "struct",
@@ -1389,6 +1363,52 @@ export const IDL: SunriseCore = {
           }
         ]
       }
+    },
+    {
+      "name": "EpochReport",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "currentGsolSupply",
+            "type": "u64"
+          },
+          {
+            "name": "beamEpochDetails",
+            "docs": [
+              "Holds [BeamEpochDetails] for all supported beams."
+            ],
+            "type": {
+              "vec": {
+                "defined": "BeamEpochDetails"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BeamEpochDetails",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch",
+            "docs": [
+              "The most recent epoch that this beam has reported its extractable yield for"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "extractableYield",
+            "type": "u64"
+          },
+          {
+            "name": "extractedYield",
+            "type": "u64"
+          }
+        ]
+      }
     }
   ],
   "errors": [
@@ -1439,31 +1459,21 @@ export const IDL: SunriseCore = {
     },
     {
       "code": 6009,
-      "name": "IncorrectBeamEpochReportCount",
-      "msg": "Incorrect amount of beam epoch reports"
-    },
-    {
-      "code": 6010,
-      "name": "IncorrectBeamEpochReportEpoch",
-      "msg": "Incorrect epoch for beam epoch reports"
-    },
-    {
-      "code": 6011,
       "name": "IncorrectBeamEpochReport",
       "msg": "Incorrect beam epoch report"
     },
     {
-      "code": 6012,
+      "code": 6010,
       "name": "EpochReportAlreadyUpdated",
       "msg": "Epoch report already updated"
     },
     {
-      "code": 6013,
+      "code": 6011,
       "name": "EpochReportNotUpToDate",
       "msg": "Epoch report not up to date"
     },
     {
-      "code": 6014,
+      "code": 6012,
       "name": "Overflow",
       "msg": "Overflow"
     }

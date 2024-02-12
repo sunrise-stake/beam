@@ -89,8 +89,9 @@ pub mod sunrise_core {
     /// Updates the Epoch Report Account, which stores the amount of yield extracted or extractable over time
     pub fn update_epoch_report<'c: 'info, 'info>(
         ctx: Context<'_, '_, 'c, 'info, UpdateEpochReport>,
+        extractable_yield: u64,
     ) -> Result<()> {
-        update_epoch_report::handler(ctx)
+        update_epoch_report::handler(ctx, extractable_yield)
     }
 
     /// CPI request from a beam program to extract yield from Sunrise
@@ -111,18 +112,6 @@ pub struct RegisterState<'info> {
         space = State::size(input.initial_capacity as usize),
     )]
     pub state: Account<'info, State>,
-
-    #[account(
-        init,
-        payer = payer,
-        space = EpochReport::SIZE,
-        seeds = [
-            state.key().as_ref(),
-            EPOCH_REPORT
-        ],
-        bump
-    )]
-    pub epoch_report: Account<'info, EpochReport>,
 
     pub gsol_mint: Account<'info, Mint>,
 
@@ -200,7 +189,7 @@ pub struct BurnGsol<'info> {
 
     /// CHECK: Verified Instructions Sysvar.
     #[account(address = sysvar::instructions::ID)]
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub token_program: Program<'info, Token>,
 }
@@ -233,7 +222,7 @@ pub struct MintGsol<'info> {
 
     /// CHECK: Verified Instructions Sysvar.
     #[account(address = sysvar::instructions::ID)]
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub token_program: Program<'info, Token>,
 }
@@ -291,46 +280,34 @@ pub struct ResizeAllocations<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(extractable_yield: u64)]
 pub struct UpdateEpochReport<'info> {
     #[account(
+        mut,
         has_one = gsol_mint,
     )]
     pub state: Box<Account<'info, State>>,
 
-    #[account(
-        mut,
-        seeds = [
-            state.key().as_ref(),
-            EPOCH_REPORT
-        ],
-        bump = state.epoch_report_bump
-    )]
-    pub epoch_report: Account<'info, EpochReport>,
+    /// The beam updating its epoch report.
+    /// This is verified in the handler to be a beam attached to this state.
+    pub beam: Signer<'info>,
 
     pub gsol_mint: Box<Account<'info, Mint>>,
 
-    pub clock: Sysvar<'info, Clock>,
+    /// CHECK: Verified Instructions Sysvar.
+    #[account(address = sysvar::instructions::ID)]
+    pub sysvar_instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts, Clone)]
 pub struct ExtractYield<'info> {
+    /// The core sunrise state - will have its epoch report updated.
+    #[account(mut)]
     pub state: Box<Account<'info, State>>,
 
     /// The beam contributing the extracted yield.
     /// This is verified in the handler to be a beam attached to this state.
     pub beam: Signer<'info>,
-
-    /// The epoch report account. This is updated with the latest extracted yield value.
-    /// It must be up to date with the current epoch. If not, run updateEpochReport before it.
-    #[account(
-    mut,
-    seeds = [
-        state.key().as_ref(),
-        EPOCH_REPORT
-    ],
-    bump = state.epoch_report_bump
-    )]
-    pub epoch_report: Account<'info, EpochReport>,
 
     pub sysvar_clock: Sysvar<'info, Clock>,
 
@@ -376,14 +353,6 @@ pub enum BeamError {
     /// Thrown on an attempt to remove a beam with a non-zero allocation.
     #[msg("Can't remove a beam with a non-zero allocation")]
     NonZeroAllocation,
-
-    /// Thrown if the epoch report is updated with an incorrect amount of beam epoch reports
-    #[msg("Incorrect amount of beam epoch reports")]
-    IncorrectBeamEpochReportCount,
-
-    /// Thrown if the epoch report is updated with beam epoch reports from the wrong epoch
-    #[msg("Incorrect epoch for beam epoch reports")]
-    IncorrectBeamEpochReportEpoch,
 
     /// Thrown if the epoch report is updated by an incorrect beam epoch report
     #[msg("Incorrect beam epoch report")]

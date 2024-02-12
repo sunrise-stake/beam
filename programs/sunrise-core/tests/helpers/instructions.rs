@@ -5,7 +5,6 @@ use sunrise_core::{accounts as sunrise_accounts, instruction as sunrise_instruct
 pub fn register_state(
     payer: &Pubkey,
     gsol_mint: &Pubkey,
-    epoch_report: &Pubkey,
     update_authority: &Pubkey,
     state: &Pubkey,
     yield_account: &Pubkey,
@@ -15,7 +14,6 @@ pub fn register_state(
     let accounts = sunrise_accounts::RegisterState {
         payer: *payer,
         state: *state,
-        epoch_report: *epoch_report,
         gsol_mint: *gsol_mint,
         gsol_mint_authority: *gsol_mint_auth_pda,
         system_program: system_program::id(),

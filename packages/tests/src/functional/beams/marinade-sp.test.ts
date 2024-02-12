@@ -33,9 +33,9 @@ describe("Marinade stake pool beam", () => {
   let beamClient: MarinadeClient;
   let vaultMsolBalance: BN;
   let stakerGsolBalance: BN = new BN(0);
+  let extractableYield: BN;
 
   let sunriseStateAddress: PublicKey;
-
   let sunriseDelayedTicket: PublicKey;
 
   const depositAmount = 10 * LAMPORTS_PER_SOL;
@@ -315,14 +315,26 @@ describe("Marinade stake pool beam", () => {
     );
   });
 
-  // TODO - we are going to restructure the epoch reports before enabling this
-  it.skip("can update the epoch report", async () => {
-    // fail
-    expect(false).to.equal(true);
+  it("can update the epoch report", async () => {
+    // we burned `burnAmount` gsol, so we should be able to extract `burnAmount` - estimated fee
+    const expectedFee = burnAmount.toNumber() * 0.003;
+    extractableYield = burnAmount.subn(expectedFee);
+
+    await sendAndConfirmTransaction(
+      // anyone can update the epoch report, but let's use the staker provider (rather than the admin provider) for this test
+      // to show that it doesn't have to be an admin
+      stakerIdentity,
+      await beamClient.updateEpochReport(),
+    );
+
+    // check that the epoch report has been updated
+    beamClient = await beamClient.refresh();
+    expect(
+      beamClient.sunrise.state.epochReport.beamEpochDetails[0].extractableYield.toNumber(),
+    ).to.equal(extractableYield.toNumber());
   });
 
-  // TODO - we are going to restructure the epoch reports before enabling this
-  it.skip("can extract yield into a stake account", async () => {
+  it("can extract yield into a stake account", async () => {
     // since we burned some sol - we now have yield to extract (the value of the LPs is higher than the value of the GSOL staked)
     // The beam performs a delayed unstake to reduce fees, so the result is a stake account with the yield in it.
 
@@ -333,17 +345,11 @@ describe("Marinade stake pool beam", () => {
       await beamClient.extractYield(),
     );
 
-    // we burned `burnAmount` gsol, so we should have `burnAmount` - fee in the stake account
-    const expectedFee = new BN(0); // TODO
-    const expectedExtractedYield = burnAmount.sub(expectedFee);
-
     await expectSolBalance(
       beamClient.provider,
       beamClient.sunrise.state.yieldAccount,
-      expectedExtractedYield,
-      // // the calculation appears to be slightly inaccurate at present, but in our favour,
-      // // so we can leave this as a low priority TODO to improve the accuracy
-      // 3000,
+      extractableYield, // calculated in the previous test
+      1,
     );
   });
 });

@@ -13,6 +13,7 @@ import { provider } from "../setup.js";
 import { expect } from "chai";
 
 const BEAM_DETAILS_LEN: number = 170;
+const EPOCH_REPORT_LEN: number = 24;
 
 describe("Sunrise core", () => {
   let gsolMint: PublicKey;
@@ -137,7 +138,9 @@ describe("Sunrise core", () => {
     const finalLen = await provider.connection
       .getAccountInfo(client.stateAddress)
       .then((info) => info!.data.length);
-    expect(finalLen).to.equal(initialLen + 5 * BEAM_DETAILS_LEN);
+    expect(finalLen).to.equal(
+      initialLen + 5 * BEAM_DETAILS_LEN + 5 * EPOCH_REPORT_LEN,
+    );
 
     await client.refresh();
     for (const beam of client.state.pretty().beams.slice(15, 20)) {

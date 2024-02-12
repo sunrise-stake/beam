@@ -178,7 +178,7 @@ export class MarinadeLpClient extends BeamInterface<
     recipient?: PublicKey,
   ): Promise<Transaction> {
     const depositor = this.provider.publicKey;
-    const { gsolMint, gsolMintAuthority, instructionsSysvar } =
+    const { gsolMint, gsolMintAuthority, sysvarInstructions } =
       this.sunrise.mintGsolAccounts(this.stateAddress, depositor);
 
     const transaction = new Transaction();
@@ -202,7 +202,7 @@ export class MarinadeLpClient extends BeamInterface<
         vaultAuthority: this.vaultAuthority[0],
         gsolMint,
         gsolMintAuthority,
-        instructionsSysvar,
+        sysvarInstructions,
         liqPoolSolLegPda: await this.marinadeLp.marinade.solLeg(),
         liqPoolMsolLeg: this.marinadeLp.marinade.mSolLeg,
         liqPoolMsolLegAuthority:
@@ -230,7 +230,7 @@ export class MarinadeLpClient extends BeamInterface<
     gsolTokenAccount?: PublicKey,
   ): Promise<Transaction> {
     const withdrawer = this.provider.publicKey;
-    const { gsolMint, instructionsSysvar, burnGsolFrom } =
+    const { gsolMint, sysvarInstructions, burnGsolFrom } =
       this.sunrise.burnGsolAccounts(
         this.stateAddress,
         withdrawer,
@@ -256,7 +256,7 @@ export class MarinadeLpClient extends BeamInterface<
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         gsolMint,
-        instructionsSysvar,
+        sysvarInstructions,
         sunriseProgram: this.sunrise.program.programId,
         marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
       })
@@ -287,7 +287,7 @@ export class MarinadeLpClient extends BeamInterface<
     gsolTokenAccount?: PublicKey,
   ): Promise<Transaction> {
     const burner = this.provider.publicKey;
-    const { gsolMint, instructionsSysvar, burnGsolFrom } =
+    const { gsolMint, sysvarInstructions, burnGsolFrom } =
       this.sunrise.burnGsolAccounts(
         this.stateAddress,
         burner,
@@ -304,7 +304,7 @@ export class MarinadeLpClient extends BeamInterface<
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         gsolMint,
-        instructionsSysvar,
+        sysvarInstructions,
         sunriseProgram: this.sunrise.program.programId,
       })
       .instruction();
@@ -320,7 +320,7 @@ export class MarinadeLpClient extends BeamInterface<
   //       sunriseState: this.state.sunriseState,
   //       systemProgram: SystemProgram.programId,
   //       tokenProgram: TOKEN_PROGRAM_ID,
-  //       instructionsSysvar,
+  //       sysvarInstructions,
   //       sunriseProgram: this.sunrise.program.programId,
   //     })
   //     .instruction();

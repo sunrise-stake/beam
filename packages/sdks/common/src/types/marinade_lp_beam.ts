@@ -138,7 +138,7 @@ export type MarinadeLpBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -277,7 +277,7 @@ export type MarinadeLpBeam = {
           ]
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -346,7 +346,7 @@ export type MarinadeLpBeam = {
           ]
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -615,7 +615,7 @@ export const IDL: MarinadeLpBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -754,7 +754,7 @@ export const IDL: MarinadeLpBeam = {
           ]
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -823,7 +823,7 @@ export const IDL: MarinadeLpBeam = {
           ]
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
