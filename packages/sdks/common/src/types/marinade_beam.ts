@@ -705,11 +705,6 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "sysvarClock",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
@@ -1619,11 +1614,6 @@ export const IDL: MarinadeBeam = {
         {
           "name": "treasuryMsolAccount",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "sysvarClock",
-          "isMut": false,
           "isSigner": false
         },
         {

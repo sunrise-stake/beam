@@ -527,22 +527,12 @@ export type MarinadeLpBeam = {
           "isSigner": false
         },
         {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
         {
           "name": "sunriseProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "marinadeProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -586,9 +576,10 @@ export type MarinadeLpBeam = {
             "type": "u8"
           },
           {
-            "name": "treasury",
+            "name": "msolRecipientBeam",
             "docs": [
-              "This state's SOL vault."
+              "The beam address of the recipient of msol when withdrawing liquidity.",
+              "Typically the marinade-sp beam"
             ],
             "type": "publicKey"
           },
@@ -626,7 +617,7 @@ export type MarinadeLpBeam = {
             "type": "u8"
           },
           {
-            "name": "treasury",
+            "name": "msolRecipientBeam",
             "type": "publicKey"
           },
           {
@@ -1180,22 +1171,12 @@ export const IDL: MarinadeLpBeam = {
           "isSigner": false
         },
         {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
         {
           "name": "sunriseProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "marinadeProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -1239,9 +1220,10 @@ export const IDL: MarinadeLpBeam = {
             "type": "u8"
           },
           {
-            "name": "treasury",
+            "name": "msolRecipientBeam",
             "docs": [
-              "This state's SOL vault."
+              "The beam address of the recipient of msol when withdrawing liquidity.",
+              "Typically the marinade-sp beam"
             ],
             "type": "publicKey"
           },
@@ -1279,7 +1261,7 @@ export const IDL: MarinadeLpBeam = {
             "type": "u8"
           },
           {
-            "name": "treasury",
+            "name": "msolRecipientBeam",
             "type": "publicKey"
           },
           {

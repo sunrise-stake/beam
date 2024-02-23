@@ -272,6 +272,47 @@ export type SunriseCore = {
       ]
     },
     {
+      "name": "transferGsol",
+      "docs": [
+        "CPI request from a beam program to transfer gSol.",
+        "",
+        "Same invariants as for [minting][sunrise_core::mint_gsol()].",
+        "Errors if the recipient beam is not registered in the state."
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "beam",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "gsolMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarInstructions",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "recipientBeam",
+          "type": "publicKey"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "removeBeam",
       "docs": [
         "Removes a beam from the state.",
@@ -1001,6 +1042,47 @@ export const IDL: SunriseCore = {
         }
       ],
       "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "transferGsol",
+      "docs": [
+        "CPI request from a beam program to transfer gSol.",
+        "",
+        "Same invariants as for [minting][sunrise_core::mint_gsol()].",
+        "Errors if the recipient beam is not registered in the state."
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "beam",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "gsolMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarInstructions",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "recipientBeam",
+          "type": "publicKey"
+        },
         {
           "name": "amount",
           "type": "u64"

@@ -30,6 +30,7 @@ declare_id!("EUZfY4LePXSZVMvRuiVzbxazw9yBDYU99DpGJKCthxbS");
 pub mod spl_beam {
     use super::*;
     use crate::cpi_interface::stake_account::claim_stake_account;
+    use crate::utils::proportional;
 
     pub fn initialize(ctx: Context<Initialize>, input: StateEntry) -> Result<()> {
         ctx.accounts.state.set_inner(input.into());
@@ -168,12 +169,20 @@ pub mod spl_beam {
 
     pub fn update_epoch_report(ctx: Context<UpdateEpochReport>) -> Result<()> {
         // Calculate how much yield can be extracted from the pool.
-        let extractable_yield = utils::calculate_extractable_yield(
+        let gross_extractable_yield = utils::calculate_extractable_yield(
             &ctx.accounts.sunrise_state,
             &ctx.accounts.state,
             &ctx.accounts.stake_pool,
             &ctx.accounts.pool_token_vault,
         )?;
+
+        // Reduce by fee
+        let fee = proportional(
+            gross_extractable_yield,
+            ctx.accounts.stake_pool.stake_withdrawal_fee.numerator,
+            ctx.accounts.stake_pool.stake_withdrawal_fee.denominator,
+        )?;
+        let net_extractable_yield = gross_extractable_yield.saturating_sub(fee);
 
         // CPI: update the epoch report with the extracted yield.
         let state_bump = ctx.bumps.state;
@@ -183,7 +192,7 @@ pub mod spl_beam {
             ctx.accounts.sunrise_state.key(),
             ctx.accounts.stake_pool.key(),
             state_bump,
-            extractable_yield,
+            net_extractable_yield,
         )?;
 
         Ok(())

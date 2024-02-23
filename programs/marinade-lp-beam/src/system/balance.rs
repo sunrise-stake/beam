@@ -3,7 +3,7 @@ use marinade_common::{calc_lamports_from_msol_amount, proportional};
 use marinade_cpi::State as MarinadeState;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub(super) struct LiquidityPoolBalance {
+pub struct LiquidityPoolBalance {
     pub lamports: u64,
     pub msol: u64,
     pub liq_pool_token: u64,
@@ -32,7 +32,8 @@ impl LiquidityPoolBalance {
     // The value of both legs of the liquidity pool balance in SOL
     pub fn sol_value(&self, marinade_state: &MarinadeState) -> u64 {
         let lamports = self.lamports;
-        let msol = calc_lamports_from_msol_amount(marinade_state, self.msol).unwrap();
+        let msol = calc_lamports_from_msol_amount(marinade_state, self.msol)
+            .unwrap();
         lamports.checked_add(msol).expect("sol_value")
     }
 
@@ -66,6 +67,26 @@ impl LiquidityPoolBalance {
 
         let new_msol = proportional(self.msol, new_lamports, self.lamports)
             .map_err(|_| error!(crate::MarinadeLpBeamError::CalculationFailure))?;
+        Ok(Self {
+            lamports: new_lamports,
+            msol: new_msol,
+            liq_pool_token: new_liq_pool_token,
+        })
+    }
+
+    pub fn checked_sub(&self, other: Self) -> Result<Self> {
+        let new_lamports = self
+            .lamports
+            .checked_sub(other.lamports)
+            .ok_or_else(|| error!(crate::MarinadeLpBeamError::CalculationFailure))?;
+        let new_liq_pool_token = self
+            .liq_pool_token
+            .checked_sub(other.liq_pool_token)
+            .ok_or_else(|| error!(crate::MarinadeLpBeamError::CalculationFailure))?;
+        let new_msol = self
+            .msol
+            .checked_sub(other.msol)
+            .ok_or_else(|| error!(crate::MarinadeLpBeamError::CalculationFailure))?;
         Ok(Self {
             lamports: new_lamports,
             msol: new_msol,

@@ -9,7 +9,7 @@ export class StateAccount implements BeamState {
   public readonly proxyState: PublicKey;
   public readonly sunriseState: PublicKey;
   public readonly vaultAuthorityBump: number;
-  public readonly treasury: PublicKey;
+  public readonly msolRecipientBeam: PublicKey;
   public readonly msolTokenAccount: PublicKey;
 
   private constructor(
@@ -21,7 +21,7 @@ export class StateAccount implements BeamState {
     this.proxyState = account.marinadeState;
     this.sunriseState = account.sunriseState;
     this.vaultAuthorityBump = account.vaultAuthorityBump;
-    this.treasury = account.treasury;
+    this.msolRecipientBeam = account.msolRecipientBeam;
     this.msolTokenAccount = account.msolTokenAccount;
   }
 
@@ -43,7 +43,7 @@ export class StateAccount implements BeamState {
       proxyState: this.proxyState.toBase58(),
       sunriseState: this.sunriseState.toBase58(),
       vaultAuthorityBump: this.vaultAuthorityBump.toString(),
-      treasury: this.treasury.toBase58(),
+      msolRecipientBeam: this.msolRecipientBeam.toBase58(),
       msolTokenAccount: this.msolTokenAccount.toBase58(),
     };
   }

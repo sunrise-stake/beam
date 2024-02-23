@@ -9,6 +9,7 @@ pub mod resize_allocations;
 pub mod update_allocations;
 pub mod update_epoch_report;
 pub mod update_state;
+pub mod transfer_gsol;
 
 pub use burn_gsol::*;
 pub use export_mint_authority::*;
@@ -21,3 +22,4 @@ pub use resize_allocations::*;
 pub use update_allocations::*;
 pub use update_epoch_report::*;
 pub use update_state::*;
+pub use transfer_gsol::*;

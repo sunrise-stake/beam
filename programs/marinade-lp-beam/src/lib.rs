@@ -7,15 +7,14 @@ use anchor_spl::associated_token::{AssociatedToken, Create};
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use marinade_cpi::State as MarinadeState;
 use std::ops::Deref;
-
-mod cpi_interface;
-mod state;
-mod system;
-
 use cpi_interface::marinade_lp as marinade_lp_interface;
 use cpi_interface::sunrise as sunrise_interface;
 use state::{State, StateEntry};
 use system::utils;
+
+mod cpi_interface;
+mod state;
+mod system;
 
 // TODO: Use actual CPI crate.
 use crate::cpi_interface::program::Marinade;
@@ -32,9 +31,9 @@ mod constants {
 
 #[program]
 pub mod marinade_lp_beam {
+    use marinade_common::calc_lamports_from_msol_amount;
     use super::*;
     use crate::cpi_interface::marinade_lp;
-    use crate::system::utils::calc_liq_pool_tokens_from_lamports;
 
     pub fn initialize(ctx: Context<Initialize>, input: StateEntry) -> Result<()> {
         ctx.accounts.state.set_inner(input.into());
@@ -75,21 +74,28 @@ pub mod marinade_lp_beam {
     }
 
     pub fn withdraw(ctx: Context<Withdraw>, lamports: u64) -> Result<()> {
-        // Calculate the number of liq_pool tokens `lamports` is worth.
-        let liq_pool_tokens = utils::calc_liq_pool_tokens_from_lamports(
+        // Calculate the number of liq_pool tokens that would be needed to withdraw `lamports`
+        let liq_pool_balance = utils::calculate_liq_pool_balance_required_to_withdraw_lamports(
             &ctx.accounts.marinade_state,
             &ctx.accounts.liq_pool_mint,
             &ctx.accounts.liq_pool_sol_leg_pda,
+            &ctx.accounts.liq_pool_msol_leg,
             lamports,
         )?;
         // CPI: Remove liquidity from Marinade liq_pool. The liq_pool tokens vault owned by
         // this vault is the source burning lp tokens.
+        // The result is a combination of SOL and mSOL.
+        // The SOL goes to the withdrawer, and the mSOL goes to the designated mSOL token account.
+        // which is typically the Marinade-SP's beam vault.
+        // NOTE: This results in an asymmetry in the amount of gSOL each beam is responsible for
+        // The lamport amount is burned, and the mSOL amount has been effectively moved from
+        // the beam to the Marinade-SP (or whichever beam owns the msol token account)
         let accounts = ctx.accounts.deref().into();
         marinade_lp::remove_liquidity(
             &ctx.accounts.marinade_program,
             &ctx.accounts.state,
             accounts,
-            liq_pool_tokens,
+            liq_pool_balance.liq_pool_token,
         )?;
 
         let state_bump = ctx.bumps.state;
@@ -100,6 +106,19 @@ pub mod marinade_lp_beam {
             ctx.accounts.sunrise_state.key(),
             state_bump,
             lamports,
+        )?;
+
+        let lamport_value_of_msol = calc_lamports_from_msol_amount(
+            &ctx.accounts.marinade_state,
+            liq_pool_balance.msol
+        ).map_err(|_| error!(crate::MarinadeLpBeamError::CalculationFailure))?;
+        sunrise_interface::transfer_gsol(
+            ctx.accounts.deref(),
+            ctx.accounts.sunrise_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
+            state_bump,
+            ctx.accounts.state.msol_recipient_beam,
+            lamport_value_of_msol,
         )?;
 
         Ok(())
@@ -132,7 +151,7 @@ pub mod marinade_lp_beam {
     }
 
     pub fn extract_yield(ctx: Context<ExtractYield>) -> Result<()> {
-        let yield_lamports = utils::calculate_extractable_yield(
+        let yield_balance = utils::calculate_extractable_yield(
             &ctx.accounts.sunrise_state,
             &ctx.accounts.state,
             &ctx.accounts.marinade_state,
@@ -142,13 +161,6 @@ pub mod marinade_lp_beam {
             &ctx.accounts.liq_pool_msol_leg,
         )?;
 
-        let yield_liq_pool_tokens = calc_liq_pool_tokens_from_lamports(
-            &ctx.accounts.marinade_state,
-            &ctx.accounts.liq_pool_mint,
-            &ctx.accounts.liq_pool_sol_leg_pda,
-            yield_lamports,
-        )?;
-
         let yield_account_balance_before = ctx.accounts.yield_account.lamports();
 
         let accounts = ctx.accounts.deref().into();
@@ -156,7 +168,7 @@ pub mod marinade_lp_beam {
             &ctx.accounts.marinade_program,
             &ctx.accounts.state,
             accounts,
-            yield_liq_pool_tokens,
+            yield_balance.liq_pool_token,
         )?;
 
         let yield_account_balance_after = ctx.accounts.yield_account.lamports();
@@ -179,7 +191,7 @@ pub mod marinade_lp_beam {
     }
 
     pub fn update_epoch_report(ctx: Context<UpdateEpochReport>) -> Result<()> {
-        let yield_lamports = utils::calculate_extractable_yield(
+        let yield_balance = utils::calculate_extractable_yield(
             &ctx.accounts.sunrise_state,
             &ctx.accounts.state,
             &ctx.accounts.marinade_state,
@@ -189,9 +201,18 @@ pub mod marinade_lp_beam {
             &ctx.accounts.liq_pool_msol_leg,
         )?;
 
-        // Reduce by fee
-        // TODO can we do better than an estimate?
-        let extractable_lamports = (yield_lamports as f64) * 0.997; // estimated 0.3% unstake fee
+        // in the marinade-lp beam, extractable yield is equivalent to surplus LP tokens
+        // when LP tokens are redeemed, the result is SOL and mSOL (both sides of the pool)
+        // the SOL is sent to the yield account,
+        // and the mSOL is sent to the beam's mSOL token account, which is typically
+        // the Marinade-SP's beam vault.
+        // This results in less extractable yield for this beam, and more for the Marinade-SP beam.
+        // (However, in reality, this beam should rarely be extracted from, as it is
+        // included as a buffer to allow for fee-less gSOL withdrawals)
+        // Subtract fee TODO can we do better than an estimate?
+        let extractable_lamports = (yield_balance.lamports as f64) * 0.997; // estimated 0.3% unstake fee
+        msg!("yield_balance: {:?}", yield_balance);
+        msg!("Extractable yield: {}", extractable_lamports);
 
         // CPI: update the epoch report with the extracted yield.
         let state_bump = ctx.bumps.state;
@@ -364,7 +385,7 @@ pub struct Withdraw<'info> {
     pub liq_pool_sol_leg_pda: UncheckedAccount<'info>,
     #[account(mut)]
     /// CHECK: Checked by Marinade CPI.
-    pub liq_pool_msol_leg: UncheckedAccount<'info>,
+    pub liq_pool_msol_leg: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     /// CHECK: Checked by Marinade CPI.
     pub liq_pool_msol_leg_authority: UncheckedAccount<'info>,
@@ -528,14 +549,11 @@ pub struct UpdateEpochReport<'info> {
     #[account(mut)]
     /// CHECK: Checked by Marinade CPI.
     pub liq_pool_msol_leg_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked by Marinade CPI.
-    pub system_program: UncheckedAccount<'info>,
 
     /// CHECK: Checked by Sunrise CPI.
     pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
-    pub marinade_program: Program<'info, Marinade>,
 }
 
 #[derive(Accounts)]

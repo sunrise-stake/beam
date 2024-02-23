@@ -428,6 +428,29 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
   }
 
   /**
+   * Update this beam's extractable yield in the core state's epoch report
+   */
+  public async updateEpochReport(): Promise<Transaction> {
+    const accounts = {
+      state: this.stateAddress,
+      stakePool: this.spl.stakePoolAddress,
+      sunriseState: this.state.sunriseState,
+      poolMint: this.spl.stakePoolState.poolMint,
+      vaultAuthority: this.vaultAuthority[0],
+      poolTokenVault: this.spl.beamVault,
+      gsolMint: this.sunrise.state.gsolMint,
+      sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+      sunriseProgram: this.sunrise.program.programId,
+    };
+    const instruction = await this.program.methods
+      .updateEpochReport()
+      .accounts(accounts)
+      .instruction();
+
+    return new Transaction().add(instruction);
+  }
+
+  /**
    * Return a transaction to extract any yield from this beam into the yield account
    */
   public async extractYield(): Promise<Transaction> {

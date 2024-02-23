@@ -518,7 +518,6 @@ export class MarinadeClient extends BeamInterface<
       treasuryMsolAccount: this.marinade.state.treasuryMsolAccount,
       yieldAccount: this.sunrise.state.yieldAccount,
       sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
-      sysvarClock: SYSVAR_CLOCK_PUBKEY,
       sunriseProgram: this.sunrise.program.programId,
       marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
       systemProgram: SystemProgram.programId,

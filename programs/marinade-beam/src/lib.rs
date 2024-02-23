@@ -715,8 +715,6 @@ pub struct ExtractYield<'info> {
     /// CHECK: Checked by Marinade CPI.
     pub treasury_msol_account: UncheckedAccount<'info>,
 
-    pub sysvar_clock: Sysvar<'info, Clock>,
-
     /// CHECK: Checked by Sunrise CPI.
     pub sysvar_instructions: UncheckedAccount<'info>,
 

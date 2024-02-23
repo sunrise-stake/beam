@@ -74,6 +74,14 @@ pub mod sunrise_core {
         burn_gsol::handler(ctx, amount)
     }
 
+    /// CPI request from a beam program to transfer gSol.
+    ///
+    /// Same invariants as for [minting][sunrise_core::mint_gsol()].
+    /// Errors if the recipient beam is not registered in the state.
+    pub fn transfer_gsol(ctx: Context<TransferGsol>, recipient_beam: Pubkey, amount: u64) -> Result<()> {
+        transfer_gsol::handler(ctx, recipient_beam, amount)
+    }
+
     /// Removes a beam from the state.
     ///
     /// Errors if the beam's allocation is not set to zero.
@@ -192,6 +200,28 @@ pub struct BurnGsol<'info> {
     pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub token_program: Program<'info, Token>,
+}
+
+/// Moves the supply of gsol from one beam to another.
+/// gsol is not transferred between accounts in this instruction.
+/// Used if a beam moves underlying assets from itself to another, thus
+/// implying a move in the amount of gsol it's responsible for.
+#[derive(Accounts)]
+pub struct TransferGsol<'info> {
+    #[account(
+    mut,
+    has_one = gsol_mint,
+    )]
+    pub state: Account<'info, State>,
+
+    pub beam: Signer<'info>,
+
+    #[account(mut)]
+    pub gsol_mint: Account<'info, Mint>,
+
+    /// CHECK: Verified Instructions Sysvar.
+    #[account(address = sysvar::instructions::ID)]
+    pub sysvar_instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]

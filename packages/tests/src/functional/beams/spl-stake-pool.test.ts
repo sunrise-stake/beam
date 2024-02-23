@@ -24,6 +24,7 @@ describe("SPL stake pool beam", () => {
   let vaultStakePoolSolBalance: BN;
   let stakerGsolBalance: BN = new BN(0);
   let sunriseStateAddress: PublicKey;
+  let extractableYield: BN;
 
   const stakePool: PublicKey = SPL_STAKE_POOL;
 
@@ -202,6 +203,27 @@ describe("SPL stake pool beam", () => {
     );
   });
 
+  it("can update the epoch report with the extractable yield", async () => {
+    // we burned `burnAmount` gsol, so we should be able to extract `burnAmount` - estimated fee
+    const expectedFee = burnAmount
+      .mul(beamClient.spl.stakePoolState.stakeWithdrawalFee.numerator)
+      .div(beamClient.spl.stakePoolState.stakeWithdrawalFee.denominator);
+    extractableYield = burnAmount.sub(expectedFee);
+
+    await sendAndConfirmTransaction(
+      // anyone can update the epoch report, but let's use the staker provider (rather than the admin provider) for this test
+      // to show that it doesn't have to be an admin
+      stakerIdentity,
+      await beamClient.updateEpochReport(),
+    );
+
+    // check that the epoch report has been updated
+    beamClient = await beamClient.refresh();
+    expect(
+      beamClient.sunrise.state.epochReport.beamEpochDetails[0].extractableYield.toNumber(),
+    ).to.equal(extractableYield.toNumber());
+  });
+
   it("can extract yield into a stake account", async () => {
     // since we burned some sol - we now have yield to extract (the value of the LPs is higher than the value of the GSOL staked)
     await sendAndConfirmTransaction(
@@ -211,16 +233,10 @@ describe("SPL stake pool beam", () => {
       await beamClient.extractYield(),
     );
 
-    // we burned `burnAmount` gsol, so we should have `burnAmount` in the yield account
-    const expectedFee = burnAmount
-      .mul(beamClient.spl.stakePoolState.stakeWithdrawalFee.numerator)
-      .div(beamClient.spl.stakePoolState.stakeWithdrawalFee.denominator);
-    const expectedExtractedYield = burnAmount.sub(expectedFee);
-
     await expectSolBalance(
       beamClient.provider,
       beamClient.sunrise.state.yieldAccount,
-      expectedExtractedYield,
+      extractableYield,
       // the calculation appears to be slightly inaccurate at present, but in our favour,
       // so we can leave this as a low priority TODO to improve the accuracy
       3000,

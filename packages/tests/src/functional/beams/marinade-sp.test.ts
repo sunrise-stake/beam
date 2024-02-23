@@ -12,7 +12,6 @@ import {
 } from "@solana/web3.js";
 import BN from "bn.js";
 import {
-  createTokenAccount,
   expectSolBalance,
   expectStakerSolBalance,
   expectTokenBalance,
@@ -70,8 +69,6 @@ describe("Marinade stake pool beam", () => {
   });
 
   it("can initialize a state", async () => {
-    // create an MSol token account for the beam.
-    await createTokenAccount(provider, sunriseStateAddress, MSOL_MINT);
     beamClient = await MarinadeClient.initialize(
       provider,
       provider.publicKey,
@@ -315,7 +312,7 @@ describe("Marinade stake pool beam", () => {
     );
   });
 
-  it("can update the epoch report", async () => {
+  it("can update the epoch report with the extractable yield", async () => {
     // we burned `burnAmount` gsol, so we should be able to extract `burnAmount` - estimated fee
     const expectedFee = burnAmount.toNumber() * 0.003;
     extractableYield = burnAmount.subn(expectedFee);
