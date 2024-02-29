@@ -335,6 +335,17 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
     return transaction.add(instruction);
   }
 
+  private async findStakeAccountToSplit(amount: BN): Promise<PublicKey> {
+    // Finds a validator stake account with sufficient active or transient stake to withdraw from there
+    // If none is found, revert to the reserve stake account
+    const validatorList = this.spl.stakePoolState.validatorList;
+    const data =
+      await this.provider.connection.getParsedAccountInfo(validatorList);
+    console.log(data);
+
+    return this.spl.stakePoolState.reserveStake;
+  }
+
   /**
    * Returns a transaction to withdraw from an SPL stake-pool into a new stake account
    */
@@ -351,6 +362,8 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
         gsolTokenAccount,
       );
 
+    const stakeAccountToSplit = await this.findStakeAccountToSplit(amount);
+
     const instruction = await this.program.methods
       .withdrawStake(amount)
       .accounts({
@@ -365,7 +378,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
         vaultAuthority: this.vaultAuthority[0],
         stakePoolWithdrawAuthority: this.spl.withdrawAuthority,
         validatorStakeList: this.spl.stakePoolState.validatorList,
-        stakeAccountToSplit: this.spl.stakePoolState.reserveStake,
+        stakeAccountToSplit,
         managerFeeAccount: this.spl.stakePoolState.managerFeeAccount,
         sysvarClock: SYSVAR_CLOCK_PUBKEY,
         sysvarStakeHistory: SYSVAR_STAKE_HISTORY_PUBKEY,
