@@ -2,9 +2,15 @@ use super::balance::LiquidityPoolBalance;
 use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
-use marinade_common::{calc_lamports_from_msol_amount, proportional};
+use marinade_common::{
+    calc_lamports_from_msol_amount, proportional, proportional_with_rounding, RoundingMode,
+};
 use marinade_cpi::State as MarinadeState;
 use sunrise_core::BeamError;
+
+// estimated 0.3% unstake fee
+// const WITHDRAWAL_FRACTION : f64 =  0.997;
+const WITHDRAWAL_FRACTION: f64 = 1.0;
 
 /// Calculates the amount that can be extracted as yield, in lamports.
 pub fn calculate_extractable_yield(
@@ -40,11 +46,9 @@ pub fn calculate_extractable_yield(
         liq_pool_sol_leg_pda,
         liq_pool_msol_leg,
         staked_sol,
-    )?;
+    );
 
     msg!("staked_balance: {:?}", staked_balance);
-    msg!("staked_sol: {:?}", staked_sol);
-    msg!("required_lp_tokens_to_cover_staked_sol: {:?}", required_lp_tokens_to_cover_staked_sol);
 
     let required_liq_pool_balance = liq_pool_balance_for_tokens(
         required_lp_tokens_to_cover_staked_sol,
@@ -56,16 +60,32 @@ pub fn calculate_extractable_yield(
     msg!("required_liq_pool_balance: {:?}", required_liq_pool_balance);
 
     // return the difference between the staked balance and the required balance
-    let diff = staked_balance.checked_sub(required_liq_pool_balance)?;
+    let diff = staked_balance.sub(required_liq_pool_balance);
 
     msg!("diff: {:?}", diff);
     Ok(diff)
 }
 
+// in the marinade-lp beam, extractable yield is equivalent to surplus LP tokens
+// when LP tokens are redeemed, the result is SOL and mSOL (both sides of the pool)
+// the SOL is sent to the yield account,
+// and the mSOL is sent to the beam's mSOL token account, which is typically
+// the Marinade-SP's beam vault.
+// This results in less extractable yield for this beam, and more for the Marinade-SP beam.
+// (However, in reality, this beam should rarely be extracted from, as it is
+// included as a buffer to allow for fee-less gSOL withdrawals)
+// Subtract fee TODO can we do better than an estimate?
+pub fn get_extractable_yield_from_excess_balance(excess_balance: u64) -> u64 {
+    let extractable_lamports = (excess_balance as f64) * WITHDRAWAL_FRACTION;
+    msg!("Excess balance: {:?}", excess_balance);
+    msg!("Extractable yield: {}", extractable_lamports);
+    extractable_lamports as u64
+}
+
 // Prevent the compiler from enlarging the stack and potentially triggering an Access violation
 #[inline(never)]
 /// Returns the current liquidity pool balance owned by the beam
-pub(super) fn current_liq_pool_balance(
+pub fn current_liq_pool_balance(
     marinade_state: &MarinadeState,
     liq_pool_mint: &Mint,
     liq_pool_token_account: &TokenAccount,
@@ -123,18 +143,16 @@ pub fn calculate_liq_pool_token_value_of_lamports(
     liq_pool_sol_leg_pda: &AccountInfo,
     liq_pool_msol_leg: &TokenAccount,
     lamports: u64,
-) -> Result<u64> {
+) -> u64 {
     let total_lamports = liq_pool_sol_leg_pda
         .lamports()
         .checked_sub(marinade_state.rent_exempt_for_token_acc)
         .unwrap();
     let total_msol = liq_pool_msol_leg.amount;
-    let lamports_value_of_msol = calc_lamports_from_msol_amount(marinade_state, total_msol)
-        .map_err(|_| error!(crate::MarinadeLpBeamError::CalculationFailure))?;
+    let lamports_value_of_msol = calc_lamports_from_msol_amount(marinade_state, total_msol);
     let total_value_of_pool = total_lamports.checked_add(lamports_value_of_msol).unwrap();
 
     proportional(liq_pool_mint.supply, lamports, total_value_of_pool)
-        .map_err(|_| error!(crate::MarinadeLpBeamError::CalculationFailure))
 }
 
 fn total_liq_pool(
@@ -149,9 +167,9 @@ fn total_liq_pool(
         .expect("sol_leg_lamports");
 
     LiquidityPoolBalance::new(
-        sol_leg_lamports,
-        liq_pool_msol_leg.amount,
-        liq_pool_mint.supply,
+        sol_leg_lamports as i128,
+        liq_pool_msol_leg.amount as i128,
+        liq_pool_mint.supply as i128,
     )
 }
 
@@ -168,14 +186,19 @@ pub fn calculate_liq_pool_balance_required_to_withdraw_lamports(
         .unwrap();
     let liq_pool_mint_supply = liq_pool_mint.supply;
 
-    let liq_pool_tokens = proportional(liq_pool_mint_supply, lamports, liq_pool_lamports)
-        .map_err(|_| error!(crate::MarinadeLpBeamError::CalculationFailure))?;
+    // Round up to ensure that the amount of LP tokens is enough to withdraw the required amount of SOL
+    let liq_pool_tokens = proportional_with_rounding(
+        liq_pool_mint_supply,
+        lamports,
+        liq_pool_lamports,
+        RoundingMode::Up,
+    );
 
     liq_pool_balance_for_tokens(
         liq_pool_tokens,
         marinade_state,
         liq_pool_mint,
         liq_pool_sol_leg_pda,
-        liq_pool_msol_leg
+        liq_pool_msol_leg,
     )
 }

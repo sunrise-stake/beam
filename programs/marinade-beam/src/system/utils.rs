@@ -15,8 +15,7 @@ pub fn calculate_extractable_yield(
     marinade_state: &MarinadeState,
     msol_vault: &TokenAccount,
 ) -> Result<u64> {
-    let staked_value = calc_lamports_from_msol_amount(marinade_state, msol_vault.amount)
-        .map_err(|_| error!(crate::MarinadeBeamError::CalculationFailure))?;
+    let staked_value = calc_lamports_from_msol_amount(marinade_state, msol_vault.amount);
     let details = sunrise_state
         .get_beam_details(&beam_state.key())
         .ok_or(BeamError::UnidentifiedBeam)?;

@@ -78,7 +78,11 @@ pub mod sunrise_core {
     ///
     /// Same invariants as for [minting][sunrise_core::mint_gsol()].
     /// Errors if the recipient beam is not registered in the state.
-    pub fn transfer_gsol(ctx: Context<TransferGsol>, recipient_beam: Pubkey, amount: u64) -> Result<()> {
+    pub fn transfer_gsol(
+        ctx: Context<TransferGsol>,
+        recipient_beam: Pubkey,
+        amount: u64,
+    ) -> Result<()> {
         transfer_gsol::handler(ctx, recipient_beam, amount)
     }
 

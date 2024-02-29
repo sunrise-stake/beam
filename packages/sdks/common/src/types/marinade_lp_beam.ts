@@ -638,6 +638,11 @@ export type MarinadeLpBeam = {
       "code": 6001,
       "name": "Unimplemented",
       "msg": "This feature is unimplemented for this beam"
+    },
+    {
+      "code": 6002,
+      "name": "InsufficientYieldBalance",
+      "msg": "The yield balance is insufficient to extract yield"
     }
   ]
 };
@@ -1282,6 +1287,11 @@ export const IDL: MarinadeLpBeam = {
       "code": 6001,
       "name": "Unimplemented",
       "msg": "This feature is unimplemented for this beam"
+    },
+    {
+      "code": 6002,
+      "name": "InsufficientYieldBalance",
+      "msg": "The yield balance is insufficient to extract yield"
     }
   ]
 };

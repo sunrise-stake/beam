@@ -23,7 +23,10 @@ pub fn handler(ctx: Context<BurnGsol>, amount_in_lamports: u64) -> Result<()> {
         return Err(BeamError::BurnWindowExceeded.into());
     }
 
-    details.partial_gsol_supply = details.partial_gsol_supply.checked_sub(amount_in_lamports).unwrap();
+    details.partial_gsol_supply = details
+        .partial_gsol_supply
+        .checked_sub(amount_in_lamports)
+        .unwrap();
     token::burn(
         amount_in_lamports,
         &ctx.accounts.gsol_mint.to_account_info(),

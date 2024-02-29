@@ -308,6 +308,10 @@ impl EpochReport {
             .ok_or(BeamError::Overflow)
             .unwrap();
 
+        // The extractable yield should be reduced (most likely to zero)
+        beam_details.extractable_yield =
+            beam_details.extractable_yield.saturating_sub(yield_amount);
+
         Ok(())
     }
 

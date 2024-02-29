@@ -8,6 +8,7 @@ import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import { provider, staker, stakerIdentity } from "../setup.js";
 import {
+  expectAmount,
   expectSolBalance,
   expectTokenBalance,
   fund,
@@ -18,6 +19,7 @@ import {
 } from "../../utils.js";
 import { expect } from "chai";
 import { MarinadeClient } from "@sunrisestake/beams-marinade-sp";
+import { MARINADE_LP_WITHDRAWAL_FEE_PERCENTAGE, ZERO } from "../consts.js";
 
 describe("Marinade liquidity pool beam", () => {
   let coreClient: SunriseClient;
@@ -68,6 +70,11 @@ describe("Marinade liquidity pool beam", () => {
       provider.publicKey,
       sunriseStateAddress,
     );
+    coreClient = await coreClient.refresh();
+    await sendAndConfirmTransaction(
+      provider,
+      await coreClient.registerBeam(marinadeSpBeamClient.stateAddress),
+    );
 
     await SunriseClient.get(provider, sunriseStateAddress);
 
@@ -76,7 +83,7 @@ describe("Marinade liquidity pool beam", () => {
       provider.publicKey,
       sunriseStateAddress,
       marinadeSpBeamClient.stateAddress,
-      marinadeSpBeamClient.marinade.beamMsolVault,
+      marinadeSpBeamClient.marinade.beamMsolVault, // this will be the target of any extracted msol
     );
 
     const info = beamClient.state.pretty();
@@ -193,9 +200,10 @@ describe("Marinade liquidity pool beam", () => {
 
     // check that the epoch report has been updated
     beamClient = await beamClient.refresh();
-    expect(
-      beamClient.sunrise.state.epochReport.beamEpochDetails[0].extractableYield.toNumber(),
-    ).to.equal(0);
+    // the lp beam is the second one (sp being the first)
+    const beamEpochDetail =
+      beamClient.sunrise.state.epochReport.beamEpochDetails[1];
+    expectAmount(beamEpochDetail.extractableYield, ZERO);
   });
 
   it("can't deposit due to exceeding allocation", async () => {
@@ -232,7 +240,8 @@ describe("Marinade liquidity pool beam", () => {
       await beamClient.proportionOfPool(withdrawalAmountBN);
     const lpSupply = await beamClient.poolTokenSupply();
     const withdrawnLpTokens = new BN(
-      "" + Math.floor(lpSupply.toNumber() * proportionOfPool),
+      // round up to ensure we withdraw sufficient LP tokens to cover the required SOL amount
+      "" + Math.ceil(lpSupply.toNumber() * proportionOfPool),
     );
     const expectedLPTokens = vaultBalance.sub(withdrawnLpTokens);
 
@@ -256,9 +265,10 @@ describe("Marinade liquidity pool beam", () => {
 
     // check that the epoch report has been updated
     beamClient = await beamClient.refresh();
-    expect(
-      beamClient.sunrise.state.epochReport.beamEpochDetails[0].extractableYield.toNumber(),
-    ).to.equal(0);
+    // the lp beam is the second one (sp being the first)
+    const beamEpochDetail =
+      beamClient.sunrise.state.epochReport.beamEpochDetails[1];
+    expectAmount(beamEpochDetail.extractableYield, ZERO);
   });
 
   it("can burn gsol", async () => {
@@ -287,7 +297,8 @@ describe("Marinade liquidity pool beam", () => {
     // This results in less extractable yield for this beam, and more for the Marinade-SP beam.
     // (However, in reality, this beam should rarely be extracted from, as it is
     // included as a buffer to allow for fee-less gSOL withdrawals)
-    const expectedFee = burnAmount.toNumber() * 0.003;
+    const expectedFee =
+      burnAmount.toNumber() * MARINADE_LP_WITHDRAWAL_FEE_PERCENTAGE;
     const effectiveBurnedAmount = burnAmount.subn(expectedFee);
     const lpTokenValue =
       effectiveBurnedAmount.toNumber() / (await beamClient.poolTokenPrice());
@@ -295,15 +306,6 @@ describe("Marinade liquidity pool beam", () => {
       new BN(lpTokenValue),
     );
     netExtractableYield = lpBalance.lamports;
-    console.log("burnAmount", burnAmount.toNumber());
-    console.log("expectedFee", expectedFee);
-    console.log("effectiveBurnedAmount", effectiveBurnedAmount.toNumber());
-    console.log("poolTokenPrice", await beamClient.poolTokenPrice());
-    console.log("lpTokenValue", lpTokenValue);
-    console.log("lpBalance", {
-      lamports: lpBalance.lamports.toNumber(),
-      msolLamports: lpBalance.msolLamports.toNumber(),
-    });
 
     await sendAndConfirmTransaction(
       // anyone can update the epoch report, but let's use the staker provider (rather than the admin provider) for this test
@@ -314,9 +316,14 @@ describe("Marinade liquidity pool beam", () => {
 
     // check that the epoch report has been updated
     beamClient = await beamClient.refresh();
-    expect(
-      beamClient.sunrise.state.epochReport.beamEpochDetails[0].extractableYield.toNumber(),
-    ).to.equal(netExtractableYield.toNumber());
+    // the lp beam is the second one (sp being the first)
+    const beamEpochDetail =
+      beamClient.sunrise.state.epochReport.beamEpochDetails[1];
+    expectAmount(
+      netExtractableYield.toNumber(),
+      beamEpochDetail.extractableYield.toNumber(),
+      2,
+    );
   });
 
   it("can extract yield into a stake account", async () => {

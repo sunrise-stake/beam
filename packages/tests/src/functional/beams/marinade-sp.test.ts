@@ -25,8 +25,6 @@ import {
 } from "../../utils.js";
 import { provider, staker, stakerIdentity } from "../setup.js";
 import { expect } from "chai";
-import { MSOL_MINT } from "../consts.js";
-
 describe("Marinade stake pool beam", () => {
   let coreClient: SunriseClient;
   let beamClient: MarinadeClient;

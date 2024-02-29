@@ -3,7 +3,6 @@ import {
   Keypair,
   PublicKey,
   SystemProgram,
-  SYSVAR_CLOCK_PUBKEY,
   SYSVAR_INSTRUCTIONS_PUBKEY,
   Transaction,
   type TransactionInstruction,
@@ -18,6 +17,7 @@ import {
   BeamInterface,
   deriveAuthorityAddress,
   MarinadeLpBeam,
+  requestIncreasedCUsIx,
   sendAndConfirmChecked,
 } from "@sunrisestake/beams-common";
 import { StateAccount } from "./state.js";
@@ -264,7 +264,7 @@ export class MarinadeLpClient extends BeamInterface<
       })
       .instruction();
 
-    return new Transaction().add(instruction);
+    return new Transaction().add(requestIncreasedCUsIx(400_000), instruction);
   }
 
   /**
@@ -350,15 +350,16 @@ export class MarinadeLpClient extends BeamInterface<
       state: this.stateAddress,
       marinadeState: this.state.proxyState,
       sunriseState: this.state.sunriseState,
-      msolMint: this.marinadeLp.marinade.mSolMint.address,
-      msolVault: this.state.msolTokenAccount,
+      yieldAccount: this.sunrise.state.yieldAccount,
+      liqPoolMint: this.marinadeLp.marinade.lpMint.address,
+      liqPoolTokenVault: this.marinadeLp.beamVault,
       vaultAuthority: this.vaultAuthority[0],
+      transferMsolTo: this.state.msolTokenAccount,
       liqPoolSolLegPda: await this.marinadeLp.marinade.solLeg(),
       liqPoolMsolLeg: this.marinadeLp.marinade.mSolLeg,
-      treasuryMsolAccount: this.marinadeLp.marinade.treasuryMsolAccount,
-      yieldAccount: this.sunrise.state.yieldAccount,
+      liqPoolMsolLegAuthority:
+        await this.marinadeLp.marinade.mSolLegAuthority(),
       sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
-      sysvarClock: SYSVAR_CLOCK_PUBKEY,
       sunriseProgram: this.sunrise.program.programId,
       marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
@@ -463,16 +464,6 @@ export class MarinadeLpClient extends BeamInterface<
 
     const solValue = solBalance * proportionOfPool;
     const msolValue = msolLegBalance.toNumber() * proportionOfPool;
-
-    console.log("calculateBalanceFromLpTokens", {
-      lpTokens: lpTokens.toNumber(),
-      totalSupply: totalSupply.toNumber(),
-      proportionOfPool,
-      solBalance,
-      msolLegBalance: msolLegBalance.toNumber(),
-      solValue,
-      msolValue,
-    });
 
     return {
       lamports: new BN(solValue),

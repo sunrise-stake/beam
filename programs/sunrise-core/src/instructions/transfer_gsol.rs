@@ -1,7 +1,11 @@
 use crate::{system, utils, BeamError, TransferGsol};
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<TransferGsol>, recipient_beam: Pubkey, amount_in_lamports: u64) -> Result<()> {
+pub fn handler(
+    ctx: Context<TransferGsol>,
+    recipient_beam: Pubkey,
+    amount_in_lamports: u64,
+) -> Result<()> {
     let amount = amount_in_lamports;
     let state = &mut ctx.accounts.state;
 
@@ -23,12 +27,18 @@ pub fn handler(ctx: Context<TransferGsol>, recipient_beam: Pubkey, amount_in_lam
         );
         return Err(BeamError::BurnWindowExceeded.into());
     }
-    source_beam_details.partial_gsol_supply = source_beam_details.partial_gsol_supply.checked_sub(amount).unwrap();
+    source_beam_details.partial_gsol_supply = source_beam_details
+        .partial_gsol_supply
+        .checked_sub(amount)
+        .unwrap();
 
     let target_beam_details = state
         .get_mut_beam_details(&recipient_beam)
         .ok_or(BeamError::UnidentifiedBeam)?;
-    target_beam_details.partial_gsol_supply = target_beam_details.partial_gsol_supply.checked_add(amount).unwrap();
+    target_beam_details.partial_gsol_supply = target_beam_details
+        .partial_gsol_supply
+        .checked_add(amount)
+        .unwrap();
 
     Ok(())
 }

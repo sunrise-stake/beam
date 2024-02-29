@@ -5,11 +5,8 @@ use sunrise_core as sunrise_core_cpi;
 use sunrise_core::cpi::accounts::{ExtractYield, UpdateEpochReport};
 use sunrise_core_cpi::cpi::{
     accounts::{BurnGsol, MintGsol, TransferGsol},
-    burn_gsol as cpi_burn_gsol,
-    mint_gsol as cpi_mint_gsol,
-    transfer_gsol as cpi_transfer_gsol,
-    extract_yield as cpi_extract_yield,
-    update_epoch_report as cpi_update_epoch_report,
+    burn_gsol as cpi_burn_gsol, extract_yield as cpi_extract_yield, mint_gsol as cpi_mint_gsol,
+    transfer_gsol as cpi_transfer_gsol, update_epoch_report as cpi_update_epoch_report,
 };
 
 pub fn mint_gsol<'a>(

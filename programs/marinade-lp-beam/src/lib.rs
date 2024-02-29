@@ -2,23 +2,22 @@
 // Temporarily allow to pass clippy ci
 #![allow(dead_code)]
 
+use crate::cpi_interface::program::Marinade;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::{AssociatedToken, Create};
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use marinade_cpi::State as MarinadeState;
-use std::ops::Deref;
 use cpi_interface::marinade_lp as marinade_lp_interface;
 use cpi_interface::sunrise as sunrise_interface;
+use marinade_cpi::State as MarinadeState;
 use state::{State, StateEntry};
+use std::cmp::max;
+use std::ops::Deref;
+use sunrise_core as sunrise_core_cpi;
 use system::utils;
 
 mod cpi_interface;
 mod state;
 mod system;
-
-// TODO: Use actual CPI crate.
-use crate::cpi_interface::program::Marinade;
-use sunrise_core as sunrise_core_cpi;
 
 declare_id!("9Xek4q2hsdPm4yaRt4giQnVTTgRGwGhXQ1HBXbinuPTP");
 
@@ -31,9 +30,10 @@ mod constants {
 
 #[program]
 pub mod marinade_lp_beam {
-    use marinade_common::calc_lamports_from_msol_amount;
     use super::*;
     use crate::cpi_interface::marinade_lp;
+    use crate::system::utils::get_extractable_yield_from_excess_balance;
+    use marinade_common::calc_lamports_from_msol_amount;
 
     pub fn initialize(ctx: Context<Initialize>, input: StateEntry) -> Result<()> {
         ctx.accounts.state.set_inner(input.into());
@@ -75,13 +75,20 @@ pub mod marinade_lp_beam {
 
     pub fn withdraw(ctx: Context<Withdraw>, lamports: u64) -> Result<()> {
         // Calculate the number of liq_pool tokens that would be needed to withdraw `lamports`
-        let liq_pool_balance = utils::calculate_liq_pool_balance_required_to_withdraw_lamports(
-            &ctx.accounts.marinade_state,
-            &ctx.accounts.liq_pool_mint,
-            &ctx.accounts.liq_pool_sol_leg_pda,
-            &ctx.accounts.liq_pool_msol_leg,
+        let liq_pool_balance_to_withdraw =
+            utils::calculate_liq_pool_balance_required_to_withdraw_lamports(
+                &ctx.accounts.marinade_state,
+                &ctx.accounts.liq_pool_mint,
+                &ctx.accounts.liq_pool_sol_leg_pda,
+                &ctx.accounts.liq_pool_msol_leg,
+                lamports,
+            )?;
+
+        msg!(
+            "Balance required to withdraw {} lamports: {:?}",
             lamports,
-        )?;
+            liq_pool_balance_to_withdraw
+        );
         // CPI: Remove liquidity from Marinade liq_pool. The liq_pool tokens vault owned by
         // this vault is the source burning lp tokens.
         // The result is a combination of SOL and mSOL.
@@ -95,7 +102,8 @@ pub mod marinade_lp_beam {
             &ctx.accounts.marinade_program,
             &ctx.accounts.state,
             accounts,
-            liq_pool_balance.liq_pool_token,
+            // this is safe, because the liq_pool_balance is guaranteed to be non-negative
+            liq_pool_balance_to_withdraw.liq_pool_token as u64,
         )?;
 
         let state_bump = ctx.bumps.state;
@@ -110,8 +118,8 @@ pub mod marinade_lp_beam {
 
         let lamport_value_of_msol = calc_lamports_from_msol_amount(
             &ctx.accounts.marinade_state,
-            liq_pool_balance.msol
-        ).map_err(|_| error!(crate::MarinadeLpBeamError::CalculationFailure))?;
+            liq_pool_balance_to_withdraw.msol as u64,
+        );
         sunrise_interface::transfer_gsol(
             ctx.accounts.deref(),
             ctx.accounts.sunrise_program.to_account_info(),
@@ -161,6 +169,15 @@ pub mod marinade_lp_beam {
             &ctx.accounts.liq_pool_msol_leg,
         )?;
 
+        // if there is insufficient balance to extract, return an error
+        // note - if this is negative, we have a shortfall in the pool
+        // this should only ever be max 1 or 2 lamports due to rounding
+        require_gt!(
+            yield_balance.liq_pool_token,
+            0,
+            MarinadeLpBeamError::InsufficientYieldBalance
+        );
+
         let yield_account_balance_before = ctx.accounts.yield_account.lamports();
 
         let accounts = ctx.accounts.deref().into();
@@ -168,7 +185,8 @@ pub mod marinade_lp_beam {
             &ctx.accounts.marinade_program,
             &ctx.accounts.state,
             accounts,
-            yield_balance.liq_pool_token,
+            // checked by the assert above - guaranteed to be positive
+            yield_balance.liq_pool_token as u64,
         )?;
 
         let yield_account_balance_after = ctx.accounts.yield_account.lamports();
@@ -201,18 +219,8 @@ pub mod marinade_lp_beam {
             &ctx.accounts.liq_pool_msol_leg,
         )?;
 
-        // in the marinade-lp beam, extractable yield is equivalent to surplus LP tokens
-        // when LP tokens are redeemed, the result is SOL and mSOL (both sides of the pool)
-        // the SOL is sent to the yield account,
-        // and the mSOL is sent to the beam's mSOL token account, which is typically
-        // the Marinade-SP's beam vault.
-        // This results in less extractable yield for this beam, and more for the Marinade-SP beam.
-        // (However, in reality, this beam should rarely be extracted from, as it is
-        // included as a buffer to allow for fee-less gSOL withdrawals)
-        // Subtract fee TODO can we do better than an estimate?
-        let extractable_lamports = (yield_balance.lamports as f64) * 0.997; // estimated 0.3% unstake fee
-        msg!("yield_balance: {:?}", yield_balance);
-        msg!("Extractable yield: {}", extractable_lamports);
+        let excess_lamports = max(0, yield_balance.lamports) as u64;
+        let extractable_lamports = get_extractable_yield_from_excess_balance(excess_lamports);
 
         // CPI: update the epoch report with the extracted yield.
         let state_bump = ctx.bumps.state;
@@ -565,4 +573,6 @@ pub enum MarinadeLpBeamError {
     CalculationFailure,
     #[msg("This feature is unimplemented for this beam")]
     Unimplemented,
+    #[msg("The yield balance is insufficient to extract yield")]
+    InsufficientYieldBalance,
 }

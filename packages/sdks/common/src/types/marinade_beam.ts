@@ -884,26 +884,21 @@ export type MarinadeBeam = {
     },
     {
       "code": 6001,
-      "name": "CalculationFailure",
-      "msg": "An error occurred during calculation"
-    },
-    {
-      "code": 6002,
       "name": "InvalidEpochReportAccount",
       "msg": "The epoch report account has not been updated to the current epoch yet"
     },
     {
-      "code": 6003,
+      "code": 6002,
       "name": "RemainingUnclaimableTicketAmount",
       "msg": "The total ordered ticket amount exceeds the amount in all found tickets"
     },
     {
-      "code": 6004,
+      "code": 6003,
       "name": "DelayedUnstakeTicketsNotYetClaimable",
       "msg": "Delayed unstake tickets for the current epoch can not yet be claimed"
     },
     {
-      "code": 6005,
+      "code": 6004,
       "name": "TooManyTicketsClaimed",
       "msg": "The amount of delayed unstake tickets requested to be recovered exceeds the amount in the report"
     }
@@ -1796,26 +1791,21 @@ export const IDL: MarinadeBeam = {
     },
     {
       "code": 6001,
-      "name": "CalculationFailure",
-      "msg": "An error occurred during calculation"
-    },
-    {
-      "code": 6002,
       "name": "InvalidEpochReportAccount",
       "msg": "The epoch report account has not been updated to the current epoch yet"
     },
     {
-      "code": 6003,
+      "code": 6002,
       "name": "RemainingUnclaimableTicketAmount",
       "msg": "The total ordered ticket amount exceeds the amount in all found tickets"
     },
     {
-      "code": 6004,
+      "code": 6003,
       "name": "DelayedUnstakeTicketsNotYetClaimable",
       "msg": "Delayed unstake tickets for the current epoch can not yet be claimed"
     },
     {
-      "code": 6005,
+      "code": 6004,
       "name": "TooManyTicketsClaimed",
       "msg": "The amount of delayed unstake tickets requested to be recovered exceeds the amount in the report"
     }
