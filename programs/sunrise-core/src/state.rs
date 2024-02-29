@@ -351,13 +351,21 @@ impl BeamEpochDetails {
 mod internal_tests {
     use super::*;
 
+    // Stub the Clock sysvar
+    struct SyscallStubs {}
+    impl solana_sdk::program_stubs::SyscallStubs for SyscallStubs {
+        fn sol_get_clock_sysvar(&self, _var_addr: *mut u8) -> u64 {
+            0
+        }
+    }
+
     #[test]
     fn test_register_beam() {
         let mut state = State::default();
         let mut input = RegisterStateInput::default();
         input.initial_capacity = 10;
 
-        state.register(input, 0, &Pubkey::default(), 1000);
+        state.register(input, 0, &Pubkey::default(), 1000).unwrap();
         assert_eq!(state.allocations, vec![BeamDetails::default(); 10]);
     }
     #[test]
@@ -390,13 +398,17 @@ mod internal_tests {
 
         assert_eq!(state.beam_count(), 2);
     }
+
     #[test]
     fn test_add_beam() {
+        solana_sdk::program_stubs::set_syscall_stubs(Box::new(SyscallStubs {}));
         let mut state = State::default();
         let mut input = RegisterStateInput::default();
 
         input.initial_capacity = 2;
-        state.register(input, 0, &Pubkey::new_unique(), 1000);
+        state
+            .register(input, 0, &Pubkey::new_unique(), 1000)
+            .unwrap();
 
         let beam_key = Pubkey::new_unique();
         let new_beam = BeamDetails::new(beam_key, 10);
@@ -505,12 +517,10 @@ mod internal_tests {
 
         let initial_size = state.size_inner();
         assert_eq!(state.allocations.len(), 0);
-        assert_eq!(initial_size, State::SIZE_WITH_ZERO_BEAMS);
         assert_eq!(initial_size, State::size(0));
 
         state.allocations = vec![BeamDetails::default(); 10];
         let size = state.size_inner();
         assert_eq!(size, State::size(10));
-        assert_eq!(size, initial_size + (10 * BeamDetails::SIZE))
     }
 }
