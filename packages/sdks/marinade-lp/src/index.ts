@@ -1,21 +1,23 @@
 import { type AnchorProvider, Program } from "@coral-xyz/anchor";
 import {
+  Keypair,
   PublicKey,
+  SystemProgram,
+  SYSVAR_INSTRUCTIONS_PUBKEY,
   Transaction,
   type TransactionInstruction,
-  SystemProgram,
-  Keypair,
 } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountIdempotentInstruction,
   getAssociatedTokenAddressSync,
+  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import {
-  MarinadeLpBeam,
   BeamInterface,
   deriveAuthorityAddress,
+  MarinadeLpBeam,
+  requestIncreasedCUsIx,
   sendAndConfirmChecked,
 } from "@sunrisestake/beams-common";
 import { StateAccount } from "./state.js";
@@ -23,7 +25,7 @@ import {
   MARINADE_BEAM_PROGRAM_ID,
   MARINADE_FINANCE_PROGRAM_ID,
 } from "./constants.js";
-import { MarinadeLpClientParams, Utils } from "./utils.js";
+import { Balance, MarinadeLpClientParams, Utils } from "./utils.js";
 import BN from "bn.js";
 import { SunriseClient } from "@sunrisestake/beams-core";
 
@@ -59,7 +61,7 @@ export class MarinadeLpClient extends BeamInterface<
     provider: AnchorProvider,
     updateAuthority: PublicKey,
     sunriseState: PublicKey,
-    treasury: PublicKey,
+    msolRecipientBeam: PublicKey,
     msolTokenAccount: PublicKey,
     programId = MARINADE_BEAM_PROGRAM_ID,
   ): Promise<MarinadeLpClient> {
@@ -85,7 +87,7 @@ export class MarinadeLpClient extends BeamInterface<
         marinadeState: marinadeLpClientParams.marinade.marinadeStateAddress,
         sunriseState,
         vaultAuthorityBump,
-        treasury,
+        msolRecipientBeam,
         msolTokenAccount,
       })
       .accounts({
@@ -178,7 +180,7 @@ export class MarinadeLpClient extends BeamInterface<
     recipient?: PublicKey,
   ): Promise<Transaction> {
     const depositor = this.provider.publicKey;
-    const { gsolMint, gsolMintAuthority, instructionsSysvar } =
+    const { gsolMint, gsolMintAuthority, sysvarInstructions } =
       this.sunrise.mintGsolAccounts(this.stateAddress, depositor);
 
     const transaction = new Transaction();
@@ -202,7 +204,7 @@ export class MarinadeLpClient extends BeamInterface<
         vaultAuthority: this.vaultAuthority[0],
         gsolMint,
         gsolMintAuthority,
-        instructionsSysvar,
+        sysvarInstructions,
         liqPoolSolLegPda: await this.marinadeLp.marinade.solLeg(),
         liqPoolMsolLeg: this.marinadeLp.marinade.mSolLeg,
         liqPoolMsolLegAuthority:
@@ -230,7 +232,7 @@ export class MarinadeLpClient extends BeamInterface<
     gsolTokenAccount?: PublicKey,
   ): Promise<Transaction> {
     const withdrawer = this.provider.publicKey;
-    const { gsolMint, instructionsSysvar, burnGsolFrom } =
+    const { gsolMint, sysvarInstructions, burnGsolFrom } =
       this.sunrise.burnGsolAccounts(
         this.stateAddress,
         withdrawer,
@@ -256,13 +258,13 @@ export class MarinadeLpClient extends BeamInterface<
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         gsolMint,
-        instructionsSysvar,
+        sysvarInstructions,
         sunriseProgram: this.sunrise.program.programId,
         marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
       })
       .instruction();
 
-    return new Transaction().add(instruction);
+    return new Transaction().add(requestIncreasedCUsIx(400_000), instruction);
   }
 
   /**
@@ -287,7 +289,7 @@ export class MarinadeLpClient extends BeamInterface<
     gsolTokenAccount?: PublicKey,
   ): Promise<Transaction> {
     const burner = this.provider.publicKey;
-    const { gsolMint, instructionsSysvar, burnGsolFrom } =
+    const { gsolMint, sysvarInstructions, burnGsolFrom } =
       this.sunrise.burnGsolAccounts(
         this.stateAddress,
         burner,
@@ -304,7 +306,7 @@ export class MarinadeLpClient extends BeamInterface<
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         gsolMint,
-        instructionsSysvar,
+        sysvarInstructions,
         sunriseProgram: this.sunrise.program.programId,
       })
       .instruction();
@@ -312,21 +314,64 @@ export class MarinadeLpClient extends BeamInterface<
     return new Transaction().add(instruction);
   }
 
-  // public async extractYield(): Promise<Transaction> {
-  //   const instruction = await this.program.methods
-  //     .extractYield()
-  //     .accounts({
-  //       state: this.stateAddress,
-  //       sunriseState: this.state.sunriseState,
-  //       systemProgram: SystemProgram.programId,
-  //       tokenProgram: TOKEN_PROGRAM_ID,
-  //       instructionsSysvar,
-  //       sunriseProgram: this.sunrise.program.programId,
-  //     })
-  //     .instruction();
-  //
-  //   return new Transaction().add(instruction);
-  // }
+  // Update this beam's extractable yield in the core state's epoch report
+  public async updateEpochReport(): Promise<Transaction> {
+    const accounts = {
+      state: this.stateAddress,
+      marinadeState: this.state.proxyState,
+      sunriseState: this.state.sunriseState,
+      liqPoolMint: this.marinadeLp.marinade.lpMint.address,
+      liqPoolTokenVault: this.marinadeLp.beamVault,
+      vaultAuthority: this.vaultAuthority[0],
+      transferMsolTo: this.state.msolTokenAccount,
+      liqPoolSolLegPda: await this.marinadeLp.marinade.solLeg(),
+      liqPoolMsolLeg: this.marinadeLp.marinade.mSolLeg,
+      liqPoolMsolLegAuthority:
+        await this.marinadeLp.marinade.mSolLegAuthority(),
+      systemProgram: SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      gsolMint: this.sunrise.state.gsolMint,
+      sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+      sunriseProgram: this.sunrise.program.programId,
+    };
+    const instruction = await this.program.methods
+      .updateEpochReport()
+      .accounts(accounts)
+      .instruction();
+
+    return new Transaction().add(instruction);
+  }
+
+  /**
+   * Return a transaction to extract any yield from this beam into the yield account
+   */
+  public async extractYield(): Promise<Transaction> {
+    const accounts = {
+      state: this.stateAddress,
+      marinadeState: this.state.proxyState,
+      sunriseState: this.state.sunriseState,
+      yieldAccount: this.sunrise.state.yieldAccount,
+      liqPoolMint: this.marinadeLp.marinade.lpMint.address,
+      liqPoolTokenVault: this.marinadeLp.beamVault,
+      vaultAuthority: this.vaultAuthority[0],
+      transferMsolTo: this.state.msolTokenAccount,
+      liqPoolSolLegPda: await this.marinadeLp.marinade.solLeg(),
+      liqPoolMsolLeg: this.marinadeLp.marinade.mSolLeg,
+      liqPoolMsolLegAuthority:
+        await this.marinadeLp.marinade.mSolLegAuthority(),
+      sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+      sunriseProgram: this.sunrise.program.programId,
+      marinadeProgram: MARINADE_FINANCE_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    };
+    const instruction = await this.program.methods
+      .extractYield()
+      .accounts(accounts)
+      .instruction();
+
+    return new Transaction().add(instruction);
+  }
 
   /**
    * Return a transaction to redeem a ticket received from ordering a withdrawal from a marinade-lp.
@@ -382,8 +427,15 @@ export class MarinadeLpClient extends BeamInterface<
     return new BN("" + lpMintInfo.supply);
   };
 
+  public msolLegBalance = async (): Promise<BN> => {
+    const lpMsolLeg = this.marinadeLp.marinade.mSolLeg;
+    const lpMsolLegBalance =
+      await this.provider.connection.getTokenAccountBalance(lpMsolLeg);
+    return new BN(lpMsolLegBalance.value.amount);
+  };
+
   /**
-   * A convenience method for calculating the price of the stake-pool's token.
+   * A convenience method for calculating the price of the stake-pool's token in Lamports
    * NOTE: This might not give the current price is refresh() isn't called first.
    */
   public poolTokenPrice = async () => {
@@ -391,16 +443,31 @@ export class MarinadeLpClient extends BeamInterface<
     const lpSupply = lpMintInfo.supply;
     const solBalance = await this.poolSolBalance();
 
-    const lpMsolLeg = this.marinadeLp.marinade.mSolLeg;
-    const lpMsolLegBalance =
-      await this.provider.connection.getTokenAccountBalance(lpMsolLeg);
+    const lpMsolLegBalance = await this.msolLegBalance();
 
     const msolPrice = this.marinadeLp.marinade.mSolPrice;
 
-    const msolValue = Number(lpMsolLegBalance.value.amount) * msolPrice;
+    const msolValue = lpMsolLegBalance.toNumber() * msolPrice;
 
-    const lpPrice = (solBalance + msolValue) / Number(lpSupply);
-
-    return lpPrice;
+    return (solBalance + msolValue) / Number(lpSupply);
   };
+
+  /**
+   * Calculate the value of the stake-pool's token in SOL and mSOL
+   * @param lpTokens
+   */
+  public async calculateBalanceFromLpTokens(lpTokens: BN): Promise<Balance> {
+    const totalSupply = await this.poolTokenSupply();
+    const proportionOfPool = lpTokens.toNumber() / totalSupply.toNumber();
+    const solBalance = await this.poolSolBalance();
+    const msolLegBalance = await this.msolLegBalance();
+
+    const solValue = solBalance * proportionOfPool;
+    const msolValue = msolLegBalance.toNumber() * proportionOfPool;
+
+    return {
+      lamports: new BN(solValue),
+      msolLamports: new BN(msolValue),
+    };
+  }
 }

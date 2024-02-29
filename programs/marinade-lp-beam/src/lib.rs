@@ -2,23 +2,22 @@
 // Temporarily allow to pass clippy ci
 #![allow(dead_code)]
 
+use crate::cpi_interface::program::Marinade;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::{AssociatedToken, Create};
 use anchor_spl::token::{Mint, Token, TokenAccount};
+use cpi_interface::marinade_lp as marinade_lp_interface;
+use cpi_interface::sunrise as sunrise_interface;
 use marinade_cpi::State as MarinadeState;
+use state::{State, StateEntry};
+use std::cmp::max;
 use std::ops::Deref;
+use sunrise_core as sunrise_core_cpi;
+use system::utils;
 
 mod cpi_interface;
 mod state;
 mod system;
-
-use cpi_interface::marinade_lp as marinade_lp_interface;
-use cpi_interface::sunrise as sunrise_interface;
-use state::{State, StateEntry};
-use system::utils;
-
-// TODO: Use actual CPI crate.
-use sunrise_core as sunrise_core_cpi;
 
 declare_id!("9Xek4q2hsdPm4yaRt4giQnVTTgRGwGhXQ1HBXbinuPTP");
 
@@ -32,6 +31,9 @@ mod constants {
 #[program]
 pub mod marinade_lp_beam {
     use super::*;
+    use crate::cpi_interface::marinade_lp;
+    use crate::system::utils::get_extractable_yield_from_excess_balance;
+    use marinade_common::calc_lamports_from_msol_amount;
 
     pub fn initialize(ctx: Context<Initialize>, input: StateEntry) -> Result<()> {
         ctx.accounts.state.set_inner(input.into());
@@ -72,16 +74,37 @@ pub mod marinade_lp_beam {
     }
 
     pub fn withdraw(ctx: Context<Withdraw>, lamports: u64) -> Result<()> {
-        // Calculate the number of liq_pool tokens `lamports` is worth.
-        let liq_pool_tokens = utils::liq_pool_tokens_from_lamports(
-            &ctx.accounts.marinade_state,
-            &ctx.accounts.liq_pool_mint,
-            &ctx.accounts.liq_pool_sol_leg_pda,
+        // Calculate the number of liq_pool tokens that would be needed to withdraw `lamports`
+        let liq_pool_balance_to_withdraw =
+            utils::calculate_liq_pool_balance_required_to_withdraw_lamports(
+                &ctx.accounts.marinade_state,
+                &ctx.accounts.liq_pool_mint,
+                &ctx.accounts.liq_pool_sol_leg_pda,
+                &ctx.accounts.liq_pool_msol_leg,
+                lamports,
+            )?;
+
+        msg!(
+            "Balance required to withdraw {} lamports: {:?}",
             lamports,
-        )?;
+            liq_pool_balance_to_withdraw
+        );
         // CPI: Remove liquidity from Marinade liq_pool. The liq_pool tokens vault owned by
         // this vault is the source burning lp tokens.
-        marinade_lp_interface::remove_liquidity(ctx.accounts, liq_pool_tokens)?;
+        // The result is a combination of SOL and mSOL.
+        // The SOL goes to the withdrawer, and the mSOL goes to the designated mSOL token account.
+        // which is typically the Marinade-SP's beam vault.
+        // NOTE: This results in an asymmetry in the amount of gSOL each beam is responsible for
+        // The lamport amount is burned, and the mSOL amount has been effectively moved from
+        // the beam to the Marinade-SP (or whichever beam owns the msol token account)
+        let accounts = ctx.accounts.deref().into();
+        marinade_lp::remove_liquidity(
+            &ctx.accounts.marinade_program,
+            &ctx.accounts.state,
+            accounts,
+            // this is safe, because the liq_pool_balance is guaranteed to be non-negative
+            liq_pool_balance_to_withdraw.liq_pool_token as u64,
+        )?;
 
         let state_bump = ctx.bumps.state;
         // CPI: Burn GSOL of the same proportion as the lamports withdrawn from the depositor.
@@ -91,6 +114,19 @@ pub mod marinade_lp_beam {
             ctx.accounts.sunrise_state.key(),
             state_bump,
             lamports,
+        )?;
+
+        let lamport_value_of_msol = calc_lamports_from_msol_amount(
+            &ctx.accounts.marinade_state,
+            liq_pool_balance_to_withdraw.msol as u64,
+        );
+        sunrise_interface::transfer_gsol(
+            ctx.accounts.deref(),
+            ctx.accounts.sunrise_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
+            state_bump,
+            ctx.accounts.state.msol_recipient_beam,
+            lamport_value_of_msol,
         )?;
 
         Ok(())
@@ -120,6 +156,83 @@ pub mod marinade_lp_beam {
     pub fn redeem_ticket(_ctx: Context<Noop>) -> Result<()> {
         // Marinade liq_pool only supports immediate withdrawals.
         Err(MarinadeLpBeamError::Unimplemented.into())
+    }
+
+    pub fn extract_yield(ctx: Context<ExtractYield>) -> Result<()> {
+        let yield_balance = utils::calculate_extractable_yield(
+            &ctx.accounts.sunrise_state,
+            &ctx.accounts.state,
+            &ctx.accounts.marinade_state,
+            &ctx.accounts.liq_pool_mint,
+            &ctx.accounts.liq_pool_token_vault,
+            &ctx.accounts.liq_pool_sol_leg_pda,
+            &ctx.accounts.liq_pool_msol_leg,
+        )?;
+
+        // if there is insufficient balance to extract, return an error
+        // note - if this is negative, we have a shortfall in the pool
+        // this should only ever be max 1 or 2 lamports due to rounding
+        require_gt!(
+            yield_balance.liq_pool_token,
+            0,
+            MarinadeLpBeamError::InsufficientYieldBalance
+        );
+
+        let yield_account_balance_before = ctx.accounts.yield_account.lamports();
+
+        let accounts = ctx.accounts.deref().into();
+        marinade_lp::remove_liquidity(
+            &ctx.accounts.marinade_program,
+            &ctx.accounts.state,
+            accounts,
+            // checked by the assert above - guaranteed to be positive
+            yield_balance.liq_pool_token as u64,
+        )?;
+
+        let yield_account_balance_after = ctx.accounts.yield_account.lamports();
+        let withdrawn_lamports =
+            yield_account_balance_after.saturating_sub(yield_account_balance_before);
+
+        msg!("Withdrawn {} lamports to yield account", withdrawn_lamports);
+
+        // CPI: update the epoch report with the extracted yield.
+        let state_bump = ctx.bumps.state;
+        sunrise_interface::extract_yield(
+            ctx.accounts.deref(),
+            ctx.accounts.sunrise_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
+            state_bump,
+            withdrawn_lamports,
+        )?;
+
+        Ok(())
+    }
+
+    pub fn update_epoch_report(ctx: Context<UpdateEpochReport>) -> Result<()> {
+        let yield_balance = utils::calculate_extractable_yield(
+            &ctx.accounts.sunrise_state,
+            &ctx.accounts.state,
+            &ctx.accounts.marinade_state,
+            &ctx.accounts.liq_pool_mint,
+            &ctx.accounts.liq_pool_token_vault,
+            &ctx.accounts.liq_pool_sol_leg_pda,
+            &ctx.accounts.liq_pool_msol_leg,
+        )?;
+
+        let excess_lamports = max(0, yield_balance.lamports) as u64;
+        let extractable_lamports = get_extractable_yield_from_excess_balance(excess_lamports);
+
+        // CPI: update the epoch report with the extracted yield.
+        let state_bump = ctx.bumps.state;
+        sunrise_interface::update_epoch_report(
+            ctx.accounts.deref(),
+            ctx.accounts.sunrise_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
+            state_bump,
+            extractable_lamports as u64,
+        )?;
+
+        Ok(())
     }
 }
 
@@ -171,7 +284,6 @@ pub struct Update<'info> {
 #[derive(Accounts)]
 pub struct Deposit<'info> {
     #[account(
-        mut,
         has_one = sunrise_state,
         has_one = marinade_state,
         seeds = [constants::STATE, sunrise_state.key().as_ref()],
@@ -182,8 +294,7 @@ pub struct Deposit<'info> {
     /// CHECK: The registered Marinade state.
     pub marinade_state: UncheckedAccount<'info>,
     #[account(mut)]
-    /// CHECK: The main Sunrise beam state.
-    pub sunrise_state: UncheckedAccount<'info>,
+    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
 
     #[account(mut)]
     pub depositor: Signer<'info>,
@@ -214,7 +325,7 @@ pub struct Deposit<'info> {
     /// CHECK: Checked by Sunrise CPI.
     pub gsol_mint_authority: UncheckedAccount<'info>,
     /// CHECK: Checked by Sunrise CPI.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     #[account(mut)]
     /// CHECK: Checked by Marinade CPI.
@@ -231,15 +342,12 @@ pub struct Deposit<'info> {
     pub token_program: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
-    #[account(address = marinade_cpi::ID)]
-    /// CHECK: The Marinade ProgramID.
-    pub marinade_program: UncheckedAccount<'info>,
+    pub marinade_program: Program<'info, Marinade>,
 }
 
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
     #[account(
-        mut,
         has_one = sunrise_state,
         has_one = marinade_state,
         seeds = [constants::STATE, sunrise_state.key().as_ref()],
@@ -285,7 +393,7 @@ pub struct Withdraw<'info> {
     pub liq_pool_sol_leg_pda: UncheckedAccount<'info>,
     #[account(mut)]
     /// CHECK: Checked by Marinade CPI.
-    pub liq_pool_msol_leg: UncheckedAccount<'info>,
+    pub liq_pool_msol_leg: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     /// CHECK: Checked by Marinade CPI.
     pub liq_pool_msol_leg_authority: UncheckedAccount<'info>,
@@ -298,12 +406,10 @@ pub struct Withdraw<'info> {
     /// Verified in CPI to Sunrise program.
     pub gsol_mint: Box<Account<'info, Mint>>,
     /// CHECK: Checked by Sunrise CPI.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
-    #[account(address = marinade_cpi::ID)]
-    /// CHECK: The Marinade program ID.
-    pub marinade_program: UncheckedAccount<'info>,
+    pub marinade_program: Program<'info, Marinade>,
 }
 
 #[derive(Accounts)]
@@ -316,8 +422,7 @@ pub struct Burn<'info> {
     )]
     pub state: Box<Account<'info, State>>,
     #[account(mut)]
-    /// CHECK: The main Sunrise beam state.
-    pub sunrise_state: UncheckedAccount<'info>,
+    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
 
     #[account(mut)]
     pub burner: Signer<'info>,
@@ -333,7 +438,128 @@ pub struct Burn<'info> {
     /// Verified in CPI to Sunrise program.
     pub gsol_mint: Box<Account<'info, Mint>>,
     /// CHECK: Checked by Sunrise CPI.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
+
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
+}
+
+#[derive(Accounts)]
+pub struct ExtractYield<'info> {
+    #[account(
+    has_one = sunrise_state,
+    has_one = marinade_state,
+    seeds = [constants::STATE, sunrise_state.key().as_ref()],
+    bump
+    )]
+    pub state: Box<Account<'info, State>>,
+    #[account(mut)]
+    pub marinade_state: Box<Account<'info, MarinadeState>>,
+    #[account(
+        mut, // Update the extracted yield on the state's epoch report.
+        has_one = yield_account
+    )]
+    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    #[account(mut)]
+    /// CHECK: Matches the yield account key stored in the state.
+    pub yield_account: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub liq_pool_mint: Box<Account<'info, Mint>>,
+    #[account(
+    mut,
+    token::mint = liq_pool_mint,
+    token::authority = vault_authority,
+    )]
+    pub liq_pool_token_vault: Box<Account<'info, TokenAccount>>,
+    #[account(
+    seeds = [
+    state.key().as_ref(),
+    constants::VAULT_AUTHORITY
+    ],
+    bump = state.vault_authority_bump
+    )]
+    /// CHECK: The vault authority PDA with verified seeds.
+    pub vault_authority: UncheckedAccount<'info>,
+
+    /// When withdrawing from the Marinade LP, the withdrawal is part SOL, part mSOL.
+    /// The SOL portion is transferred to the user (withdrawer) and the mSOL portion
+    /// is transferred to the msol_token_account owned by the marinade stake pool.
+    #[account(mut, address = state.msol_token_account)]
+    pub transfer_msol_to: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    /// CHECK: Checked by Marinade CPI.
+    pub liq_pool_sol_leg_pda: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: Checked by Marinade CPI.
+    pub liq_pool_msol_leg: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    /// CHECK: Checked by Marinade CPI.
+    pub liq_pool_msol_leg_authority: UncheckedAccount<'info>,
+    /// CHECK: Checked by Marinade CPI.
+    pub system_program: UncheckedAccount<'info>,
+    /// CHECK: Checked by Marinade CPI.
+    pub token_program: UncheckedAccount<'info>,
+
+    /// CHECK: Checked by Sunrise CPI.
+    pub sysvar_instructions: UncheckedAccount<'info>,
+
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
+    pub marinade_program: Program<'info, Marinade>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateEpochReport<'info> {
+    #[account(
+    has_one = sunrise_state,
+    has_one = marinade_state,
+    seeds = [constants::STATE, sunrise_state.key().as_ref()],
+    bump
+    )]
+    pub state: Box<Account<'info, State>>,
+    pub marinade_state: Box<Account<'info, MarinadeState>>,
+    #[account(
+    mut, // Update the extracted yield on the state's epoch report.
+    )]
+    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
+
+    /// Required to update the core state epoch report
+    /// Verified in CPI to Sunrise program.
+    pub gsol_mint: Account<'info, Mint>,
+
+    #[account(mut)]
+    pub liq_pool_mint: Box<Account<'info, Mint>>,
+    #[account(
+    mut,
+    token::mint = liq_pool_mint,
+    token::authority = vault_authority,
+    )]
+    pub liq_pool_token_vault: Box<Account<'info, TokenAccount>>,
+    #[account(
+    seeds = [
+    state.key().as_ref(),
+    constants::VAULT_AUTHORITY
+    ],
+    bump = state.vault_authority_bump
+    )]
+    /// CHECK: The vault authority PDA with verified seeds.
+    pub vault_authority: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    /// CHECK: Checked by Marinade CPI.
+    pub liq_pool_sol_leg_pda: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: Checked by Marinade CPI.
+    pub liq_pool_msol_leg: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    /// CHECK: Checked by Marinade CPI.
+    pub liq_pool_msol_leg_authority: UncheckedAccount<'info>,
+
+    /// CHECK: Checked by Sunrise CPI.
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
 }
@@ -347,4 +573,6 @@ pub enum MarinadeLpBeamError {
     CalculationFailure,
     #[msg("This feature is unimplemented for this beam")]
     Unimplemented,
+    #[msg("The yield balance is insufficient to extract yield")]
+    InsufficientYieldBalance,
 }

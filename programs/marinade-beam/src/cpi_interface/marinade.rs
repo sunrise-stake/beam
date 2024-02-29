@@ -1,4 +1,8 @@
+use crate::cpi_interface::program::Marinade;
+use crate::state::State;
+use crate::{ExtractYield, OrderWithdrawal, Withdraw};
 use anchor_lang::prelude::*;
+use marinade_common::vault_authority_seed::VaultAuthoritySeed;
 use marinade_cpi::cpi::{
     accounts::{
         Claim as MarinadeClaim, Deposit as MarinadeDeposit,
@@ -22,42 +26,34 @@ pub fn deposit_stake_account(accounts: &crate::DepositStake, validator_index: u3
     cpi_deposit_stake_account(cpi_ctx, validator_index)
 }
 
-pub fn liquid_unstake(accounts: &crate::Withdraw, msol_lamports: u64) -> Result<()> {
-    let cpi_program = accounts.marinade_program.to_account_info();
-    let cpi_ctx = CpiContext::new(cpi_program, accounts.into());
+pub fn liquid_unstake<'info>(
+    program: &Program<'info, Marinade>,
+    state: &Account<State>,
+    accounts: MarinadeLiquidUnstake<'info>,
+    msol_lamports: u64,
+) -> Result<()> {
+    let cpi_program = program.to_account_info();
+    let cpi_ctx = CpiContext::new(cpi_program, accounts);
 
-    let bump = &[accounts.state.vault_authority_bump][..];
-    let state_address = accounts.state.key();
-    let seeds = &[
-        state_address.as_ref(),
-        crate::constants::VAULT_AUTHORITY,
-        bump,
-    ][..];
-    cpi_liquid_unstake(cpi_ctx.with_signer(&[seeds]), msol_lamports)
+    let seed_data = VaultAuthoritySeed::new(state);
+    let seeds = seed_data.as_slices();
+
+    cpi_liquid_unstake(cpi_ctx.with_signer(&[&seeds[..]]), msol_lamports)
 }
 
-pub fn order_unstake(accounts: &crate::OrderWithdrawal, msol_lamports: u64) -> Result<()> {
-    let cpi_program = accounts.marinade_program.to_account_info();
-    let cpi_accounts = MarinadeOrderUnstake {
-        state: accounts.marinade_state.to_account_info(),
-        msol_mint: accounts.msol_mint.to_account_info(),
-        burn_msol_from: accounts.msol_vault.to_account_info(),
-        burn_msol_authority: accounts.vault_authority.to_account_info(),
-        new_ticket_account: accounts.new_ticket_account.to_account_info(),
-        token_program: accounts.token_program.to_account_info(),
-        rent: accounts.rent.to_account_info(),
-        clock: accounts.clock.to_account_info(),
-    };
-    let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+pub fn order_unstake<'info>(
+    program: &Program<'info, Marinade>,
+    state: &Account<State>,
+    accounts: MarinadeOrderUnstake<'info>,
+    msol_lamports: u64,
+) -> Result<()> {
+    let cpi_program = program.to_account_info();
+    let cpi_ctx = CpiContext::new(cpi_program, accounts);
 
-    let bump = &[accounts.state.vault_authority_bump][..];
-    let state_address = accounts.state.key();
-    let seeds = &[
-        state_address.as_ref(),
-        crate::constants::VAULT_AUTHORITY,
-        bump,
-    ][..];
-    cpi_order_unstake(cpi_ctx.with_signer(&[seeds]), msol_lamports)
+    let seed_data = VaultAuthoritySeed::new(state);
+    let seeds = seed_data.as_slices();
+
+    cpi_order_unstake(cpi_ctx.with_signer(&[&seeds[..]]), msol_lamports)
 }
 
 pub fn claim_unstake_ticket(accounts: &crate::RedeemTicket) -> Result<()> {
@@ -106,8 +102,8 @@ impl<'a> From<&crate::DepositStake<'a>> for MarinadeDepositStakeAccount<'a> {
     }
 }
 
-impl<'a> From<&crate::Withdraw<'a>> for MarinadeLiquidUnstake<'a> {
-    fn from(accounts: &crate::Withdraw<'a>) -> Self {
+impl<'a> From<Withdraw<'a>> for MarinadeLiquidUnstake<'a> {
+    fn from(accounts: Withdraw<'a>) -> Self {
         Self {
             state: accounts.marinade_state.to_account_info(),
             msol_mint: accounts.msol_mint.to_account_info(),
@@ -123,8 +119,37 @@ impl<'a> From<&crate::Withdraw<'a>> for MarinadeLiquidUnstake<'a> {
     }
 }
 
-impl<'a> From<&crate::OrderWithdrawal<'a>> for MarinadeOrderUnstake<'a> {
-    fn from(accounts: &crate::OrderWithdrawal<'a>) -> Self {
+impl<'a> From<&Withdraw<'a>> for MarinadeLiquidUnstake<'a> {
+    fn from(accounts: &Withdraw<'a>) -> Self {
+        accounts.to_owned().into()
+    }
+}
+
+impl<'a> From<ExtractYield<'a>> for MarinadeLiquidUnstake<'a> {
+    fn from(accounts: ExtractYield<'a>) -> Self {
+        Self {
+            state: accounts.marinade_state.to_account_info(),
+            msol_mint: accounts.msol_mint.to_account_info(),
+            liq_pool_sol_leg_pda: accounts.liq_pool_sol_leg_pda.to_account_info(),
+            liq_pool_msol_leg: accounts.liq_pool_msol_leg.to_account_info(),
+            treasury_msol_account: accounts.treasury_msol_account.to_account_info(),
+            get_msol_from: accounts.msol_vault.to_account_info(),
+            get_msol_from_authority: accounts.vault_authority.to_account_info(),
+            transfer_sol_to: accounts.yield_account.to_account_info(),
+            system_program: accounts.system_program.to_account_info(),
+            token_program: accounts.token_program.to_account_info(),
+        }
+    }
+}
+
+impl<'a> From<&ExtractYield<'a>> for MarinadeLiquidUnstake<'a> {
+    fn from(accounts: &ExtractYield<'a>) -> Self {
+        accounts.to_owned().into()
+    }
+}
+
+impl<'a> From<&OrderWithdrawal<'a>> for MarinadeOrderUnstake<'a> {
+    fn from(accounts: &OrderWithdrawal<'a>) -> Self {
         Self {
             state: accounts.marinade_state.to_account_info(),
             msol_mint: accounts.msol_mint.to_account_info(),

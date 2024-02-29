@@ -191,7 +191,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
   ): Promise<Transaction> {
     const depositor = this.provider.publicKey;
 
-    const { gsolMint, gsolMintAuthority, instructionsSysvar } =
+    const { gsolMint, gsolMintAuthority, sysvarInstructions } =
       this.sunrise.mintGsolAccounts(this.stateAddress, depositor);
 
     const transaction = new Transaction();
@@ -218,7 +218,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
         managerFeeAccount: this.spl.stakePoolState.managerFeeAccount,
         gsolMint,
         gsolMintAuthority,
-        instructionsSysvar,
+        sysvarInstructions,
         sunriseProgram: this.sunrise.program.programId,
         splStakePoolProgram: SPL_STAKE_POOL_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -237,7 +237,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
     gsolTokenAccount?: PublicKey,
   ): Promise<Transaction> {
     const withdrawer = this.provider.publicKey;
-    const { gsolMint, instructionsSysvar, burnGsolFrom } =
+    const { gsolMint, sysvarInstructions, burnGsolFrom } =
       this.sunrise.burnGsolAccounts(
         this.stateAddress,
         withdrawer,
@@ -262,7 +262,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
         sysvarStakeHistory: SYSVAR_STAKE_HISTORY_PUBKEY,
         nativeStakeProgram: StakeProgram.programId,
         gsolMint,
-        instructionsSysvar,
+        sysvarInstructions,
         sunriseProgram: this.sunrise.program.programId,
         splStakePoolProgram: SPL_STAKE_POOL_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -281,7 +281,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
     recipient?: PublicKey,
   ): Promise<Transaction> {
     const stakeOwner = this.provider.publicKey;
-    const { gsolMint, gsolMintAuthority, instructionsSysvar } =
+    const { gsolMint, gsolMintAuthority, sysvarInstructions } =
       this.sunrise.mintGsolAccounts(this.stateAddress, stakeOwner);
 
     const stakeAccountInfo = await getParsedStakeAccountInfo(
@@ -324,7 +324,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
         nativeStakeProgram: StakeProgram.programId,
         gsolMint,
         gsolMintAuthority,
-        instructionsSysvar,
+        sysvarInstructions,
         sunriseProgram: this.sunrise.program.programId,
         splStakePoolProgram: SPL_STAKE_POOL_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -344,7 +344,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
     gsolTokenAccount?: PublicKey,
   ): Promise<Transaction> {
     const withdrawer = this.provider.publicKey;
-    const { gsolMint, instructionsSysvar, burnGsolFrom } =
+    const { gsolMint, sysvarInstructions, burnGsolFrom } =
       this.sunrise.burnGsolAccounts(
         this.stateAddress,
         withdrawer,
@@ -371,7 +371,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
         sysvarStakeHistory: SYSVAR_STAKE_HISTORY_PUBKEY,
         nativeStakeProgram: StakeProgram.programId,
         gsolMint,
-        instructionsSysvar,
+        sysvarInstructions,
         sunriseProgram: this.sunrise.program.programId,
         splStakePoolProgram: SPL_STAKE_POOL_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -401,7 +401,7 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
     gsolTokenAccount?: PublicKey,
   ): Promise<Transaction> {
     const burner = this.provider.publicKey;
-    const { gsolMint, instructionsSysvar, burnGsolFrom } =
+    const { gsolMint, sysvarInstructions, burnGsolFrom } =
       this.sunrise.burnGsolAccounts(
         this.stateAddress,
         burner,
@@ -419,9 +419,32 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         gsolMint,
-        instructionsSysvar,
+        sysvarInstructions,
         sunriseProgram: this.sunrise.program.programId,
       })
+      .instruction();
+
+    return new Transaction().add(instruction);
+  }
+
+  /**
+   * Update this beam's extractable yield in the core state's epoch report
+   */
+  public async updateEpochReport(): Promise<Transaction> {
+    const accounts = {
+      state: this.stateAddress,
+      stakePool: this.spl.stakePoolAddress,
+      sunriseState: this.state.sunriseState,
+      poolMint: this.spl.stakePoolState.poolMint,
+      vaultAuthority: this.vaultAuthority[0],
+      poolTokenVault: this.spl.beamVault,
+      gsolMint: this.sunrise.state.gsolMint,
+      sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+      sunriseProgram: this.sunrise.program.programId,
+    };
+    const instruction = await this.program.methods
+      .updateEpochReport()
+      .accounts(accounts)
       .instruction();
 
     return new Transaction().add(instruction);
@@ -449,7 +472,6 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
       validatorStakeList: this.spl.stakePoolState.validatorList,
       stakeAccountToSplit: this.spl.stakePoolState.reserveStake,
       managerFeeAccount: this.spl.stakePoolState.managerFeeAccount,
-      epochReport: this.sunrise.epochReport[0],
       sysvarClock: SYSVAR_CLOCK_PUBKEY,
       nativeStakeProgram: StakeProgram.programId,
       sysvarStakeHistory: SYSVAR_STAKE_HISTORY_PUBKEY,
@@ -459,8 +481,6 @@ export class SplClient extends BeamInterface<SplBeam.SplBeam, StateAccount> {
       systemProgram: SystemProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
     };
-    console.log("EXTRACT YIELD ACCOUNTS");
-    console.log(accounts);
     const instruction = await this.program.methods
       .extractYield()
       .accounts(accounts)

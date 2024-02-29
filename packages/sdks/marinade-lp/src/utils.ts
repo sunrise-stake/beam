@@ -6,6 +6,7 @@ import {
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { AnchorProvider } from "@coral-xyz/anchor";
 import { deriveAuthorityAddress } from "@sunrisestake/beams-common";
+import BN from "bn.js";
 
 export type MarinadeLpClientParams = {
   /** The marinade state. */
@@ -18,6 +19,11 @@ export type MarinadeLpClientParams = {
 const enum Seeds {
   STATE = "sunrise-marinade-lp",
 }
+
+export type Balance = {
+  lamports: BN;
+  msolLamports: BN;
+};
 
 /** A utility class containing methods for PDA-derivation. */
 export class Utils {

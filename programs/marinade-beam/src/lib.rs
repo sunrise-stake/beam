@@ -16,10 +16,10 @@ mod system;
 use cpi_interface::marinade as marinade_interface;
 use cpi_interface::sunrise as sunrise_interface;
 use state::{State, StateEntry};
-use system::accounts::{EpochReport, ProxyTicket};
+use system::accounts::ProxyTicket;
 use system::utils;
 
-// TODO: Use actual CPI crate.
+use crate::cpi_interface::program::Marinade;
 use sunrise_core as sunrise_core_cpi;
 
 declare_id!("G9nMA5HvMa1HLXy1DBA3biH445Zxb2dkqsG4eDfcvgjm");
@@ -29,8 +29,6 @@ mod constants {
     pub const VAULT_AUTHORITY: &[u8] = b"vault-authority";
     /// Seed of this program's state address.
     pub const STATE: &[u8] = b"sunrise-marinade";
-    /// Seed of the epoch report account.
-    pub const EPOCH_REPORT: &[u8] = b"marinade-epoch-report";
     // TODO: RECOVERED_MARGIN is needed because, for some reason, the claim tickets have a couple of lamports less than they should,
     // probably due to a rounding error converting to and from marinade.
     // Figure this out and then remove this margin
@@ -40,6 +38,8 @@ mod constants {
 #[program]
 pub mod marinade_beam {
     use super::*;
+    use crate::cpi_interface::marinade;
+    use marinade_common::calc_msol_from_lamports;
 
     pub fn initialize(ctx: Context<Initialize>, input: StateEntry) -> Result<()> {
         ctx.accounts.state.set_inner(input.into());
@@ -101,12 +101,19 @@ pub mod marinade_beam {
 
     pub fn withdraw(ctx: Context<Withdraw>, lamports: u64) -> Result<()> {
         // Calculate how much msol_lamports need to be deposited to unstake `lamports` lamports.
-        let msol_lamports =
-            utils::calc_msol_from_lamports(ctx.accounts.marinade_state.as_ref(), lamports)?;
+        let msol_lamports = calc_msol_from_lamports(ctx.accounts.marinade_state.as_ref(), lamports);
 
+        msg!("Liquid Unstake {} msol", msol_lamports);
         // CPI: Liquid unstake.
-        marinade_interface::liquid_unstake(ctx.accounts, msol_lamports)?;
+        let accounts = ctx.accounts.deref().into();
+        marinade::liquid_unstake(
+            &ctx.accounts.marinade_program,
+            &ctx.accounts.state,
+            accounts,
+            msol_lamports,
+        )?;
 
+        msg!("Burn {} lamports", lamports);
         let bump = ctx.bumps.state;
         // CPI: Burn GSOL of the same proportion as the number of lamports withdrawn.
         sunrise_interface::burn_gsol(
@@ -122,10 +129,16 @@ pub mod marinade_beam {
 
     pub fn order_withdrawal(ctx: Context<OrderWithdrawal>, lamports: u64) -> Result<()> {
         // Calculate how much msol_lamports need to be deposited to unstake `lamports` lamports.
-        let msol_lamports =
-            utils::calc_msol_from_lamports(ctx.accounts.marinade_state.as_ref(), lamports)?;
+        let msol_lamports = calc_msol_from_lamports(ctx.accounts.marinade_state.as_ref(), lamports);
+
         // CPI: Order unstake and receive a Marinade unstake ticket.
-        marinade_interface::order_unstake(ctx.accounts, msol_lamports)?;
+        let accounts = ctx.accounts.deref().into();
+        marinade_interface::order_unstake(
+            &ctx.accounts.marinade_program,
+            &ctx.accounts.state,
+            accounts,
+            msol_lamports,
+        )?;
 
         // Create a program-owned account mapping the Marinade ticket to the beneficiary that ordered it.
         let ticket_account = &mut ctx.accounts.proxy_ticket_account;
@@ -189,60 +202,6 @@ pub mod marinade_beam {
         Ok(())
     }
 
-    pub fn init_epoch_report(ctx: Context<InitEpochReport>, extracted_yield: u64) -> Result<()> {
-        let extractable_yield = utils::calculate_extractable_yield(
-            &ctx.accounts.sunrise_state,
-            &ctx.accounts.state,
-            &ctx.accounts.marinade_state,
-            &ctx.accounts.msol_vault,
-        )?;
-        let mut epoch_report = EpochReport {
-            state: ctx.accounts.state.key(),
-            epoch: ctx.accounts.clock.epoch,
-            tickets: 0,
-            total_ordered_lamports: 0,
-            extractable_yield,
-            extracted_yield: 0, // modified below with remarks
-            bump: ctx.bumps.epoch_report_account,
-        };
-        // we have to trust that the extracted amount is accurate,
-        // as extracted yield is no longer managed by the program.
-        // This is why this instruction is only callable by the update authority
-        epoch_report.extracted_yield = extracted_yield;
-
-        ctx.accounts.epoch_report_account.set_inner(epoch_report);
-        Ok(())
-    }
-
-    pub fn update_epoch_report(ctx: Context<UpdateEpochReport>) -> Result<()> {
-        // we can update the epoch report if either
-        // a) the account is at the current epoch or
-        // b) the account is at the previous epoch and there are no open tickets
-
-        let current_epoch = ctx.accounts.clock.epoch;
-        let is_previous_epoch = ctx.accounts.epoch_report_account.epoch == current_epoch - 1;
-        let is_current_epoch = ctx.accounts.epoch_report_account.epoch == current_epoch;
-        let is_previous_epoch_and_no_open_tickets =
-            is_previous_epoch && ctx.accounts.epoch_report_account.tickets == 0;
-
-        require!(
-            is_current_epoch || is_previous_epoch_and_no_open_tickets,
-            MarinadeBeamError::RemainingUnclaimableTicketAmount
-        );
-
-        ctx.accounts.epoch_report_account.epoch = ctx.accounts.clock.epoch;
-
-        let extractable_yield = utils::calculate_extractable_yield(
-            &ctx.accounts.sunrise_state,
-            &ctx.accounts.state,
-            &ctx.accounts.marinade_state,
-            &ctx.accounts.msol_vault,
-        )?;
-        msg!("Extractable yield: {}", extractable_yield);
-        ctx.accounts.epoch_report_account.extractable_yield = extractable_yield;
-        Ok(())
-    }
-
     pub fn extract_yield(ctx: Context<ExtractYield>) -> Result<()> {
         let yield_lamports = utils::calculate_extractable_yield(
             &ctx.accounts.sunrise_state,
@@ -250,16 +209,60 @@ pub mod marinade_beam {
             &ctx.accounts.marinade_state,
             &ctx.accounts.msol_vault,
         )?;
-        ctx.accounts
-            .epoch_report_account
-            .add_extracted_yield(yield_lamports);
-        let yield_msol =
-            utils::calc_msol_from_lamports(&ctx.accounts.marinade_state, yield_lamports)?;
+        let yield_msol = calc_msol_from_lamports(&ctx.accounts.marinade_state, yield_lamports);
+
+        let yield_account_balance_before = ctx.accounts.yield_account.lamports();
 
         // TODO: Change to use delayed unstake so as not to incur fees.
-        msg!("Withdrawing {} msol to yield account", yield_msol);
-        // TODO: Legacy code uses liquid-unstake but leaves the note above.
-        // Move to delayed-unstakes here?
+        let accounts = ctx.accounts.deref().into();
+        marinade::liquid_unstake(
+            &ctx.accounts.marinade_program,
+            &ctx.accounts.state,
+            accounts,
+            yield_msol,
+        )?;
+
+        let yield_account_balance_after = ctx.accounts.yield_account.lamports();
+        let withdrawn_lamports =
+            yield_account_balance_after.saturating_sub(yield_account_balance_before);
+
+        msg!("Withdrawn {} lamports to yield account", withdrawn_lamports);
+
+        // CPI: update the epoch report with the extracted yield.
+        let state_bump = ctx.bumps.state;
+        sunrise_interface::extract_yield(
+            ctx.accounts.deref(),
+            ctx.accounts.sunrise_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
+            state_bump,
+            withdrawn_lamports,
+        )?;
+
+        Ok(())
+    }
+
+    pub fn update_epoch_report(ctx: Context<UpdateEpochReport>) -> Result<()> {
+        let yield_lamports = utils::calculate_extractable_yield(
+            &ctx.accounts.sunrise_state,
+            &ctx.accounts.state,
+            &ctx.accounts.marinade_state,
+            &ctx.accounts.msol_vault,
+        )?;
+
+        // Reduce by fee
+        // TODO can we do better than an estimate?
+        let extractable_lamports = (yield_lamports as f64) * 0.997; // estimated 0.3% unstake fee
+
+        // CPI: update the epoch report with the extracted yield.
+        let state_bump = ctx.bumps.state;
+        sunrise_interface::update_epoch_report(
+            ctx.accounts.deref(),
+            ctx.accounts.sunrise_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
+            state_bump,
+            extractable_lamports as u64,
+        )?;
+
         Ok(())
     }
 }
@@ -354,7 +357,7 @@ pub struct Deposit<'info> {
     /// CHECK: Checked by Sunrise CPI.
     pub gsol_mint_authority: UncheckedAccount<'info>,
     /// CHECK: Checked by Sunrise CPI.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     #[account(mut)]
     /// CHECK: Checked by Marinade CPI.
@@ -371,10 +374,7 @@ pub struct Deposit<'info> {
     pub reserve_pda: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
-    #[account(address = marinade_cpi::ID)]
-    /// CHECK: The Marinade program ID.
-    pub marinade_program: UncheckedAccount<'info>,
-
+    pub marinade_program: Program<'info, Marinade>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
 }
@@ -429,7 +429,7 @@ pub struct DepositStake<'info> {
     /// CHECK: Checked by Sunrise CPI.
     pub gsol_mint_authority: UncheckedAccount<'info>,
     /// CHECK: Checked by Sunrise CPI.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     #[account(mut)]
     /// CHECK: Checked by Marinade CPI.
@@ -446,17 +446,14 @@ pub struct DepositStake<'info> {
     pub stake_program: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
-    #[account(address = marinade_cpi::ID)]
-    /// CHECK: The Marinade program ID.
-    pub marinade_program: UncheckedAccount<'info>,
-
+    pub marinade_program: Program<'info, Marinade>,
     pub clock: Sysvar<'info, Clock>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
 }
 
-#[derive(Accounts)]
+#[derive(Accounts, Clone)]
 pub struct Withdraw<'info> {
     #[account(
         mut,
@@ -510,13 +507,10 @@ pub struct Withdraw<'info> {
     pub treasury_msol_account: UncheckedAccount<'info>,
 
     /// CHECK: Checked by Sunrise CPI.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
-    #[account(address = marinade_cpi::ID)]
-    /// CHECK: The Marinade Program ID.
-    pub marinade_program: UncheckedAccount<'info>,
-
+    pub marinade_program: Program<'info, Marinade>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
 }
@@ -565,7 +559,7 @@ pub struct OrderWithdrawal<'info> {
     pub vault_authority: UncheckedAccount<'info>,
 
     /// CHECK: Checked by Sunrise CPI.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     /// CHECK: Checked by Marinade CPI.
     #[account(mut)]
@@ -578,10 +572,7 @@ pub struct OrderWithdrawal<'info> {
     pub proxy_ticket_account: Box<Account<'info, ProxyTicket>>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
-    #[account(address = marinade_cpi::ID)]
-    /// CHECK: The Marinade Program ID.
-    pub marinade_program: UncheckedAccount<'info>,
-
+    pub marinade_program: Program<'info, Marinade>,
     pub clock: Sysvar<'info, Clock>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
@@ -621,10 +612,7 @@ pub struct RedeemTicket<'info> {
     )]
     pub vault_authority: UncheckedAccount<'info>,
 
-    #[account(address = marinade_cpi::ID)]
-    /// CHECK: The Marinade program ID.
-    pub marinade_program: UncheckedAccount<'info>,
-
+    pub marinade_program: Program<'info, Marinade>,
     pub clock: Sysvar<'info, Clock>,
     pub system_program: Program<'info, System>,
 }
@@ -666,7 +654,7 @@ pub struct Burn<'info> {
     /// Verified in CPI to Sunrise program.
     pub gsol_mint: Box<Account<'info, Mint>>,
     /// CHECK: Checked by Sunrise CPI.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
 }
@@ -674,12 +662,15 @@ pub struct Burn<'info> {
 #[derive(Accounts, Clone)]
 pub struct ExtractYield<'info> {
     #[account(
-    has_one = marinade_state,
-    has_one = sunrise_state
+        has_one = marinade_state,
+        has_one = sunrise_state,
+        seeds = [constants::STATE, sunrise_state.key().as_ref()],
+        bump
     )]
     pub state: Box<Account<'info, State>>,
     #[account(
-    has_one = yield_account
+        mut, // Update the extracted yield on the state's epoch report.
+        has_one = yield_account
     )]
     pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
     #[account(mut)]
@@ -711,115 +702,73 @@ pub struct ExtractYield<'info> {
     /// CHECK: Matches the yield account key stored in the state.
     pub yield_account: UncheckedAccount<'info>,
 
-    #[account(
-    mut,
-    seeds = [state.key().as_ref(), constants::EPOCH_REPORT],
-    bump = epoch_report_account.bump,
-    constraint = epoch_report_account.epoch == clock.epoch @ MarinadeBeamError::InvalidEpochReportAccount
-    )]
-    pub epoch_report_account: Box<Account<'info, EpochReport>>,
+    #[account(mut)]
+    /// CHECK: Checked by Marinade CPI.
+    pub liq_pool_sol_leg_pda: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: Checked by Marinade CPI.
+    pub liq_pool_msol_leg: UncheckedAccount<'info>,
+    #[account(mut)]
+    /// CHECK: Checked by Marinade CPI.
+    pub treasury_msol_account: UncheckedAccount<'info>,
 
-    pub clock: Sysvar<'info, Clock>,
-    //pub system_program: Program<'info, System>,
-    //pub token_program: Program<'info, Token>,
-    //pub marinade_program: Program<'info, MarinadeFinance>,
+    /// CHECK: Checked by Sunrise CPI.
+    pub sysvar_instructions: UncheckedAccount<'info>,
+
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
+    pub marinade_program: Program<'info, Marinade>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts, Clone)]
-pub struct InitEpochReport<'info> {
-    #[account(
-    has_one = marinade_state,
-    has_one = sunrise_state,
-    has_one = update_authority
-    )]
-    pub state: Box<Account<'info, State>>,
-    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
-    #[account(has_one = msol_mint)]
-    pub marinade_state: Box<Account<'info, MarinadeState>>,
-
-    #[account(mut)]
-    pub payer: Signer<'info>,
-    pub update_authority: Signer<'info>,
-
-    #[account(
-        init,
-        space = EpochReport::SPACE,
-        payer = payer,
-        seeds = [state.key().as_ref(), constants::EPOCH_REPORT],
-        bump,
-    )]
-    pub epoch_report_account: Box<Account<'info, EpochReport>>,
-
-    #[account(mut)]
-    pub msol_mint: Box<Account<'info, Mint>>,
-    #[account(
-        mut,
-        token::mint = msol_mint,
-        token::authority = vault_authority,
-    )]
-    pub msol_vault: Box<Account<'info, TokenAccount>>,
-    /// CHECK: Seeds of the MSOL vault authority.
-    #[account(
-        seeds = [
-            state.key().as_ref(),
-            constants::VAULT_AUTHORITY
-        ],
-        bump = state.vault_authority_bump
-    )]
-    pub vault_authority: UncheckedAccount<'info>,
-
-    pub clock: Sysvar<'info, Clock>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
 pub struct UpdateEpochReport<'info> {
     #[account(
     has_one = marinade_state,
-    has_one = sunrise_state
+    has_one = sunrise_state,
+    seeds = [constants::STATE, sunrise_state.key().as_ref()],
+    bump
     )]
     pub state: Box<Account<'info, State>>,
+    #[account(
+    mut, // Update the extractable yield on the state's epoch report.
+    )]
     pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
-    #[account(has_one = msol_mint)]
+    #[account(
+        has_one = msol_mint,
+    )]
     pub marinade_state: Box<Account<'info, MarinadeState>>,
 
-    #[account(mut)]
-    pub payer: Signer<'info>,
-
-    #[account(
-        mut,
-        seeds = [state.key().as_ref(), constants::EPOCH_REPORT],
-        bump = epoch_report_account.bump,
-    )]
-    pub epoch_report_account: Box<Account<'info, EpochReport>>,
-
-    #[account(mut)]
     pub msol_mint: Box<Account<'info, Mint>>,
     #[account(
-        mut,
         token::mint = msol_mint,
         token::authority = vault_authority,
     )]
     pub msol_vault: Box<Account<'info, TokenAccount>>,
     /// CHECK: Seeds of the MSOL vault authority.
     #[account(
-        seeds = [
-            state.key().as_ref(),
-            constants::VAULT_AUTHORITY
-        ],
-        bump = state.vault_authority_bump
+    seeds = [
+        state.key().as_ref(),
+        constants::VAULT_AUTHORITY
+    ],
+    bump = state.vault_authority_bump
     )]
     pub vault_authority: UncheckedAccount<'info>,
 
-    pub clock: Sysvar<'info, Clock>,
+    /// Required to update the core state epoch report
+    /// Verified in CPI to Sunrise program.
+    pub gsol_mint: Account<'info, Mint>,
+
+    /// CHECK: Checked by Sunrise CPI.
+    pub sysvar_instructions: UncheckedAccount<'info>,
+
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
 }
 
 #[error_code]
 pub enum MarinadeBeamError {
     #[msg("No delegation for stake account deposit")]
     NotDelegated,
-    #[msg("An error occurred during calculation")]
-    CalculationFailure,
     #[msg("The epoch report account has not been updated to the current epoch yet")]
     InvalidEpochReportAccount,
     #[msg("The total ordered ticket amount exceeds the amount in all found tickets")]

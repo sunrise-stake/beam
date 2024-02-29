@@ -12,7 +12,7 @@ import {
 } from "@solana/web3.js";
 import BN from "bn.js";
 import {
-  createTokenAccount,
+  expectSolBalance,
   expectStakerSolBalance,
   expectTokenBalance,
   fund,
@@ -25,23 +25,21 @@ import {
 } from "../../utils.js";
 import { provider, staker, stakerIdentity } from "../setup.js";
 import { expect } from "chai";
-import { MSOL_MINT } from "../consts.js";
-
 describe("Marinade stake pool beam", () => {
   let coreClient: SunriseClient;
   let beamClient: MarinadeClient;
   let vaultMsolBalance: BN;
   let stakerGsolBalance: BN = new BN(0);
+  let extractableYield: BN;
 
   let sunriseStateAddress: PublicKey;
-
   let sunriseDelayedTicket: PublicKey;
 
   const depositAmount = 10 * LAMPORTS_PER_SOL;
   const failedDepositAmount = 5 * LAMPORTS_PER_SOL;
   const liquidWithdrawalAmount = 5 * LAMPORTS_PER_SOL;
-  const delayedWithdrawalAmount = 5 * LAMPORTS_PER_SOL;
-  // const burnAmount = new BN(1 * LAMPORTS_PER_SOL);
+  const delayedWithdrawalAmount = 1 * LAMPORTS_PER_SOL;
+  const burnAmount = new BN(1 * LAMPORTS_PER_SOL);
 
   before("Set up the sunrise state", async () => {
     coreClient = await registerSunriseState();
@@ -69,8 +67,6 @@ describe("Marinade stake pool beam", () => {
   });
 
   it("can initialize a state", async () => {
-    // create an MSol token account for the beam.
-    await createTokenAccount(provider, sunriseStateAddress, MSOL_MINT);
     beamClient = await MarinadeClient.initialize(
       provider,
       provider.publicKey,
@@ -298,45 +294,57 @@ describe("Marinade stake pool beam", () => {
     );
   });
 
-  //
-  // it("can burn gsol", async () => {
-  //   // burn some gsol to simulate the creation of yield
-  //   await sendAndConfirmTransaction(
-  //     stakerIdentity,
-  //     await beamClient.burnGSol(burnAmount),
-  //   );
-  //
-  //   const expectedGsol = stakerGsolBalance.sub(burnAmount);
-  //
-  //   await expectTokenBalance(
-  //     beamClient.provider,
-  //     beamClient.sunrise.gsolAssociatedTokenAccount(),
-  //     expectedGsol,
-  //   );
-  // });
-  //
-  // it("can extract yield into a stake account", async () => {
-  //   // since we burned some sol - we now have yield to extract (the value of the LPs is higher than the value of the GSOL staked)
-  //   // The beam performs a delayed unstake to reduce fees, so the result is a stake account with the yield in it.
-  //
-  //   await sendAndConfirmTransaction(
-  //     // anyone can extract yield to the yield account, but let's use the staker provider (rather than the admin provider) for this test
-  //     // to show that it doesn't have to be an admin
-  //     stakerIdentity,
-  //     await beamClient.extractYield(),
-  //   );
-  //
-  //   // we burned `burnAmount` gsol, so we should have `burnAmount` - fee in the stake account
-  //   const expectedFee = new BN(0); // TODO
-  //   const expectedExtractedYield = burnAmount.sub(expectedFee);
-  //
-  //   await expectSolBalance(
-  //     beamClient.provider,
-  //     beamClient.sunrise.state.yieldAccount,
-  //     expectedExtractedYield,
-  //     // // the calculation appears to be slightly inaccurate at present, but in our favour,
-  //     // // so we can leave this as a low priority TODO to improve the accuracy
-  //     // 3000,
-  //   );
-  // });
+  it("can burn gsol", async () => {
+    // burn some gsol to simulate the creation of yield
+    await sendAndConfirmTransaction(
+      stakerIdentity,
+      await beamClient.burnGSol(burnAmount),
+    );
+
+    const expectedGsol = stakerGsolBalance.sub(burnAmount);
+
+    await expectTokenBalance(
+      beamClient.provider,
+      beamClient.sunrise.gsolAssociatedTokenAccount(),
+      expectedGsol,
+    );
+  });
+
+  it("can update the epoch report with the extractable yield", async () => {
+    // we burned `burnAmount` gsol, so we should be able to extract `burnAmount` - estimated fee
+    const expectedFee = burnAmount.toNumber() * 0.003;
+    extractableYield = burnAmount.subn(expectedFee);
+
+    await sendAndConfirmTransaction(
+      // anyone can update the epoch report, but let's use the staker provider (rather than the admin provider) for this test
+      // to show that it doesn't have to be an admin
+      stakerIdentity,
+      await beamClient.updateEpochReport(),
+    );
+
+    // check that the epoch report has been updated
+    beamClient = await beamClient.refresh();
+    expect(
+      beamClient.sunrise.state.epochReport.beamEpochDetails[0].extractableYield.toNumber(),
+    ).to.equal(extractableYield.toNumber());
+  });
+
+  it("can extract yield into a stake account", async () => {
+    // since we burned some sol - we now have yield to extract (the value of the LPs is higher than the value of the GSOL staked)
+    // The beam performs a delayed unstake to reduce fees, so the result is a stake account with the yield in it.
+
+    await sendAndConfirmTransaction(
+      // anyone can extract yield to the yield account, but let's use the staker provider (rather than the admin provider) for this test
+      // to show that it doesn't have to be an admin
+      stakerIdentity,
+      await beamClient.extractYield(),
+    );
+
+    await expectSolBalance(
+      beamClient.provider,
+      beamClient.sunrise.state.yieldAccount,
+      extractableYield, // calculated in the previous test
+      1,
+    );
+  });
 });

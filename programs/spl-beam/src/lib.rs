@@ -30,6 +30,7 @@ declare_id!("EUZfY4LePXSZVMvRuiVzbxazw9yBDYU99DpGJKCthxbS");
 pub mod spl_beam {
     use super::*;
     use crate::cpi_interface::stake_account::claim_stake_account;
+    use crate::utils::proportional;
 
     pub fn initialize(ctx: Context<Initialize>, input: StateEntry) -> Result<()> {
         ctx.accounts.state.set_inner(input.into());
@@ -164,6 +165,37 @@ pub mod spl_beam {
     pub fn redeem_ticket(_ctx: Context<Noop>) -> Result<()> {
         // spl stake pools only support immediate withdrawals.
         Err(SplBeamError::Unimplemented.into())
+    }
+
+    pub fn update_epoch_report(ctx: Context<UpdateEpochReport>) -> Result<()> {
+        // Calculate how much yield can be extracted from the pool.
+        let gross_extractable_yield = utils::calculate_extractable_yield(
+            &ctx.accounts.sunrise_state,
+            &ctx.accounts.state,
+            &ctx.accounts.stake_pool,
+            &ctx.accounts.pool_token_vault,
+        )?;
+
+        // Reduce by fee
+        let fee = proportional(
+            gross_extractable_yield,
+            ctx.accounts.stake_pool.stake_withdrawal_fee.numerator,
+            ctx.accounts.stake_pool.stake_withdrawal_fee.denominator,
+        )?;
+        let net_extractable_yield = gross_extractable_yield.saturating_sub(fee);
+
+        // CPI: update the epoch report with the extracted yield.
+        let state_bump = ctx.bumps.state;
+        sunrise_interface::update_epoch_report(
+            ctx.accounts.deref(),
+            ctx.accounts.sunrise_program.to_account_info(),
+            ctx.accounts.sunrise_state.key(),
+            ctx.accounts.stake_pool.key(),
+            state_bump,
+            net_extractable_yield,
+        )?;
+
+        Ok(())
     }
 
     pub fn extract_yield(ctx: Context<ExtractYield>) -> Result<()> {
@@ -301,7 +333,7 @@ pub struct Deposit<'info> {
     /// CHECK: Checked by CPI to Sunrise.
     pub gsol_mint_authority: UncheckedAccount<'info>,
     /// CHECK: Checked by CPI to Sunrise.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
     pub spl_stake_pool_program: Program<'info, SplStakePool>,
@@ -379,7 +411,7 @@ pub struct DepositStake<'info> {
     /// CHECK: Checked by CPI to Sunrise.
     pub gsol_mint_authority: UncheckedAccount<'info>,
     /// CHECK: Checked by CPI to Sunrise.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
     pub spl_stake_pool_program: Program<'info, SplStakePool>,
@@ -445,7 +477,7 @@ pub struct Withdraw<'info> {
     /// Verified in CPI to Sunrise program.
     pub gsol_mint: Account<'info, Mint>,
     /// CHECK: Checked by CPI to Sunrise.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
     pub spl_stake_pool_program: Program<'info, SplStakePool>,
@@ -520,7 +552,7 @@ pub struct WithdrawStake<'info> {
     /// Verified in CPI to Sunrise program.
     pub gsol_mint: Account<'info, Mint>,
     /// CHECK: Checked by CPI to Sunrise.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
     pub spl_stake_pool_program: Program<'info, SplStakePool>,
@@ -539,10 +571,14 @@ pub struct ExtractYield<'info> {
     )]
     pub state: Box<Account<'info, State>>,
     #[account(
+        mut, // Update the extracted yield on the state's epoch report.
         has_one = yield_account
     )]
     pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        has_one = pool_mint
+    )]
     pub stake_pool: Box<Account<'info, StakePool>>,
 
     #[account(mut)]
@@ -603,12 +639,6 @@ pub struct ExtractYield<'info> {
     /// CHECK: Checked by CPI to SPL StakePool Program.
     pub manager_fee_account: UncheckedAccount<'info>,
 
-    /// The epoch report account. This is updated with the latest extracted yield value.
-    /// It must be up to date with the current epoch. If not, run updateEpochReport before it.
-    /// CHECK: Address checked by CIP to the core Sunrise program.
-    #[account(mut)]
-    pub epoch_report: UncheckedAccount<'info>,
-
     pub sysvar_clock: Sysvar<'info, Clock>,
     pub native_stake_program: Program<'info, NativeStakeProgram>,
     /// CHECK: Checked by CPI to SPL Stake program.
@@ -621,6 +651,47 @@ pub struct ExtractYield<'info> {
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts, Clone)]
+pub struct UpdateEpochReport<'info> {
+    #[account(
+        has_one = stake_pool,
+        has_one = sunrise_state,
+        seeds = [STATE, sunrise_state.key().as_ref(), stake_pool.key().as_ref()],
+        bump
+    )]
+    pub state: Box<Account<'info, State>>,
+    #[account(
+    mut, // Update the extractable yield on the state's epoch report.
+    )]
+    pub sunrise_state: Box<Account<'info, sunrise_core::State>>,
+    pub stake_pool: Box<Account<'info, StakePool>>,
+    pub pool_mint: Box<Account<'info, Mint>>,
+
+    #[account(
+        seeds = [
+            state.key().as_ref(),
+            VAULT_AUTHORITY
+        ],
+        bump = state.vault_authority_bump
+    )]
+    /// CHECK: The vault authority PDA with verified seeds.
+    pub vault_authority: UncheckedAccount<'info>,
+
+    #[account(
+        token::mint = pool_mint,
+        token::authority = vault_authority
+    )]
+    pub pool_token_vault: Box<Account<'info, TokenAccount>>,
+
+    /// Required to update the core state epoch report
+    /// Verified in CPI to Sunrise program.
+    pub gsol_mint: Account<'info, Mint>,
+
+    pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
+    /// CHECK: Checked by CPI to Sunrise.
+    pub sysvar_instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -645,7 +716,7 @@ pub struct Burn<'info> {
     /// Verified in CPI to Sunrise program.
     pub gsol_mint: Account<'info, Mint>,
     /// CHECK: Checked by CPI to Sunrise.
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>,
 
     pub sunrise_program: Program<'info, sunrise_core_cpi::program::SunriseCore>,
 

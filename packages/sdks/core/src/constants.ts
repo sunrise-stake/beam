@@ -6,5 +6,3 @@ export const SUNRISE_PROGRAM_ID = new PublicKey(
 );
 /** The constant seed of the GSOL mint authority PDA. */
 export const GSOL_AUTHORITY_SEED = "gsol_mint_authority";
-
-export const EPOCH_REPORT_SEED = "epoch_report";

@@ -132,7 +132,7 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -251,7 +251,7 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -385,7 +385,7 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -469,7 +469,7 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -573,7 +573,7 @@ export type MarinadeBeam = {
           ]
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -647,123 +647,6 @@ export type MarinadeBeam = {
       "args": []
     },
     {
-      "name": "initEpochReport",
-      "accounts": [
-        {
-          "name": "state",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "sunriseState",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "marinadeState",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "updateAuthority",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
-          "name": "epochReportAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "msolMint",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "msolVault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vaultAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "clock",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "extractedYield",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "updateEpochReport",
-      "accounts": [
-        {
-          "name": "state",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "sunriseState",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "marinadeState",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "epochReportAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "msolMint",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "msolVault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vaultAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "clock",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "extractYield",
       "accounts": [
         {
@@ -773,7 +656,7 @@ export type MarinadeBeam = {
         },
         {
           "name": "sunriseState",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -807,12 +690,97 @@ export type MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "epochReportAccount",
+          "name": "liqPoolSolLegPda",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "clock",
+          "name": "liqPoolMsolLeg",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasuryMsolAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarInstructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "marinadeProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "updateEpochReport",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "marinadeState",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "msolMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "msolVault",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gsolMint",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Required to update the core state epoch report",
+            "Verified in CPI to Sunrise program."
+          ]
+        },
+        {
+          "name": "sysvarInstructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -880,42 +848,6 @@ export type MarinadeBeam = {
           }
         ]
       }
-    },
-    {
-      "name": "epochReport",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "state",
-            "type": "publicKey"
-          },
-          {
-            "name": "epoch",
-            "type": "u64"
-          },
-          {
-            "name": "tickets",
-            "type": "u64"
-          },
-          {
-            "name": "totalOrderedLamports",
-            "type": "u64"
-          },
-          {
-            "name": "extractableYield",
-            "type": "u64"
-          },
-          {
-            "name": "extractedYield",
-            "type": "u64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
     }
   ],
   "types": [
@@ -952,26 +884,21 @@ export type MarinadeBeam = {
     },
     {
       "code": 6001,
-      "name": "CalculationFailure",
-      "msg": "An error occurred during calculation"
-    },
-    {
-      "code": 6002,
       "name": "InvalidEpochReportAccount",
       "msg": "The epoch report account has not been updated to the current epoch yet"
     },
     {
-      "code": 6003,
+      "code": 6002,
       "name": "RemainingUnclaimableTicketAmount",
       "msg": "The total ordered ticket amount exceeds the amount in all found tickets"
     },
     {
-      "code": 6004,
+      "code": 6003,
       "name": "DelayedUnstakeTicketsNotYetClaimable",
       "msg": "Delayed unstake tickets for the current epoch can not yet be claimed"
     },
     {
-      "code": 6005,
+      "code": 6004,
       "name": "TooManyTicketsClaimed",
       "msg": "The amount of delayed unstake tickets requested to be recovered exceeds the amount in the report"
     }
@@ -1112,7 +1039,7 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1231,7 +1158,7 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1365,7 +1292,7 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1449,7 +1376,7 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1553,7 +1480,7 @@ export const IDL: MarinadeBeam = {
           ]
         },
         {
-          "name": "instructionsSysvar",
+          "name": "sysvarInstructions",
           "isMut": false,
           "isSigner": false
         },
@@ -1627,123 +1554,6 @@ export const IDL: MarinadeBeam = {
       "args": []
     },
     {
-      "name": "initEpochReport",
-      "accounts": [
-        {
-          "name": "state",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "sunriseState",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "marinadeState",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "updateAuthority",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
-          "name": "epochReportAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "msolMint",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "msolVault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vaultAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "clock",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "extractedYield",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "updateEpochReport",
-      "accounts": [
-        {
-          "name": "state",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "sunriseState",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "marinadeState",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "epochReportAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "msolMint",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "msolVault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vaultAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "clock",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "extractYield",
       "accounts": [
         {
@@ -1753,7 +1563,7 @@ export const IDL: MarinadeBeam = {
         },
         {
           "name": "sunriseState",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1787,12 +1597,97 @@ export const IDL: MarinadeBeam = {
           "isSigner": false
         },
         {
-          "name": "epochReportAccount",
+          "name": "liqPoolSolLegPda",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "clock",
+          "name": "liqPoolMsolLeg",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasuryMsolAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarInstructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "marinadeProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "updateEpochReport",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "marinadeState",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "msolMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "msolVault",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gsolMint",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Required to update the core state epoch report",
+            "Verified in CPI to Sunrise program."
+          ]
+        },
+        {
+          "name": "sysvarInstructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sunriseProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -1860,42 +1755,6 @@ export const IDL: MarinadeBeam = {
           }
         ]
       }
-    },
-    {
-      "name": "epochReport",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "state",
-            "type": "publicKey"
-          },
-          {
-            "name": "epoch",
-            "type": "u64"
-          },
-          {
-            "name": "tickets",
-            "type": "u64"
-          },
-          {
-            "name": "totalOrderedLamports",
-            "type": "u64"
-          },
-          {
-            "name": "extractableYield",
-            "type": "u64"
-          },
-          {
-            "name": "extractedYield",
-            "type": "u64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
     }
   ],
   "types": [
@@ -1932,26 +1791,21 @@ export const IDL: MarinadeBeam = {
     },
     {
       "code": 6001,
-      "name": "CalculationFailure",
-      "msg": "An error occurred during calculation"
-    },
-    {
-      "code": 6002,
       "name": "InvalidEpochReportAccount",
       "msg": "The epoch report account has not been updated to the current epoch yet"
     },
     {
-      "code": 6003,
+      "code": 6002,
       "name": "RemainingUnclaimableTicketAmount",
       "msg": "The total ordered ticket amount exceeds the amount in all found tickets"
     },
     {
-      "code": 6004,
+      "code": 6003,
       "name": "DelayedUnstakeTicketsNotYetClaimable",
       "msg": "Delayed unstake tickets for the current epoch can not yet be claimed"
     },
     {
-      "code": 6005,
+      "code": 6004,
       "name": "TooManyTicketsClaimed",
       "msg": "The amount of delayed unstake tickets requested to be recovered exceeds the amount in the report"
     }

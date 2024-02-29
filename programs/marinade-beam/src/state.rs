@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use marinade_common::vault_authority_seed::HasVaultAuthority;
 
 #[account]
 pub struct State {
@@ -14,6 +15,12 @@ pub struct State {
     /// The bump of the PDA that can authorize spending from the vault
     /// that holds pool tokens (msol in this case).
     pub vault_authority_bump: u8,
+}
+
+impl HasVaultAuthority for State {
+    fn vault_authority_bump(&self) -> u8 {
+        self.vault_authority_bump
+    }
 }
 
 // Anchor-ts only supports deserialization(in instruction arguments) for types

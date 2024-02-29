@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use marinade_common::vault_authority_seed::HasVaultAuthority;
 
 #[account]
 pub struct State {
@@ -15,11 +16,18 @@ pub struct State {
     /// that holds pool tokens(both liq_pool and marinade stake pool).
     pub vault_authority_bump: u8,
 
-    /// This state's SOL vault.
-    pub treasury: Pubkey,
+    /// The beam address of the recipient of msol when withdrawing liquidity.
+    /// Typically the marinade-sp beam
+    pub msol_recipient_beam: Pubkey,
 
     /// The token-account that receives msol when withdrawing liquidity.
     pub msol_token_account: Pubkey,
+}
+
+impl HasVaultAuthority for State {
+    fn vault_authority_bump(&self) -> u8 {
+        self.vault_authority_bump
+    }
 }
 
 impl State {
@@ -28,7 +36,7 @@ impl State {
         32 + /*marinade_state*/
         32 + /*sunrise_state*/
         1  + /*vault_authority_bump*/
-        32 + /*treasury*/
+        32 + /*msol_recipient_beam*/
         32; /*msol_token_account*/
 }
 
@@ -41,7 +49,7 @@ pub struct StateEntry {
     pub marinade_state: Pubkey,
     pub sunrise_state: Pubkey,
     pub vault_authority_bump: u8,
-    pub treasury: Pubkey,
+    pub msol_recipient_beam: Pubkey,
     pub msol_token_account: Pubkey,
 }
 
@@ -52,7 +60,7 @@ impl From<StateEntry> for State {
             marinade_state: se.marinade_state,
             sunrise_state: se.sunrise_state,
             vault_authority_bump: se.vault_authority_bump,
-            treasury: se.treasury,
+            msol_recipient_beam: se.msol_recipient_beam,
             msol_token_account: se.msol_token_account,
         }
     }

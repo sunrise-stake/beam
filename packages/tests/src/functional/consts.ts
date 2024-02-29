@@ -1,6 +1,11 @@
-// see anchor.toml
 import { PublicKey } from "@solana/web3.js";
+import BN from "bn.js";
 
+export const ZERO = new BN(0);
+
+export const MARINADE_LP_WITHDRAWAL_FEE_PERCENTAGE = 0;
+
+// see anchor.toml
 export const SUNRISE_CORE_STATE = new PublicKey(
   "89wj5p56PTFiKQcHLTkx78jM3Cv4jVRCXgMKJvoFvvp",
 );
