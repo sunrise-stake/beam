@@ -20,6 +20,9 @@ wallet = "packages/tests/fixtures/provider.json"
 [scripts]
 test = "packages/tests/run.sh"
 
+[test]
+startup_wait = 3000
+
 [test.validator]
 slots_per_epoch = "32"
 #url = "https://api.mainnet-beta.solana.com"
