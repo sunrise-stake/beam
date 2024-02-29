@@ -88,18 +88,18 @@ filename = "packages/tests/fixtures/marinade/lp_mint.json"
 address = "Du3Ysj1wKbxPKkuPPnvzQLQh8oMSVifs3jGZjJWXFmHN"
 filename = "packages/tests/fixtures/marinade/reserve_pda.json"
 
-# Spl accounts (blaze devnet accounts)
+# Spl accounts (blaze mainnet accounts)
 [[test.validator.account]] #stake-pool
-address = "azFVdHtAJN8BX3sbGAYkXvtdjdrT5U6rj9rovvUFos9"
+address = "stk9ApL5HeVAwPLr3TLhDXdZS8ptVu7zp6ov8HFDuMi"
 filename = "packages/tests/fixtures/spl/pool.json"
 [[test.validator.account]] #pool-token-mint
 address = "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1"
 filename = "packages/tests/fixtures/spl/b_sol_mint_address.json"
 [[test.validator.account]] #validator-list
-address = "aEP3DRe8ssFXDFokXiNMo4UXLhpL7LEPVbneUsfqeaJ"
+address = "1istpXjy8BM7Vd5vPfA485frrV7SRJhgq5vs3sskWmc"
 filename = "packages/tests/fixtures/spl/validator_list.json"
 [[test.validator.account]] #reserve-account
-address = "aRkys1kVHeysrcn9bJFat9FkvoyyYD8M1kK286X3Aro"
+address = "rsrxDvYUXjH1RQj2Ke36LNZEVqGztATxFkqNukERqFT"
 filename = "packages/tests/fixtures/spl/reserve_account.json"
 [[test.validator.account]] #manager-fee-account
 address = "Dpo148tVGewDPyh2FkGV18gouWctbdX2fHJopJGe9xv1"

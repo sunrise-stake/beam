@@ -73,10 +73,12 @@ export class Utils {
       beamProgramId,
       stateAddress,
     );
+    console.log("stake", stakePoolAddress.toBase58());
     const stakePoolState = await getStakePoolAccount(
       provider.connection,
       stakePoolAddress,
     );
+    console.log("stakePoolState", stakePoolState.account.data.poolMint.toBase58());
     const beamVault = getAssociatedTokenAddressSync(
       stakePoolState.account.data.poolMint,
       vaultAuthority[0],

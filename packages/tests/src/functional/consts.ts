@@ -42,7 +42,7 @@ export const SPL_POOL_TOKEN_VAULT = new PublicKey(
 /** SPL Stake Pool Accounts */
 
 export const SPL_STAKE_POOL = new PublicKey(
-  "azFVdHtAJN8BX3sbGAYkXvtdjdrT5U6rj9rovvUFos9",
+  "stk9ApL5HeVAwPLr3TLhDXdZS8ptVu7zp6ov8HFDuMi",
 );
 
 export const TX_FEE = 5000;
